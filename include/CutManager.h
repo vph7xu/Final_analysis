@@ -1,33 +1,28 @@
+// -----------------------------------------------------------------------------
+// CutManager.h — numeric cut evaluator
+//   * Supports double and int branches (maps are in .cpp)
+//   * Always vetoes events whose BranchVars.helicity is not ±1.
+// -----------------------------------------------------------------------------
 #ifndef CUT_MANAGER_H
 #define CUT_MANAGER_H
 
 #include "BranchVars.h"
 #include "CutConfig.h"
 
-/** Evaluates all enabled cuts for a given event */
 class CutManager {
 public:
-    explicit CutManager(const CutConfig& c) : cfg_(c) {}
+    explicit CutManager(const CutConfig& cfg) : cfg_(cfg) {}
 
-    /** true → event survives */
-    bool passAll(const BranchVars& v) const
-    {
-        return pass(v, "W2",        "W2_L",     "W2_H")
-            && pass(v, "dx",        "dx_L",     "dx_H")
-            && pass(v, "dy",        "dy_L",     "dy_H")
-            && pass(v, "eHCAL",     "eHCAL_L",  "eHCAL_H")
-            && pass(v, "coin_time", "coinL",    "coinH");
-    }
+    /**
+     * Return true if the event passes all enabled cuts and helicity is ±1.
+     */
+    bool passAll(const BranchVars& v) const;
 
 private:
     const CutConfig& cfg_;
 
-    /** Generic range test:  cfg[keyLow] < var < cfg[keyHigh]   (if the keys exist) */
-    bool pass(const BranchVars& v,
-              const char* varName,
-              const char* lowKey,
-              const char* highKey) const;
+    // helper: check val vs. cfg_[lowKey / highKey]
+    bool inRange(double val, const char* lowKey, const char* highKey) const;
 };
 
-#endif
-
+#endif // CUT_MANAGER_H

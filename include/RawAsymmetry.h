@@ -1,30 +1,57 @@
+// -----------------------------------------------------------------------------
+// RawAsymmetry.h  —  overall spectrum + per‑run asymmetry module
+// -----------------------------------------------------------------------------
+// * Requires BranchVars to expose: runnum (int) and helicity (int ±1)
+// * Uses CutManager for numeric cuts and optional RunQuality veto
+// * Writes:
+//     – ROOT file with overall Aexp histogram
+//     – text file: run  N_plus  N_minus  A_raw  dA_stat
+// -----------------------------------------------------------------------------
 #ifndef RAW_ASYMMETRY_H
 #define RAW_ASYMMETRY_H
 
 #include "BranchVars.h"
 #include "CutManager.h"
+#include "RunQuality.h"
 
 #include <TChain.h>
 #include <TH1D.h>
-#include <TFile.h>
+#include <unordered_map>
+#include <string>
 
 class RawAsymmetry {
 public:
-    /** Configure histogram and (optionally) the output file name */
-    RawAsymmetry(const CutManager& cut,
-                 int    nbins  = 120,
-                 double xmin   = -1.2,
-                 double xmax   =  1.2,
-                 const char* outFile = "raw_asymmetry.root");
+    /**
+     * Constructor.
+     * @param cuts      Numeric cut manager (must out‑live this object)
+     * @param rq        Optional run‑quality pointer (nullptr ⇒ veto disabled)
+     * @param nbins     Histogram bins
+     * @param xmin,xmax Histogram x‑range
+     * @param outRoot   ROOT output file name
+     * @param outTxt    Text output file name
+     */
+    RawAsymmetry(const CutManager& cuts,
+                 const RunQuality* rq  = nullptr,
+                 int    nbins   = 100,
+                 double xmin    = -4,
+                 double xmax    =  3,
+                 const char* outRoot = "raw_asymmetry.root",
+                 const char* outTxt  = "raw_asym_per_run.txt");
 
-    /** Run over a chain that already has BranchVars attached */
-    void process(TChain& ch, const BranchVars& v);
+    /** Loop over entries (BranchVars must already be attached) */
+    void process(TChain& ch, BranchVars& v);
 
 private:
-    const CutManager& cut_;
-    TH1D              hA_;
-    std::string       outFile_;
+    const CutManager& cuts_;
+    const RunQuality* rq_;   // nullable
+
+    TH1D        h_;          // overall Aexp spectrum
+    std::string rootName_;
+    std::string txtName_;
+
+    // run → {N_plus, N_minus}
+    std::unordered_map<int, std::pair<long long, long long>> counts_;
 };
 
-#endif
+#endif // RAW_ASYMMETRY_H
 

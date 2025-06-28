@@ -10,6 +10,23 @@ std::unordered_map<std::string, void*> BranchVars::addrMap_() {
         {"eHCAL",     &eHCAL},
         {"coin_time", &coin_time},
         {"runnum",    &runnum},
+        {"helicity",  &helicity},
+        {"IHWP",      &IHWP},
+        {"He3Pol",    &He3Pol},
+        {"ePS",       &ePS},
+        {"vz",        &vz},
+        {"eSH",       &eSH},
+        {"trP",       &trP},
+        {"grinch_track",        &grinch_track},
+        {"grinch_clus_size",    &grinch_clus_size},
+        {"datetime",            &datetime},
+        {"Q2",        &Q2},
+        {"pN_expect", &pN_expect},
+        {"ntrack",    &ntrack},
+        {"trP_sbs",   &trP_sbs},
+        {"ntrack_sbs",&ntrack_sbs},
+        {"vz_sbs",    &vz_sbs},
+        {"theta_pq",  &theta_pq},
         // --- extend when you add a new data member! ---
     };
 }

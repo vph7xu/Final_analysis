@@ -10,9 +10,9 @@ ROOTCFLAGS := $(shell root-config --cflags)
 ROOTLIBS   := $(shell root-config --libs)
 
 # ---- Compiler & flags ----
-CXX       := g++
 CXXFLAGS  := -std=c++17 -O2 -Iinclude $(ROOTCFLAGS)
 LDFLAGS   := $(ROOTLIBS)
+CXX       := g++
 
 # ---- Source layout ----
 SRC_DIR   := src

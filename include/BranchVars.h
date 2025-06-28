@@ -11,12 +11,29 @@
 class BranchVars {
 public:
     //  ==== public leaf members (extend as you wish) ====
-    double W2        = 0;   ///< reconstructed W²
-    double dx        = 0;   ///< SBS-HCAL horizontal residual
-    double dy        = 0;
-    double eHCAL     = 0;
-    double coin_time = 0;
+    double W2        = 0.0;   ///< reconstructed W²
+    double dx        = 0.0;   ///< SBS-HCAL horizontal residual
+    double dy        = 0.0;
+    double eHCAL     = 0.0;
+    double coin_time = 0.0;
     int    runnum    = 0;
+    int    helicity  = 0;
+    int    IHWP      = 0;
+    double He3Pol    = 0.0;
+    double ePS       = 0.0;
+    double vz        = 0.0;
+    double eSH       = 0.0;
+    double trP       = 0.0;
+    double grinch_track     = 0.0;
+    double grinch_clus_size = 0.0;
+    double Q2        = 0.0;
+    double pN_expect = 0.0;
+    double ntrack    = 0.0;
+    double trP_sbs   = 0.0;
+    double ntrack_sbs       = 0.0;
+    double vz_sbs           = 0.0;
+    double theta_pq         = 0.0;
+    TDatime *datetime = nullptr; 
     // … add more here, no other file changes needed …
 
     /** Bind all data members to the branches of a TTree. */
