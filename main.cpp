@@ -3,6 +3,8 @@
 #include "CutManager.h"
 #include "RunQuality.h"
 #include "RawAsymmetry.h"
+#include "AnalysisCuts.h"
+#include "PlotDXDY.h"
 
 #include <TChain.h>
 #include <iostream>
@@ -58,6 +60,12 @@ int main(int argc, char** argv)
     /* ---------- 5. Run RawAsymmetry module ---------- */
     RawAsymmetry mod(cuts, rqPtr);   // default histogram settings inside class
     mod.process(ch, v);
+
+    AnalysisCuts icuts(cutsFile);   // load once
+
+    PlotDXDY dxdy(icuts);                  // uses dx/dy/helicity from cuts
+    dxdy.process(ch, v);
+
 
     return 0;
 }
