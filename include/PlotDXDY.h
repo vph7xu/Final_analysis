@@ -17,7 +17,9 @@
 class PlotDXDY {
 public:
     PlotDXDY(const AnalysisCuts& cuts,
-             const char* outRoot = "plot_dxdy.root");
+             const char* kin = "GEN3_He3",
+             const char* outRoot = "plot_dxdy.root"
+             );
 
     void process(TChain& ch, BranchVars& v);
 
@@ -34,6 +36,7 @@ private:
     TH1D        hDX_;
     TH1D        hDY_;
     std::string outFile_;
+    const char* kin_;
 
     bool passes(const BranchVars& v) const;
 };

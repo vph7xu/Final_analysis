@@ -32,6 +32,7 @@ public:
      */
     RawAsymmetry(const CutManager& cuts,
                  const RunQuality* rq  = nullptr,
+                 const char * kin = "GEN3_He3",
                  int    nbins   = 100,
                  double xmin    = -4,
                  double xmax    =  3,
@@ -44,8 +45,9 @@ public:
 private:
     const CutManager& cuts_;
     const RunQuality* rq_;   // nullable
+    const char* kin_;
 
-    TH1D        h_;          // overall Aexp spectrum
+    TH1D        h_;          // overall Aexp spectrumcutsIdx
     std::string rootName_;
     std::string txtName_;
 

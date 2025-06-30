@@ -8,11 +8,13 @@
 
 RawAsymmetry::RawAsymmetry(const CutManager& cuts,
                            const RunQuality* rq,
+                           const char* kin,
                            int nbins, double xmin, double xmax,
                            const char* outRoot,
                            const char* outTxt)
     : cuts_   (cuts),
       rq_     (rq),
+      kin_    (kin),
       h_      ("hA", "raw asym.; A_{exp}; counts", nbins, xmin, xmax),
       rootName_(outRoot),
       txtName_ (outTxt) {}
@@ -55,13 +57,13 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
     // ---- save histogram ----
     {
-        TFile fout(rootName_.c_str(), "RECREATE");
+        TFile fout(Form("raw_asymmetry_%s.root",kin_)/*rootName_.c_str()*/, "RECREATE");
         h_.Write();
         fout.Close();
     }
 
     // ---- compute & write per-run asymmetry & statistical error ----
-    std::ofstream txt(txtName_);
+    std::ofstream txt(Form("raw_asymmetry_per_run_%s.txt",kin_));
     txt << "#run  N_plus  N_minus  A_raw  dA_stat\n";
     for (const auto& kv : counts_) {
         int run   = kv.first;

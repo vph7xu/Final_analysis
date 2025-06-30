@@ -3,7 +3,7 @@
 #include <TFile.h>
 #include <iostream>
 
-PlotDXDY::PlotDXDY(const AnalysisCuts& cuts, const char* outRoot)
+PlotDXDY::PlotDXDY(const AnalysisCuts& cuts, const char* kin, const char* outRoot)
     : c_(cuts),
       hvz_("hvz","vz ; vz(m)",100,-0.5,0.5),
       hePS_("hePS","ePS ; ePS(GeV)",100,0.005,3),
@@ -15,6 +15,7 @@ PlotDXDY::PlotDXDY(const AnalysisCuts& cuts, const char* outRoot)
       hDYW2_("hDYW2","W^{2} vs dy; dy(m); W^{2} (GeV^{2})",100,-4,3,100,-3,5),
       hDX_("hDX", "dx ; dx(m)", 100, -4, 3),
       hDY_("hDY", "dy ; dy(m)", 100, -4, 3),
+      kin_(kin),
       outFile_(outRoot) {}
 
 bool PlotDXDY::passes(const BranchVars& v) const
@@ -104,7 +105,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
         }
     }
 
-    TFile f(outFile_.c_str(), "RECREATE");
+    TFile f(Form("plots_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
     hvz_.Write();
     hePS_.Write();
     heHCAL_.Write();

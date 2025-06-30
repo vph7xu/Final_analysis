@@ -12,16 +12,17 @@
 
 int main(int argc, char** argv)
 {
-    if (argc < 3) {
+    if (argc < 4) {
         std::cerr << "Usage: " << argv[0]
-                  << " <root-file[s]> <cuts.json> [run_quality.json|csv]\n";
+                  << " <root-file[s]> <cuts.json> [run_quality.json|csv] Kinematic_point\n";
         return 1;
     }
 
-    const bool haveRQ = (argc >= 4);
-    const int  cutsIdx = argc - (haveRQ ? 2 : 1);   // position of cuts.json
+    const bool haveRQ = (argc >= 5);
+    const int  cutsIdx = argc - (haveRQ ? 3 : 2);   // position of cuts.json
     const char* cutsFile = argv[cutsIdx];
-    const char* rqFile   = haveRQ ? argv[argc - 1] : nullptr;
+    const char* kin = argv[argc - (haveRQ ? 1 : 0)];
+    const char* rqFile   = haveRQ ? argv[argc - 2] : nullptr;
 
     /* ---------- 1. Build the chain ---------- */
     TChain ch("Tout");               // adjust tree name if needed
@@ -58,12 +59,12 @@ int main(int argc, char** argv)
     }
 
     /* ---------- 5. Run RawAsymmetry module ---------- */
-    RawAsymmetry mod(cuts, rqPtr);   // default histogram settings inside class
+    RawAsymmetry mod(cuts, rqPtr, kin);   // default histogram settings inside class
     mod.process(ch, v);
 
     AnalysisCuts icuts(cutsFile);   // load once
 
-    PlotDXDY dxdy(icuts);                  // uses dx/dy/helicity from cuts
+    PlotDXDY dxdy(icuts, kin);                  // uses dx/dy/helicity from cuts
     dxdy.process(ch, v);
 
 
