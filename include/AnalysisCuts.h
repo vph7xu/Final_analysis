@@ -23,6 +23,8 @@ struct AnalysisCuts
     double coin_L    = 0, coin_H    = 0;
     double coin_ac_L = 0, coin_ac_H = 0;
     double runnum_L  = 0, runnum_H  = 0;
+    int    Pkin_L    = 0, Pkin_H    = 0;
+    double pion_L    = 0, pion_H    = 0;
     int    helicity  = 999;                 // 999 ⇒ accept ±1
 
     /* ---- ctor: load once from the master JSON ---- */
@@ -50,7 +52,9 @@ struct AnalysisCuts
         fetch(coin_L,    "coin_L");    fetch(coin_H,    "coin_H");
         fetch(coin_ac_L, "coin_ac_L"); fetch(coin_ac_H, "coin_ac_H");
         fetch(runnum_L,  "runnum_L");  fetch(runnum_H,  "runnum_H");
-
+        fetch(Pkin_L,	  "Pkin_L");    fetch(Pkin_H,    "Pkin_H");
+        fetch(pion_L,    "pion_L");    fetch(pion_L,    "pion_H");
+             
         if (j.contains("helicity"))
             helicity = j["helicity"].get<int>();
     }

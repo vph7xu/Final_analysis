@@ -1,10 +1,13 @@
 #include "BranchVars.h"
+#include "BranchVarsSim.h"
 #include "CutConfig.h"
 #include "CutManager.h"
 #include "RunQuality.h"
 #include "RawAsymmetry.h"
 #include "AnalysisCuts.h"
 #include "PlotDXDY.h"
+#include "AccidentalCorrection.h"
+#include "PionCorrection.h"
 
 #include <TChain.h>
 #include <iostream>
@@ -14,11 +17,11 @@ int main(int argc, char** argv)
 {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0]
-                  << " <root-file[s]> <cuts.json> [run_quality.json|csv] Kinematic_point\n";
+                  << " <data-rootfile> <simQE-rootfile> <simpim-rootfile> <siminelastic-rootfile> <cuts.json> [run_quality.json|csv] Kinematic_point\n";
         return 1;
     }
 
-    const bool haveRQ = (argc >= 5);
+    const bool haveRQ = (argc >= 8);
     const int  cutsIdx = argc - (haveRQ ? 3 : 2);   // position of cuts.json
     const char* cutsFile = argv[cutsIdx];
     const char* kin = argv[argc - (haveRQ ? 1 : 0)];
@@ -26,12 +29,39 @@ int main(int argc, char** argv)
 
     /* ---------- 1. Build the chain ---------- */
     TChain ch("Tout");               // adjust tree name if needed
-    for (int i = 1; i < cutsIdx; ++i)
-        ch.Add(argv[i]);
+    //for (int i = 1; i < cutsIdx; ++i)
+    ch.Add(argv[1]); // data file
+
+    TChain chsimQE("Tout");
+    chsimQE.Add(argv[2]);
+
+    TChain chsimPim("Tout");
+    chsimPim.Add(argv[3]);
+
+    TChain chsiminelastic("Tout");
+    chsiminelastic.Add(argv[4]);
+    /*TChain ch_sim_QE("Tout");
+    ch_sim_QE.Add(argv[2]);
+
+    TChain ch_sim_pim("Tout");
+    ch_sim_pim.Add(argv[3]);
+
+    TChain ch_sim_inelastic("Tout");
+    ch_sim_inelastic.Add(argv[4]);
+    */
 
     /* ---------- 2. Attach branches ---------- */
     BranchVars v;
     v.attach(&ch);
+
+    BranchVarsSim vsimQE;
+    vsimQE.attach(&chsimQE);
+
+    BranchVarsSim vsimPim;
+    vsimPim.attach(&chsimPim);
+
+    BranchVarsSim vsiminelastic;
+    vsiminelastic.attach(&chsiminelastic);
 
     /* ---------- 3. Numeric cuts ---------- */
     CutConfig cfg;
@@ -58,17 +88,20 @@ int main(int argc, char** argv)
         }
     }
 
-    /* ---------- 5. Run RawAsymmetry module ---------- */
-    RawAsymmetry mod(cuts, rqPtr, kin);   // default histogram settings inside class
-    mod.process(ch, v);
-
     AnalysisCuts icuts(cutsFile);   // load once
 
-    PlotDXDY dxdy(icuts, kin);                  // uses dx/dy/helicity from cuts
-    dxdy.process(ch, v);
+    /* ---------- 5. Run RawAsymmetry module ---------- */
+    //RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
+    //mod.process(ch, v);
 
+    //PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
+    //dxdy.process(ch, v);
+
+    //AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
+    //AccidentalCorrection.process(ch,v);
+
+    PionCorrection PionCorrection(icuts, rqPtr,kin);
+    PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
 
     return 0;
 }
-
-

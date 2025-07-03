@@ -3,8 +3,9 @@
 #include <TFile.h>
 #include <iostream>
 
-PlotDXDY::PlotDXDY(const AnalysisCuts& cuts, const char* kin, const char* outRoot)
+PlotDXDY::PlotDXDY(const AnalysisCuts& cuts, const RunQuality* rq, const char* kin, const char* outRoot)
     : c_(cuts),
+      rq_(rq),
       hvz_("hvz","vz ; vz(m)",100,-0.5,0.5),
       hePS_("hePS","ePS ; ePS(GeV)",100,0.005,3),
       heHCAL_("heHCAL","eHCAL ; eHCAL(GeV)",100,0.001,3),
@@ -52,6 +53,8 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
     std::cout << "[PlotDXDY] looping over " << n << " events\n";
     for (Long64_t i = 0; i < n; ++i) {
         ch.GetEntry(i);
+
+        if (rq_ && (!rq_->helicityOK(v.runnum) || !rq_->mollerOK(v.runnum))) continue;
 
         if (v.ntrack>0 && v.ePS>0.2 && v.eHCAL>0.025){
             hvz_.Fill(v.vz);

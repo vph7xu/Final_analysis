@@ -7,12 +7,14 @@
 #include <cmath>
 
 RawAsymmetry::RawAsymmetry(const CutManager& cuts,
+                           const AnalysisCuts& anacuts,
                            const RunQuality* rq,
                            const char* kin,
                            int nbins, double xmin, double xmax,
                            const char* outRoot,
                            const char* outTxt)
     : cuts_   (cuts),
+      c_(anacuts),
       rq_     (rq),
       kin_    (kin),
       h_      ("hA", "raw asym.; A_{exp}; counts", nbins, xmin, xmax),
@@ -36,8 +38,8 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
         // Accumulate N+ / N- per run (assumes BranchVars.helicity exists)
         auto &pair = counts_[v.runnum];
-        if (v.helicity > 0) ++pair.first;      // N+
-        else if (v.helicity < 0) ++pair.second; // N-
+        if (-1*v.helicity*v.IHWP*c_.Pkin_L == 1) ++pair.first;      // N+
+        else if (-1*v.helicity*v.IHWP*c_.Pkin_L == -1) ++pair.second; // N-
 
         // overall spectrum (optional)
         //const double Aexp = (v.dy != 0) ? v.dx / v.dy : 0.0;
@@ -71,7 +73,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
         long long Nm = kv.second.second;
         long long sum = Np + Nm;
         double A = (sum > 0) ? double(Np - Nm) / sum : 0.0;
-        double dA = (sum > 0) ? 2.0 * std::sqrt(double(Np) * Nm) / (sum * sum) : 0.0; // 2*sqrt(N+ N-)/(N+ + N-)^2
+        double dA = (sum > 0) ? 2.0 * std::sqrt(double(Np) * Nm) / (sum * sum *sum) : 0.0; // 2*sqrt(N+ N-)/(N+ + N-)^2
         txt << run << " " << Np << " " << Nm << " " << A << " " << dA << "\n";
     }
     txt.close();

@@ -12,6 +12,7 @@
 
 #include "BranchVars.h"
 #include "CutManager.h"
+#include "AnalysisCuts.h"
 #include "RunQuality.h"
 
 #include <TChain.h>
@@ -31,6 +32,7 @@ public:
      * @param outTxt    Text output file name
      */
     RawAsymmetry(const CutManager& cuts,
+                 const AnalysisCuts& anacuts,
                  const RunQuality* rq  = nullptr,
                  const char * kin = "GEN3_He3",
                  int    nbins   = 100,
@@ -44,6 +46,7 @@ public:
 
 private:
     const CutManager& cuts_;
+    const AnalysisCuts& c_;
     const RunQuality* rq_;   // nullable
     const char* kin_;
 

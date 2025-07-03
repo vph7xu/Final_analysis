@@ -9,6 +9,7 @@
 
 #include "BranchVars.h"
 #include "AnalysisCuts.h"
+#include "RunQuality.h"
 
 #include <TChain.h>
 #include <TH2D.h>
@@ -17,6 +18,7 @@
 class PlotDXDY {
 public:
     PlotDXDY(const AnalysisCuts& cuts,
+             const RunQuality* rq  = nullptr,
              const char* kin = "GEN3_He3",
              const char* outRoot = "plot_dxdy.root"
              );
@@ -25,6 +27,7 @@ public:
 
 private:
     const AnalysisCuts& c_;
+    const RunQuality* rq_;   // nullable
     TH1D        hvz_;
     TH1D        hePS_;
     TH1D        heHCAL_;
