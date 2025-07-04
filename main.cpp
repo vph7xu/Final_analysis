@@ -8,6 +8,7 @@
 #include "PlotDXDY.h"
 #include "AccidentalCorrection.h"
 #include "PionCorrection.h"
+#include "InelasticCorrection.h"
 
 #include <TChain.h>
 #include <iostream>
@@ -17,11 +18,11 @@ int main(int argc, char** argv)
 {
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0]
-                  << " <data-rootfile> <simQE-rootfile> <simpim-rootfile> <siminelastic-rootfile> <cuts.json> [run_quality.json|csv] Kinematic_point\n";
+                  << " <data-rootfile> <simQE-rootfile> <simpim-rootfile> <siminelastic-rootfile> <simN2-rootfile> <cuts.json> [run_quality.json|csv] Kinematic_point\n";
         return 1;
     }
 
-    const bool haveRQ = (argc >= 8);
+    const bool haveRQ = (argc >= 9);
     const int  cutsIdx = argc - (haveRQ ? 3 : 2);   // position of cuts.json
     const char* cutsFile = argv[cutsIdx];
     const char* kin = argv[argc - (haveRQ ? 1 : 0)];
@@ -40,6 +41,10 @@ int main(int argc, char** argv)
 
     TChain chsiminelastic("Tout");
     chsiminelastic.Add(argv[4]);
+
+    TChain chN2("Tout");
+    chsimN2.Add(argv[5]);
+
     /*TChain ch_sim_QE("Tout");
     ch_sim_QE.Add(argv[2]);
 
@@ -62,6 +67,9 @@ int main(int argc, char** argv)
 
     BranchVarsSim vsiminelastic;
     vsiminelastic.attach(&chsiminelastic);
+
+    BranchVarsSim vsimN2;
+    vsimN2.attach(&chsimN2);
 
     /* ---------- 3. Numeric cuts ---------- */
     CutConfig cfg;
@@ -102,6 +110,10 @@ int main(int argc, char** argv)
 
     PionCorrection PionCorrection(icuts, rqPtr,kin);
     PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
+
+    InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
+    InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
+
 
     return 0;
 }

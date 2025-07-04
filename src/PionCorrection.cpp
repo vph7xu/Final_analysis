@@ -101,7 +101,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         ////////////////////////loose cuts for asymmetry calculation/////////////
         if (v.ntrack<1 || abs(v.vz)>0.27 ||/* v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 ||
-            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) ||*/ (c_.W2_L>v.W2 || v.W2>c_.W2_H) || /*(c_.dx_L>v.dx || v.dx>c_.dx_H) || (c_.dy_L>v.dy || v.dy>c_.dy_H) ||*/ 
+            */(c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || /*(c_.dx_L>v.dx || v.dx>c_.dx_H) || (c_.dy_L>v.dy || v.dy>c_.dy_H) ||*/ 
             abs(v.helicity)!=1) continue; //no ePS since we are looking at pions
 
         if(v.helicity==1) h_PSe_data_pos->Fill(v.ePS);
@@ -156,13 +156,13 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
         if (abs(vQE.vz)>0.27 || vQE.eHCAL<0.025 /*|| abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2*/ ||
            (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) /*|| (c_.dx_L>vQE.dx || vQE.dx>c_.dx_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)*/) continue;
 
-        h_PSe_QE_loose_cuts->Fill(vQE.ePS);
+        h_PSe_QE_loose_cuts->Fill(vQE.ePS,vQE.weight);
 
         ///////////////tight cuts for fraction calculation/////////////////
         if (abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 ||
            (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dx_L>vQE.dx || vQE.dx>c_.dx_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)) continue; //no ePS since we are looking at pions
 
-        h_PSe_QE->Fill(vQE.ePS);
+        h_PSe_QE->Fill(vQE.ePS,vQE.weight);
 
         // progress bar
         if (i % step == 0 || i == nentries_QE - 1) {
@@ -188,13 +188,13 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
         if (abs(vPim.vz)>0.27 || /*vPim.eHCAL<c_.eHCAL_L || abs((vPim.ePS+vPim.eSH)/(vPim.trP)-1)>0.2 ||*/
            (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) /*|| (c_.dx_L>vPim.dx || vPim.dx>c_.dx_H) || (c_.dy_L>vPim.dy || vPim.dy>c_.dy_H)*/) continue; 
 
-        h_PSe_pion_loose_cuts->Fill(vPim.ePS);
+        h_PSe_pion_loose_cuts->Fill(vPim.ePS,vPim.weight);
 
         ///////////////tight cuts for fraction calculation//////////////////
         if (abs(vPim.vz)>0.27 || /*vPim.eHCAL<c_.eHCAL_L ||*/ abs((vPim.ePS+vPim.eSH)/(vPim.trP)-1)>0.2 ||
            (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) || (c_.dx_L>vPim.dx || vPim.dx>c_.dx_H) || (c_.dy_L>vPim.dy || vPim.dy>c_.dy_H)) continue; //no ePS since we are looking at pions
 
-        h_PSe_pion->Fill(vPim.ePS);
+        h_PSe_pion->Fill(vPim.ePS,vPim.weight);
 
         // progress bar
         if (i % step == 0 || i == nentries_pim - 1) {
