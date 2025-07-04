@@ -9,6 +9,7 @@
 #include "AccidentalCorrection.h"
 #include "PionCorrection.h"
 #include "InelasticCorrection.h"
+#include "NitrogenCorrection.h"
 
 #include <TChain.h>
 #include <iostream>
@@ -42,7 +43,7 @@ int main(int argc, char** argv)
     TChain chsiminelastic("Tout");
     chsiminelastic.Add(argv[4]);
 
-    TChain chN2("Tout");
+    TChain chsimN2("Tout");
     chsimN2.Add(argv[5]);
 
     /*TChain ch_sim_QE("Tout");
@@ -108,12 +109,14 @@ int main(int argc, char** argv)
     //AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
     //AccidentalCorrection.process(ch,v);
 
-    PionCorrection PionCorrection(icuts, rqPtr,kin);
-    PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
+    //PionCorrection PionCorrection(icuts, rqPtr,kin);
+    //PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
 
-    InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
-    InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
+    //InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
+    //InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
 
+    NitrogenCorrection NitrogenCorrection(icuts,kin);
+    NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
 
     return 0;
 }

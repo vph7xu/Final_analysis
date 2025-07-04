@@ -32,11 +32,12 @@ public:
                    const char* kin = "GEN3_He3",
                    const char* rootFile = "nitrogen_correction.root");
 
-    void process(TChain& ch_QE_sim, TChain& ch_N2_sim, BranchVarsSim& vQE, BranchVarsSim& vN2);
+    void process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVarsSim& vHe3, BranchVarsSim& vN2);
 
 private:
     const AnalysisCuts& c_;
     const char* kin_;
+    const char* outfile_;
     
 };
 
