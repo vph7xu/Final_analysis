@@ -100,8 +100,8 @@ int main(int argc, char** argv)
     AnalysisCuts icuts(cutsFile);   // load once
 
     /* ---------- 5. Run RawAsymmetry module ---------- */
-    //RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
-    //mod.process(ch, v);
+    RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
+    mod.process(ch, v);
 
     //PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
     //dxdy.process(ch, v);

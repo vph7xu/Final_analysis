@@ -2,81 +2,95 @@
 
 #include <TFile.h>
 #include <fstream>
+#include <sstream>
 #include <iostream>
-#include <algorithm>
 #include <cmath>
+#include <algorithm>
+#include <vector>
 
-RawAsymmetry::RawAsymmetry(const CutManager& cuts,
-                           const AnalysisCuts& anacuts,
-                           const RunQuality* rq,
-                           const char* kin,
-                           int nbins, double xmin, double xmax,
-                           const char* outRoot,
-                           const char* outTxt)
-    : cuts_   (cuts),
-      c_(anacuts),
-      rq_     (rq),
-      kin_    (kin),
-      h_      ("hA", "raw asym.; A_{exp}; counts", nbins, xmin, xmax),
-      rootName_(outRoot),
-      txtName_ (outTxt) {}
+// ---------- helper -----------------------------------------------------------
+static TDatime parseDT(const std::string& s)
+{
+    int y,m,d,h,min,sec;
+    std::sscanf(s.c_str(), "%d-%d-%d %d:%d:%d", &y,&m,&d,&h,&min,&sec);
+    return TDatime(y,m,d,h,min,sec);
+}
 
+// ---------- constructor ------------------------------------------------------
+RawAsymmetry::RawAsymmetry(const CutManager& cuts, const AnalysisCuts& a,
+                           const RunQuality* rq, const char* kin,
+                           int nb,double xlo,double xhi,
+                           const char* root,const char* txt)
+    : cuts_(cuts), c_(a), rq_(rq), kin_(kin),
+      h_("hA","A_{exp}; A; events",nb,xlo,xhi),
+      rootF_(root), txtF_(txt) {}
+
+// ---------- CSV I/O ----------------------------------------------------------
+std::vector<BeamRow> RawAsymmetry::readBeamCSV(const std::string& csv) const
+{
+    std::vector<BeamRow> v; std::ifstream f(csv);
+    if(!f){ std::cerr<<"[RawAsym] cannot open "<<csv<<"\n"; return v; }
+    std::string line; std::getline(f,line); // skip header
+    while(std::getline(f,line)){
+        std::stringstream ss(line); std::string a,b; double val,err;
+        std::getline(ss,a,','); std::getline(ss,b,','); ss>>val; ss.ignore(1,','); ss>>err;
+        v.push_back({parseDT(a),parseDT(b),val,err});
+    }
+    return v;
+}
+
+std::pair<double,double> RawAsymmetry::beamAt(const std::vector<BeamRow>& tbl,
+                                              const TDatime& t) const
+{
+    for(const auto& r:tbl) if(t>=r.start && t<=r.end) return {r.val,r.err};
+    return {-1,-1};
+}
+
+// ---------- process ----------------------------------------------------------
 void RawAsymmetry::process(TChain& ch, BranchVars& v)
 {
-    const Long64_t nEntries = ch.GetEntries();
-    const Long64_t step     = 100;//std::max<Long64_t>(1, nEntries / 50);
+    auto beamTbl = readBeamCSV("DB/Beam_pol.csv");
+    if(beamTbl.empty()){ std::cerr<<"Beam_pol.csv missing → abort\n"; return; }
 
-    std::cout << "\n[ RawAsymmetry ] processing " << nEntries << " events …\n";
+    Long64_t n = ch.GetEntries(); Long64_t step=100;
+    std::cout<<"[RawAsym] processing "<<n<<" events…\n";
 
-    for (Long64_t i = 0; i < nEntries; ++i) {
-        ch.GetEntry(i);
+    for(Long64_t i=0;i<n;++i){ ch.GetEntry(i);
+        if(!cuts_.passAll(v)) continue;
+        if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
 
-        // numeric cuts
-        if (!cuts_.passAll(v)) continue;
-        // run-quality veto (if provided)
-        if (rq_ && (!rq_->helicityOK(v.runnum) || !rq_->mollerOK(v.runnum))) continue;
+        auto& cnt = counts_[v.runnum];
+        int helCorr = -1*v.helicity*v.IHWP*c_.Pkin_L;
+        if(helCorr==1) ++cnt.Np; else if(helCorr==-1) ++cnt.Nm;
 
-        // Accumulate N+ / N- per run (assumes BranchVars.helicity exists)
-        auto &pair = counts_[v.runnum];
-        if (-1*v.helicity*v.IHWP*c_.Pkin_L == 1) ++pair.first;      // N+
-        else if (-1*v.helicity*v.IHWP*c_.Pkin_L == -1) ++pair.second; // N-
-
-        // overall spectrum (optional)
-        //const double Aexp = (v.dy != 0) ? v.dx / v.dy : 0.0;
         h_.Fill(v.dx);
 
-        // progress bar
-        if (i % step == 0 || i == nEntries - 1) {
-            double frac = double(i + 1) / nEntries;
-            int barw = 42, pos = static_cast<int>(barw * frac);
-            std::cout << '\r' << '[';
-            for (int j = 0; j < barw; ++j)
-                std::cout << (j < pos ? '=' : (j == pos ? '>' : ' '));
-            std::cout << "] " << static_cast<int>(frac * 100) << " %" << std::flush;
-        }
-    }
-    std::cout << "\nDone.\n";
+        auto bp = beamAt(beamTbl,*v.datetime);
+        auto& pa = pols_[v.runnum];
+        if(bp.first>0){ pa.sumBeam += bp.first; pa.sumBeamErr2 += bp.second*bp.second; }
+        pa.sumHe3 += v.He3Pol; pa.sumHe3Err2 += 0.05*0.05; // FIXME const err
+        ++pa.w;
 
-    // ---- save histogram ----
-    {
-        TFile fout(Form("raw_asymmetry_%s.root",kin_)/*rootName_.c_str()*/, "RECREATE");
-        h_.Write();
-        fout.Close();
+        if(i%step==0||i==n-1){ double f=double(i+1)/n; int bar=42,pos=int(bar*f);
+            std::cout<<'\r'<<'['; for(int j=0;j<bar;++j) std::cout<<(j<pos?'=':(j==pos?'>':' '));
+            std::cout<<"] "<<int(f*100)<<" %"<<std::flush; }
     }
+    std::cout<<"\nDone.\n";
 
-    // ---- compute & write per-run asymmetry & statistical error ----
-    std::ofstream txt(Form("raw_asymmetry_per_run_%s.txt",kin_));
-    txt << "#run  N_plus  N_minus  A_raw  dA_stat\n";
-    for (const auto& kv : counts_) {
-        int run   = kv.first;
-        long long Np = kv.second.first;
-        long long Nm = kv.second.second;
-        long long sum = Np + Nm;
-        double A = (sum > 0) ? double(Np - Nm) / sum : 0.0;
-        double dA = (sum > 0) ? 2.0 * std::sqrt(double(Np) * Nm) / (sum * sum *sum) : 0.0; // 2*sqrt(N+ N-)/(N+ + N-)^2
-        txt << run << " " << Np << " " << Nm << " " << A << " " << dA << "\n";
+    // histogram
+    { TFile f(Form("raw_asymmetry_%s.root",kin_),"RECREATE"); h_.Write(); }
+
+    // table
+    std::ofstream out(Form("raw_asymmetry_%s.txt",kin_));
+    out<<"#run N+ N- A_raw dA_raw beamPol dBeam targetPol dTgt\n";
+
+    for(auto& [run,c]:counts_){ auto p=pols_[run]; long long sum=c.Np+c.Nm;
+        double A=0,dA=0; if(sum){ A=double(c.Np-c.Nm)/sum; dA=2*std::sqrt(double(c.Np)*c.Nm)/(sum*sum);}        
+        double b  = p.w? p.sumBeam/p.w : -1;
+        double db = p.w? std::sqrt(p.sumBeamErr2)/p.w : -1;
+        double t  = p.w? p.sumHe3/p.w  : -1;
+        double dt = p.w? std::sqrt(p.sumHe3Err2)/p.w : -1;
+        out<<run<<" "<<c.Np<<" "<<c.Nm<<" "<<A<<" "<<dA<<" "<<b<<" "<<db<<" "<<t<<" "<<dt<<"\n";
     }
-    txt.close();
-
-    std::cout << "Per-run asymmetries written to " << txtName_ << "\n";
+    std::cout<<"[RawAsym] table → "<<txtF_<<"\n";
 }
