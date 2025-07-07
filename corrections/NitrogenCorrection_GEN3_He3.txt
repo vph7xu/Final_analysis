@@ -6,3 +6,5 @@ nentries_N2 : 267951
 nentries_He3 : 266799
 S : 0.144932
 Nitrogen fraction : 0.0254691
+f_N2 : 0.0254691
+err_f_N2 : 0.0699861

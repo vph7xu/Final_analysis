@@ -108,7 +108,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
         }
     }
 
-    TFile f(Form("plots_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
+    TFile f(Form("rootfiles/plots_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
     hvz_.Write();
     hePS_.Write();
     heHCAL_.Write();

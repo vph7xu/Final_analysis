@@ -99,30 +99,81 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
 
     double frac_N2 = 14*N_N2_fill/(14*N_N2_fill + N_He3_fill)*S;
 
-    std::ofstream txt(Form("NitrogenCorrection_%s.txt",kin_));
-    txt<<"N_N2_sim : "<<N_N2_sim<<"\n";
-    txt<<"N_He3_sim : "<<N_He3_sim<<"\n";
-    txt<<"N_N2_sim_integral : "<<N_N2_sim_integral<<"\n";
-    txt<<"N_He3_sim_integral : "<<N_He3_sim_integral<<"\n";
-    txt<<"nentries_N2 : "<<nentries_N2<<"\n";
-    txt<<"nentries_He3 : "<<nentries_He3<<"\n";
-    txt<<"S : "<<S<<"\n";
-    txt<<"Nitrogen fraction : "<<frac_N2<<"\n";
+    ////////////////////////////////////error with the fraction //////////////////////////////////////////
+        // --- inputs (already computed) ---------------------------------
+    double A = N_N2_sim_integral;
+    double B = N_He3_sim_integral;
+    double C = nentries_He3;
+    double D = nentries_N2;
+    double E = N_N2_fill;
+    double F = N_He3_fill;
+    const double k = 14.0;
+
+    // --- statistical uncertainties (examples) ----------------------
+    // histogram integrals: use ROOT’s summed bin errors if you stored them
+    double sA = h_dx_N2_neutrons->GetBinError
+                (h_dx_N2_neutrons->FindBin(c_.dx_L),
+                 h_dx_N2_neutrons->FindBin(c_.dx_H));
+    double sB = h_dx_He3_neutrons->GetBinError
+                (h_dx_He3_neutrons->FindBin(c_.dx_L),
+                 h_dx_He3_neutrons->FindBin(c_.dx_H));
+
+    // Poisson for raw entry counts
+    double sC = sqrt(C);
+    double sD = sqrt(D);
+
+    // fill-fraction uncertainties (replace with survey errors if known)
+    double sE = 0.05;  //check these numbers // e.g. 0.015 * 0.02  (2 % relative)  
+    double sF = 0.05;  //check these numbers // e.g. 0.985 * 0.02
+
+    // --- derived quantities ---------------------------------------
+    double S_1 = (A*C)/(D*B*k);
+    double g = (k*E)/(k*E + F);
+    double frac_N2_1 = g * S_1;
+
+    // partials
+    double dSdA =  C / (D*B*k);
+    double dSdB = -A*C / (D*B*B*k);
+    double dSdC =  A / (D*B*k);
+    double dSdD = -A*C / (D*D*B*k);
+
+    double dgdE =  k*F / pow(k*E + F, 2);
+    double dgdF = -k*E / pow(k*E + F, 2);
+
+    // --- error propagation ----------------------------------------
+    double var_S   = pow(dSdA*sA,2) + pow(dSdB*sB,2)
+                   + pow(dSdC*sC,2) + pow(dSdD*sD,2);
+    double var_g   = pow(dgdE*sE,2) + pow(dgdF*sF,2);
+
+    double sigma_frac = sqrt( pow(g,2)*var_S + pow(S,2)*var_g );
+
+
+    std::ofstream txt(Form("corrections/NitrogenCorrection_%s.txt",kin_));
+    txt<<"N_N2_sim = "<<N_N2_sim<<"\n";
+    txt<<"N_He3_sim = "<<N_He3_sim<<"\n";
+    txt<<"N_N2_sim_integral = "<<N_N2_sim_integral<<"\n";
+    txt<<"N_He3_sim_integral = "<<N_He3_sim_integral<<"\n";
+    txt<<"nentries_N2 = "<<nentries_N2<<"\n";
+    txt<<"nentries_He3 = "<<nentries_He3<<"\n";
+    txt<<"S = "<<S<<"\n";
+    txt<<"Nitrogen fraction = "<<frac_N2<<"\n";
+    txt<<"f_N2 = "<<frac_N2_1<<"\n";
+    txt<<"err_f_N2 = "<<sigma_frac <<"\n";
 
     txt.close();
 
     ///////////////////plotting and printing////////////////////////////
 
-    TCanvas *C = new TCanvas("c","c",2400,1500);
+    TCanvas *C1 = new TCanvas("c","c",2400,1500);
     h_dx_He3->SetLineWidth(4);
     h_dx_N2->SetLineWidth(4);
 
-    C->Divide(2,2);
-    C->cd(1);
+    C1->Divide(2,2);
+    C1->cd(1);
     h_dx_He3->Draw();
-    C->cd(2);
+    C1->cd(2);
     h_dx_N2->Draw();
 
-    C->Print(Form("NitrogenCorrection_%s.png",kin_));
+    C1->Print(Form("images/NitrogenCorrection_%s.png",kin_));
 
 }

@@ -163,16 +163,27 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double errproton_frac = (proton_events/QE_events)*sqrt((1/proton_events)+(1/QE_events));
 
     // store
-    std::ofstream txt(Form("InelasticCorrection_%s",kin_));
+    std::ofstream txt(Form("corrections/InelasticCorrection_%s.txt",kin_));
     //TNamed n("inel_fraction", (std::to_string(frac_)+","+std::to_string(dfrac_)).c_str());
     //n.Write(); fout.Close();
-    txt<<"par0 : "<< par0 <<"\n";
-    txt<<"par1 : "<< par1 <<"\n";
-    txt<<"par2 : "<< par2 <<"\n";
-    txt<<"inelastic_fraction : "<<inelastic_frac<<"\n";
-    txt<<"err_inelastic_fraction : "<<errinelastic_frac<<"\n";
-    txt<<"proton_fraction : "<<proton_frac<<"\n";
-    txt<<"err_proton_fraction : "<<errproton_frac<<"\n";
+    txt<<"par0 = "<< par0 <<"\n";
+    txt<<"par1 = "<< par1 <<"\n";
+    txt<<"par2 = "<< par2 <<"\n";
+    txt<<"inelastic_fraction = "<<inelastic_frac<<"\n";
+    txt<<"err_inelastic_fraction = "<<errinelastic_frac<<"\n";
+    txt<<"proton_fraction = "<<proton_frac<<"\n";
+    txt<<"err_proton_fraction = "<<errproton_frac<<"\n";
+    
+    txt<<"f_in = "<<inelastic_frac<<"\n";
+    txt<<"err_f_in = "<<errinelastic_frac<<"\n";
+    txt<<"f_p = "<<proton_frac<<"\n";
+    txt<<"err_f_p = "<<errproton_frac<<"\n";
+    //below values should be calculated separately, for now they are set to zero
+    txt<<"A_in = "<<0.0<<"\n";
+    txt<<"err_A_in = "<<0.0<<"\n";
+    txt<<"A_p = "<<0.0<<"\n";
+    txt<<"err_A_p = "<<0.0<<"\n";
+
 
     txt.close();
 
@@ -216,7 +227,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hQE_neutron.Draw("hist same");
     hInelastic.Draw("hist same");
 
-    C->Print(Form("InelasticCorrection_%s.png",kin_));
+    C->Print(Form("images/InelasticCorrection_%s.png",kin_));
 
 }
 

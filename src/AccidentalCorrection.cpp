@@ -110,12 +110,12 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     g.SetName("gAsymVsCoinTime");
     g.SetTitle("Raw Asymmetry vs Coincidence Time; coin time; A_{raw}");
 
-    TFile fout(Form("accidentals_%s.root",kin_)/*rootName_.c_str()*/, "RECREATE");
+    TFile fout(Form("rootfiles/accidentals_%s.root",kin_)/*rootName_.c_str()*/, "RECREATE");
     g.Write();
     fout.Close();
 
     //if (!csvName_.empty()) {
-        std::ofstream csv(Form("accidentals_%s.csv",kin_));
+        std::ofstream csv(Form("csv/accidentals_%s.csv",kin_));
         if (csv){
             csv << "#binCenter binHalfWidth A_raw dA\n";
             for (size_t i=0;i<nb;++i)
@@ -132,7 +132,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
 
     // Write accidental results to file
     
-    std::ofstream txt(Form("accidentals_%s.txt",kin_));
+    std::ofstream txt(Form("corrections/AccidentalCorrection_%s.txt",kin_));
     txt << "N_plus_all      = " << N_plus_acc       << "\n";
     txt << "N_minus_all     = " << N_minus_acc      << "\n";
     txt << "A_acc           = " << A_acc            << "\n";

@@ -78,10 +78,41 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     std::cout<<"\nDone.\n";
 
     // histogram
-    { TFile f(Form("raw_asymmetry_%s.root",kin_),"RECREATE"); h_.Write(); }
+    { TFile f(Form("rootfiles/raw_asymmetry_%s.root",kin_),"RECREATE"); h_.Write(); }
 
     // table
-    std::ofstream out(Form("raw_asymmetry_%s.txt",kin_));
+    std::ofstream out(Form("corrections/raw_asymmetry_%s.txt",kin_));
+    out<<"#run N+ N- A_raw dA_raw beamPol dBeam targetPol dTgt\n";
+
+    std::vector<int> runs; runs.reserve(counts_.size());
+    for (const auto& kv : counts_) runs.push_back(kv.first);
+    std::sort(runs.begin(), runs.end());
+
+    for (int run : runs) {
+        const auto& c = counts_.at(run);
+        const auto  p = pols_.at(run);
+
+        long long sum = c.Np + c.Nm;
+        double A  = 0.0, dA = 0.0;
+        if (sum) {
+            A  = double(c.Np - c.Nm) / sum;
+            dA = 2.0 * std::sqrt(double(c.Np) * c.Nm) / (sum * sum);
+        }
+
+        double b  = p.w ? p.sumBeam / p.w                : -1;
+        double db = p.w ? std::sqrt(p.sumBeamErr2) / p.w : -1;
+        double t  = p.w ? p.sumHe3  / p.w                : -1;
+        double dt = p.w ? std::sqrt(p.sumHe3Err2) / p.w  : -1;
+
+        out << run << " " << c.Np << " " << c.Nm << " "
+            << A   << " " << dA   << " "
+            << b   << " " << db   << " "
+            << t   << " " << dt   << "\n";
+    }
+
+
+    // table
+    /*std::ofstream out(Form("raw_asymmetry_%s.txt",kin_));
     out<<"#run N+ N- A_raw dA_raw beamPol dBeam targetPol dTgt\n";
 
     for(auto& [run,c]:counts_){ auto p=pols_[run]; long long sum=c.Np+c.Nm;
@@ -91,6 +122,6 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
         double t  = p.w? p.sumHe3/p.w  : -1;
         double dt = p.w? std::sqrt(p.sumHe3Err2)/p.w : -1;
         out<<run<<" "<<c.Np<<" "<<c.Nm<<" "<<A<<" "<<dA<<" "<<b<<" "<<db<<" "<<t<<" "<<dt<<"\n";
-    }
+    }*/
     std::cout<<"[RawAsym] table → "<<txtF_<<"\n";
 }

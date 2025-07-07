@@ -8,3 +8,7 @@ asymIntegral : -0.00493951
 err_asymIntegral : 0.00430849
 asymGrinch : -0.00638386
 err_asymGrinch : 0.010147
+A_pi : -0.00638386
+err_A_pi : 0.010147
+f_pi : 0
+err_f_pi : 0

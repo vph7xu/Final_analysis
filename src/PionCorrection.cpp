@@ -269,24 +269,45 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     double asymGrinch = (Ngrinch_pos - Ngrinch_neg)/(Ngrinch_pos + Ngrinch_neg);
     double err_asymGrinch = 2*sqrt(Ngrinch_pos*Ngrinch_neg/pow((Ngrinch_pos+Ngrinch_neg),3));
 
+    double f_pi = 0.0;
+    double err_f_pi = 0.0;
+
+    double pi_events_all = h_pion_scaled_all->Integral(h_pion_scaled_all->FindBin(c_.pion_L),h_pion_scaled_all->FindBin(c_.pion_H));
+    double QE_events_all = h_PSe_data->Integral(h_PSe_data->FindBin(c_.pion_L),h_PSe_data->FindBin(c_.pion_H));
+
+    if( pi_events_all<1) {
+        f_pi = 0.0;
+        err_f_pi = 0.0;
+    }
+    else{
+        f_pi = pi_events_all/QE_events_all;
+
+        err_f_pi = (pi_events_all/QE_events_all)*sqrt((1/pi_events_all)+(1/QE_events_all));
+    }
+
     // ROOT output: store as TNamed (name:value,error)
-    std::ofstream f(Form("pion_correction_%s.txt",kin_)) /*outFile_.c_str(), "RECREATE")*/;
+    std::ofstream f(Form("corrections/PionCorrection_%s.txt",kin_)) /*outFile_.c_str(), "RECREATE")*/;
     //std::string payload = std::to_string(asym_) + "," + std::to_string(err_);
     //TNamed n("pion_asym", payload.c_str());
     //n.Write();
-    f<< "Cpi_pos : "<< Cpi_pos <<"\n";
-    f<< "Cpi_neg : "<< Cpi_neg <<"\n";
-    f<< "pos_integral : "<< pos_integral <<"\n";
-    f<< "neg_integral : "<< neg_integral <<"\n";
-    f<< "asymCpi : "<<asymCpi<<"\n";
-    f<< "err_asymCpi : "<<err_asymCpi<<"\n";
-    f<< "asymIntegral : "<<asymIntegral<<"\n";
-    f<< "err_asymIntegral : "<<err_asymIntegral<<"\n";
-    f<< "asymGrinch : "<<asymGrinch<<"\n";
-    f<< "err_asymGrinch : "<<err_asymGrinch<<"\n";
+    f<< "Cpi_pos = "<< Cpi_pos <<"\n";
+    f<< "Cpi_neg = "<< Cpi_neg <<"\n";
+    f<< "pos_integral = "<< pos_integral <<"\n";
+    f<< "neg_integral = "<< neg_integral <<"\n";
+    f<< "asymCpi = "<<asymCpi<<"\n";
+    f<< "err_asymCpi = "<<err_asymCpi<<"\n";
+    f<< "asymIntegral = "<<asymIntegral<<"\n";
+    f<< "err_asymIntegral = "<<err_asymIntegral<<"\n";
+    f<< "asymGrinch = "<<asymGrinch<<"\n";
+    f<< "err_asymGrinch = "<<err_asymGrinch<<"\n";
+    f<< "A_pi = "<<asymGrinch<<"\n";
+    f<< "err_A_pi = "<<err_asymGrinch<<"\n";
+    f<< "f_pi = "<<f_pi<<"\n";
+    f<< "err_f_pi = "<<err_f_pi<<"\n";
+
     f.close();
 
-    TFile f1(Form("pion_correction_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
+    TFile f1(Form("rootfiles/pion_correction_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
     h_PSe_data->Write();
     h_pion_scaled_all->Write();
     h_QE_scaled_all->Write();
@@ -371,6 +392,6 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     C->cd(4);
     h_PSe_data_grinch->Draw();
 
-    C->Print(Form("PionPlots_%s.png",kin_));
+    C->Print(Form("images/PionPlots_%s.png",kin_));
 
 }
