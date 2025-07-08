@@ -17,11 +17,11 @@ static TDatime parseDT(const std::string& s)
 }
 
 // ---------- constructor ------------------------------------------------------
-RawAsymmetry::RawAsymmetry(const CutManager& cuts, const AnalysisCuts& a,
+RawAsymmetry::RawAsymmetry(const CutManager& cuts, const AnalysisCuts& acuts,
                            const RunQuality* rq, const char* kin,
                            int nb,double xlo,double xhi,
                            const char* root,const char* txt)
-    : cuts_(cuts), c_(a), rq_(rq), kin_(kin),
+    : cuts_(cuts), c_(acuts), rq_(rq), kin_(kin),
       h_("hA","A_{exp}; A; events",nb,xlo,xhi),
       rootF_(root), txtF_(txt) {}
 
@@ -47,6 +47,7 @@ std::pair<double,double> RawAsymmetry::beamAt(const std::vector<BeamRow>& tbl,
 }
 
 // ---------- process ----------------------------------------------------------
+
 void RawAsymmetry::process(TChain& ch, BranchVars& v)
 {
     auto beamTbl = readBeamCSV("DB/Beam_pol.csv");
@@ -59,21 +60,28 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
         if(!cuts_.passAll(v)) continue;
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
 
-        auto& cnt = counts_[v.runnum];
-        int helCorr = -1*v.helicity*v.IHWP*c_.Pkin_L;
-        if(helCorr==1) ++cnt.Np; else if(helCorr==-1) ++cnt.Nm;
+        if (v.ntrack>0 && v.ePS>0.2 && abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L){
+            if( (c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
+                && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (c_.dy_L<v.dy && v.dy<c_.dy_H)){
 
-        h_.Fill(v.dx);
+            auto& cnt = counts_[v.runnum];
+            int helCorr = -1*v.helicity*v.IHWP*c_.Pkin_L;
+            if(helCorr==1) ++cnt.Np; else if(helCorr==-1) ++cnt.Nm;
 
-        auto bp = beamAt(beamTbl,*v.datetime);
-        auto& pa = pols_[v.runnum];
-        if(bp.first>0){ pa.sumBeam += bp.first; pa.sumBeamErr2 += bp.second*bp.second; }
-        pa.sumHe3 += v.He3Pol; pa.sumHe3Err2 += 0.05*0.05; // FIXME const err
-        ++pa.w;
+            h_.Fill(v.dx);
 
-        if(i%step==0||i==n-1){ double f=double(i+1)/n; int bar=42,pos=int(bar*f);
-            std::cout<<'\r'<<'['; for(int j=0;j<bar;++j) std::cout<<(j<pos?'=':(j==pos?'>':' '));
-            std::cout<<"] "<<int(f*100)<<" %"<<std::flush; }
+            auto bp = beamAt(beamTbl,*v.datetime);
+            auto& pa = pols_[v.runnum];
+            if(bp.first>0){ pa.sumBeam += bp.first; pa.sumBeamErr2 += bp.second*bp.second; }
+            pa.sumHe3 += v.He3Pol; pa.sumHe3Err2 += 0.05*0.05; // FIXME const err
+            ++pa.w;
+
+            if(i%step==0||i==n-1){ double f=double(i+1)/n; int bar=42,pos=int(bar*f);
+                std::cout<<'\r'<<'['; for(int j=0;j<bar;++j) std::cout<<(j<pos?'=':(j==pos?'>':' '));
+                std::cout<<"] "<<int(f*100)<<" %"<<std::flush; }
+            }
+
+        }
     }
     std::cout<<"\nDone.\n";
 
@@ -83,6 +91,12 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     // table
     std::ofstream out(Form("corrections/raw_asymmetry_%s.txt",kin_));
     out<<"#run N+ N- A_raw dA_raw beamPol dBeam targetPol dTgt\n";
+
+    double total_events = 0.0;
+    double total_avg_beam_polarization = 0.0;
+    double total_avg_target_polarization = 0.0;
+    double err_total_avg_beam_polarization = 0.0;
+    double err_total_avg_target_polarization = 0.0;
 
     std::vector<int> runs; runs.reserve(counts_.size());
     for (const auto& kv : counts_) runs.push_back(kv.first);
@@ -96,7 +110,16 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
         double A  = 0.0, dA = 0.0;
         if (sum) {
             A  = double(c.Np - c.Nm) / sum;
-            dA = 2.0 * std::sqrt(double(c.Np) * c.Nm) / (sum * sum);
+            dA = 2.0 * std::sqrt(c.Np * c.Nm *(sum)) / (sum * sum);
+            total_events+=sum;
+        }
+
+        if (p.w){
+            total_avg_beam_polarization+=p.sumBeam;
+            total_avg_target_polarization+=p.sumHe3;
+            err_total_avg_beam_polarization+= p.sumBeamErr2;
+            err_total_avg_target_polarization+=p.sumHe3Err2;
+
         }
 
         double b  = p.w ? p.sumBeam / p.w                : -1;
@@ -110,6 +133,23 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             << t   << " " << dt   << "\n";
     }
 
+    out.close();
+    std::cout<<"[RawAsym] table → "<<txtF_<<"\n";
+
+    total_avg_beam_polarization=total_avg_beam_polarization/total_events;
+    total_avg_target_polarization=total_avg_target_polarization/total_events;
+    err_total_avg_beam_polarization=std::sqrt(err_total_avg_beam_polarization)/total_events;
+    err_total_avg_target_polarization=std::sqrt(err_total_avg_target_polarization)/total_events;
+
+
+    std::ofstream outpol(Form("corrections/avg_polarizations_%s.txt",kin_));
+    outpol<<"avg_beampol = "<<total_avg_beam_polarization*0.01<<"\n";
+    outpol<<"err_avg_beampol = "<<err_total_avg_beam_polarization*0.01<<"\n";
+    outpol<<"avg_He3pol = "<<total_avg_target_polarization*0.01<<"\n";
+    outpol<<"err_avg_He3pol = "<<err_total_avg_target_polarization*0.01<<"\n";
+    outpol<<"avg_Pn = "<<0.96<<"\n";
+    outpol<<"err_avg_Pn = "<<0.005<<"\n";
+    outpol.close();
 
     // table
     /*std::ofstream out(Form("raw_asymmetry_%s.txt",kin_));
@@ -123,5 +163,5 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
         double dt = p.w? std::sqrt(p.sumHe3Err2)/p.w : -1;
         out<<run<<" "<<c.Np<<" "<<c.Nm<<" "<<A<<" "<<dA<<" "<<b<<" "<<db<<" "<<t<<" "<<dt<<"\n";
     }*/
-    std::cout<<"[RawAsym] table → "<<txtF_<<"\n";
+
 }

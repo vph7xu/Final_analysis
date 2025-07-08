@@ -123,8 +123,8 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
     double sD = sqrt(D);
 
     // fill-fraction uncertainties (replace with survey errors if known)
-    double sE = 0.05;  //check these numbers // e.g. 0.015 * 0.02  (2 % relative)  
-    double sF = 0.05;  //check these numbers // e.g. 0.985 * 0.02
+    double sE = N_N2_fill*0.02;  //check these numbers // e.g. 0.015 * 0.02  (2 % relative)  
+    double sF = N_He3_fill*0.02;  //check these numbers // e.g. 0.985 * 0.02
 
     // --- derived quantities ---------------------------------------
     double S_1 = (A*C)/(D*B*k);

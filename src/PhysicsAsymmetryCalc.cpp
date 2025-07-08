@@ -63,6 +63,7 @@ bool PhysicsAsymmetryCalc::run()
 {
     // ------- files -----------------------------------------------------------
     string rawFile = "corrections/raw_asymmetry_" + kin_ + ".txt";
+    string avgPolFile = "corrections/avg_polarizations_"+kin_+".txt";
     auto   corrFile = [&](const char* stem){
         return string("corrections/") + stem + "Correction_" + kin_ + ".txt"; };
 
@@ -84,7 +85,7 @@ bool PhysicsAsymmetryCalc::run()
     auto V=[&](const auto& M,const char* k){ auto it=M.find(k); return it!=M.end()? it->second : 0.0; };
 
     // constant neutron polarisation
-    const double Pn = 0.96;
+    //const double Pn = 0.96;
 
     // central values
     double Aacc = V(accMap ,"A_acc");
@@ -119,25 +120,28 @@ bool PhysicsAsymmetryCalc::run()
     
 
     // -------------- avg pol placeholders (adjust as needed) -----------------
-    double avgHe3   = 0.45, dAvgHe3  = 0.05;
-    double avgBeam  = 0.85, dAvgBeam = 0.05;
-    double dPn      = 0.05;                      // uncertainty on Pn
+    //double avgHe3   = 0.45, dAvgHe3  = 0.05;
+    //double avgBeam  = 0.85, dAvgBeam = 0.05;
+    //double dPn      = 0.05;                      // uncertainty on Pn
 
-    /*    // ---------- avg polarisation constants (FIX THIS) ----------------------------------
-    //auto avgPol = readSimpleKV(avgPolFile);
-    double avgHe3   = 0.45;//avgPol["avg_He3pol"];
-    double dAvgHe3  = 0.05;//avgPol["err_avg_He3pol"];
-    double avgBeam  = 0.85;//avgPol["avg_beampol"];
-    double dAvgBeam = 0.05;//avgPol["err_avg_beampol"];
-    double dPn      = 0.05;//avgPol["err_avg_Pn"];   // err on Pn
-    */
+        // ---------- avg polarisation constants (FIX THIS) ----------------------------------
+    const auto avgPol = readSimpleKV(avgPolFile);
+   
+    auto P=[&](const auto& M,const char* k){ auto it=M.find(k); return it!=M.end()? it->second : 0.0; };
 
+    double avgHe3   = P(avgPol,"avg_He3pol");
+    double dAvgHe3  = P(avgPol,"err_avg_He3pol");
+    double avgBeam  = P(avgPol,"avg_beampol");
+    double dAvgBeam = P(avgPol,"err_avg_beampol");
+    double dPn      = P(avgPol,"err_avg_Pn");   // err on Pn
+    double Pn       = P(avgPol,"avg_Pn");
 
     // -------------- per‑run output -----------------------------------------
     std::ofstream per("txt/physics_neutron_asymmetry_results_per_run_"+kin_+".txt");
     per << "#run A_phys dA_stat\n";
 
-    double num=0, den=0; const double eps=1e-10;
+    double num = 0, den = 0; const double eps = 1e-10;
+    double p_num = 0, p_den = 0;
 
     for(const auto& r: runs){
         const double denom = r.tgt*0.01 * r.beam*0.01 * Pn * fnDil;
@@ -146,9 +150,16 @@ bool PhysicsAsymmetryCalc::run()
         const double Aphys = (r.Araw - facc*Aacc - fpi*Api - fin*Ain - fp*Ap - ffsi*Afsi)/denom;
         const double dA    = r.dAraw / denom;
 
+        const double p_i = r.tgt*0.01 * r.beam*0.01 * Pn; 
+
         per << r.run << ' ' << Aphys << ' ' << dA << '\n';
 
-        if(dA>eps){ num += Aphys/(dA*dA); den += 1.0/(dA*dA); }
+        if(dA>eps){ 
+            num += Aphys/(dA*dA); 
+            den += 1.0/(dA*dA);
+            p_num += p_i/(dA*dA);
+            p_den += 1.0/(dA*dA);  
+        }
     }
     per.close();
 
@@ -156,16 +167,18 @@ bool PhysicsAsymmetryCalc::run()
     A_ = num/den; dA_ = 1.0/std::sqrt(den);
 
     // -------------- systematic error ---------------------------------------
+    double p = p_num/p_den;
+
     double errSys = std::sqrt(
           ( facc*facc*errAacc*errAacc + fpi*fpi*errApi*errApi +
-            fin*fin*errAin*errAin   + fp*fp*errAp*errAp + ffsi*ffsi*errAfsi*errAfsi )/(Pn*Pn*fnDil*fnDil)
+            fin*fin*errAin*errAin   + fp*fp*errAp*errAp + ffsi*ffsi*errAfsi*errAfsi )/(p*p*fnDil*fnDil)
         + std::pow(A_*errfN2/fnDil,2)
-        + std::pow((Pn*A_-Aacc)*errfacc/(Pn*fnDil),2)
-        + std::pow((Pn*A_-Api )*errfpi /(Pn*fnDil),2)
-        + std::pow((Pn*A_-Ain )*errfin /(Pn*fnDil),2)
-        + std::pow((Pn*A_-Ap  )*errfp  /(Pn*fnDil),2)
-        + std::pow((Pn*A_-Afsi)*errffsi/(Pn*fnDil),2)
-        + A_*A_*( dAvgHe3*dAvgHe3 + (dPn/Pn)*(dPn/Pn) + (dAvgBeam/avgBeam)*(dAvgBeam/avgBeam) ) );
+        + std::pow((p*A_-Aacc)*errfacc/(p*fnDil),2)
+        + std::pow((p*A_-Api )*errfpi /(p*fnDil),2)
+        + std::pow((p*A_-Ain )*errfin /(p*fnDil),2)
+        + std::pow((p*A_-Ap  )*errfp  /(p*fnDil),2)
+        + std::pow((p*A_-Afsi)*errffsi/(p*fnDil),2)
+        + A_*A_*( (dAvgHe3/avgHe3)*(dAvgHe3/avgHe3) + (dPn/Pn)*(dPn/Pn) + (dAvgBeam/avgBeam)*(dAvgBeam/avgBeam) ) );
 
     // -------------- summary -------------------------------------------------
     std::ofstream sum("txt/physics_neutron_asymmetry_summary_"+kin_+".txt");
@@ -174,6 +187,7 @@ bool PhysicsAsymmetryCalc::run()
 
     std::cout << "[PhysCalc] A_phys_avg = " << A_ << " ± " << dA_ << " (stat) ± " << errSys << " (sys)\n";
     std::cout << "Ain="<<Ain<<" Ap="<<Ap<<" Api="<<Api<<" Aacc="<<Aacc<<std::endl;
+    std::cout << "fn="<<fnDil<<std::endl;
 
 
         /* --- quick diagnostic printout ------------------------------------------ */
@@ -189,6 +203,7 @@ bool PhysicsAsymmetryCalc::run()
     dumpMap("Pion      ", pionMap);
     dumpMap("Inelastic ", inelMap);
     dumpMap("Nitrogen  ", nitMap);
+    dumpMap("Polarization ",avgPol);
     /* ------------------------------------------------------------------------ */
 
 
