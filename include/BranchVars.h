@@ -11,6 +11,11 @@
 class BranchVars {
 public:
     //  ==== public leaf members (extend as you wish) ====
+    double ebeam     = 0.0;
+    double trPx      = 0.0;
+    double trPy      = 0.0;
+    double trPz      = 0.0;
+    double etheta    = 0.0;
     double W2        = 0.0;   ///< reconstructed W²
     double dx        = 0.0;   ///< SBS-HCAL horizontal residual
     double dy        = 0.0;

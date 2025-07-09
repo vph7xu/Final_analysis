@@ -4,6 +4,11 @@
 
 std::unordered_map<std::string, void*> BranchVars::addrMap_() {
     return {
+        {"ebeam",     &ebeam},
+        {"trPx",      &trPx},
+        {"trPy",      &trPy},
+        {"trPz",      &trPz},
+        {"etheta",    &etheta},
         {"W2",        &W2},
         {"dx",        &dx},
         {"dy",        &dy},

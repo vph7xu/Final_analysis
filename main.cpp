@@ -12,6 +12,8 @@
 #include "NitrogenCorrection.h"
 #include "PhysicsAsymmetryMulti.h"
 #include "PhysicsAsymmetryCalc.h"
+#include "AvgKinematics.h"
+#include "GenExtraction.h"
 
 #include <TChain.h>
 #include <iostream>
@@ -108,20 +110,26 @@ int main(int argc, char** argv)
     //PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
     //dxdy.process(ch, v);
 
-    AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
-    AccidentalCorrection.process(ch,v);
+    //AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
+    //AccidentalCorrection.process(ch,v);
 
-    PionCorrection PionCorrection(icuts, rqPtr,kin);
-    PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
+    //PionCorrection PionCorrection(icuts, rqPtr,kin);
+    //PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
 
-    InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
-    InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
+    //InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
+    //InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
 
-    NitrogenCorrection NitrogenCorrection(icuts,kin);
-    NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
+    //NitrogenCorrection NitrogenCorrection(icuts,kin);
+    //NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
 
-    PhysicsAsymmetryCalc phys(kin,1);
-    phys.run();
+    //PhysicsAsymmetryCalc phys(kin,1);
+    //phys.run();
+
+    //AvgKinematics avgkin(icuts,rqPtr,kin);
+    //avgkin.process(ch,v);
+
+    GenExtraction gen(kin,1);
+    gen.process();
 
     return 0;
 }

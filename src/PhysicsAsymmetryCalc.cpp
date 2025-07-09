@@ -1,5 +1,5 @@
 #include "PhysicsAsymmetryCalc.h"
-#include "parse.h"   // simple key=value reader
+//#include "parse.h"   // simple key=value reader
 
 #include <fstream>
 #include <sstream>
@@ -182,8 +182,11 @@ bool PhysicsAsymmetryCalc::run()
 
     // -------------- summary -------------------------------------------------
     std::ofstream sum("txt/physics_neutron_asymmetry_summary_"+kin_+".txt");
-    sum << "A_phys_avg " << A_ << ' ' << dA_ << '\n'
-        << "err_sys     " << errSys << '\n';
+    sum << "Aphys = " << A_ <<"\n";
+    sum << "err_Aphys_stat = "<<dA_ << '\n';
+    sum << "err_Aphys_sys = " << errSys << '\n';
+
+    sum.close();
 
     std::cout << "[PhysCalc] A_phys_avg = " << A_ << " ± " << dA_ << " (stat) ± " << errSys << " (sys)\n";
     std::cout << "Ain="<<Ain<<" Ap="<<Ap<<" Api="<<Api<<" Aacc="<<Aacc<<std::endl;

@@ -1,2 +1,3 @@
-A_phys_avg 0.0518313 0.000366389
-err_sys     0.00489334
+Aphys = 0.197884
+err_Aphys_stat = 0.0275831
+err_Aphys_sys = 0.00438059
