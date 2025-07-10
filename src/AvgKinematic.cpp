@@ -15,13 +15,31 @@ using std::string;
 // ---------------- helper ----------------------------------------------------
 AvgKinematics::Ang AvgKinematics::fieldCSV() const
 {
-    std::ifstream f("DB/Field_Meas.csv"); string line; Ang a; if(!f) return a;
+    std::ifstream f("DB/Field_Meas.csv"); 
+    string line; Ang a; 
+    if(!f) return a;
     std::getline(f,line);
     while(std::getline(f,line)){
-        std::stringstream ss(line); string tag,h,v; std::getline(ss,tag,',');
-        std::getline(ss,h,','); std::getline(ss,v,',');
-        if(tag==kin_){ a.h=std::stod(h); a.v=std::stod(v); break; }
+        std::stringstream ss(line);
+
+        string tag,h,v;
+
+        std::getline(ss,tag,',');
+        std::getline(ss,h,','); 
+        std::getline(ss,v,',');
+
+        tag.erase(0, tag.find_first_not_of(" \t"));
+        tag.erase(tag.find_last_not_of(" \t") + 1);
+
+        if(tag==kin_){ 
+            a.h=std::stod(h); 
+            a.v=std::stod(v); 
+            break; 
+        }
     }
+
+    std::cout<<"horizontal : "<<a.h <<" vertical : "<<a.v <<std::endl;
+
     return a;
 }
 

@@ -125,8 +125,8 @@ int main(int argc, char** argv)
     //PhysicsAsymmetryCalc phys(kin,1);
     //phys.run();
 
-    //AvgKinematics avgkin(icuts,rqPtr,kin);
-    //avgkin.process(ch,v);
+    AvgKinematics avgkin(icuts,rqPtr,kin);
+    avgkin.process(ch,v);
 
     GenExtraction gen(kin,1);
     gen.process();
