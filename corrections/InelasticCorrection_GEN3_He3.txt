@@ -1,12 +1,12 @@
 par0 = 0.631514
 par1 = 0.174377
 par2 = 0.382357
-inelastic_fraction = 0.34347
-err_inelastic_fraction = 0.00400216
+inelastic_fraction = 0.307564
+err_inelastic_fraction = 0.00362183
 proton_fraction = 0.0423491
 err_proton_fraction = 0.00123784
-f_in = 0.34347
-err_f_in = 0.00400216
+f_in = 0.307564
+err_f_in = 0.00362183
 f_p = 0.0423491
 err_f_p = 0.00123784
 A_in = 0

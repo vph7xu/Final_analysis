@@ -1,4 +1,5 @@
 #include "InelasticCorrection.h"
+#include "Utility.h"
 
 #include <TFile.h>
 #include <TCanvas.h>
@@ -6,7 +7,7 @@
 #include <iostream>
 #include <cmath>
 
-using std::cout;
+using std::string; using std::vector; using std::unordered_map;
 
 InelasticCorrection::InelasticCorrection(const AnalysisCuts& cuts,
                                          const RunQuality* rq,
@@ -50,6 +51,41 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 {
     //if(c_.inel_W2_L==0 && c_.inel_W2_H==0){
     //    std::cerr << "[InelCorrection] inel_W2_L/H not set\n"; return; }
+
+    //trying to readsome files
+
+    Utility utility;
+
+    auto   corrFile = [&](const char* stem){
+        return string("corrections/") + stem + "Correction_" + kin_ + ".txt"; };
+
+    const string accFile = corrFile("Accidental");
+    const string nitFile = corrFile("Nitrogen");
+    const string pionFile= corrFile("Pion");
+
+    // -------- read TXT correction files directly -------------------------------
+    const auto accMap  = utility.readSimpleKVGlobal(accFile);
+    const auto pionMap = utility.readSimpleKVGlobal(pionFile);
+    const auto nitMap  = utility.readSimpleKVGlobal(nitFile);
+
+    auto V=[&](const auto& M,const char* k){ auto it=M.find(k); return it!=M.end()? it->second : 0.0; };
+
+
+    // central values
+    double Aacc = V(accMap ,"A_acc");
+    double Api  = V(pionMap,"A_pi");           // not provided yet
+
+    double facc = V(accMap ,"f_acc");
+    double fpi  = V(pionMap,"f_pi");
+    double fN2  = V(nitMap ,"f_N2");
+
+    // errors
+    double errAacc = V(accMap ,"err_A_acc");
+    double errApi  = V(pionMap,"err_A_pi");
+
+    double errfacc = V(accMap ,"err_f_acc");
+    double errfpi  = V(pionMap,"err_f_pi");
+    double errfN2  = V(nitMap ,"err_f_N2");
 
     // histograms for fit (tight selection)
     TH1D hData ("hData",  "dx data; W2 (GeV^2)", 100, -4.0, 3.0);
@@ -157,8 +193,28 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double QE_events = hData.Integral(hData.FindBin(c_.dx_L),hData.FindBin(c_.dx_H));
     double inelastic_events = hInelastic.Integral(hInelastic.FindBin(c_.dx_L),hInelastic.FindBin(c_.dx_H));
     double proton_events = hQE_proton.Integral(hQE_proton.FindBin(c_.dx_L),hQE_proton.FindBin(c_.dx_H));
-    double inelastic_frac = inelastic_events/QE_events;// this is not correct should remove other fractions before doing this
-    double errinelastic_frac = (inelastic_events/QE_events)*sqrt((1/inelastic_events)+(1/QE_events)); // this is not correct should remove other fractions before doing this
+
+    const double R     = (1 - facc - fN2 - fpi) / QE_events;
+    const double F     = inelastic_events * R;              // inelastic_frac
+
+    const double dN_in   = std::sqrt(inelastic_events);     // Poisson
+    const double dN_QE   = std::sqrt(QE_events);            // Poisson
+    const double dFacc   = errfacc;                       // your TXT value
+    const double dFN2    = errfN2;
+    const double dFpi    = errfpi;
+
+    const double dF2 =
+        std::pow(R * dN_in, 2) +
+        std::pow(F / QE_events * dN_QE, 2) +
+        std::pow(inelastic_events / QE_events * dFacc, 2) +
+        std::pow(inelastic_events / QE_events * dFN2 , 2) +
+        std::pow(inelastic_events / QE_events * dFpi , 2);
+
+    const double dFin = std::sqrt(dF2);
+
+
+    double inelastic_frac = inelastic_events * (1 - facc - fN2 - fpi)/QE_events;// this is not correct should remove other fractions before doing this
+    double errinelastic_frac =  dFin;//(inelastic_events/QE_events)*sqrt((1/inelastic_events)+(1/QE_events)); // this is not correct should remove other fractions before doing this
     double proton_frac = proton_events/QE_events;
     double errproton_frac = (proton_events/QE_events)*sqrt((1/proton_events)+(1/QE_events));
 
