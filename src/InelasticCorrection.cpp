@@ -89,6 +89,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     // histograms for fit (tight selection)
     TH1D hData ("hData",  "dx data; W2 (GeV^2)", 100, -4.0, 3.0);
+    TH1D hData_pos ("hData_pos",  "dx data (positive helicity); W2 (GeV^2)", 100, -4.0, 3.0);
+    TH1D hData_neg ("hData_neg",  "dx data (negative helicity); W2 (GeV^2)", 100, -4.0, 3.0);
     TH1D hQE_proton("hQE_proton", "dx QE sim protons",          100, -4.0, 3.0);
     TH1D hQE_neutron("hQE_neutron", "dx QE sim neutrons",          100, -4.0, 3.0);
     TH1D hInelastic ("hInelastic",  "dx inelastic sim",        100, -4.0, 3.0);
@@ -110,6 +112,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             abs(v.helicity)!=1) continue; // no dx cut since we are fitting it
         
         hData.Fill(v.dx);
+        
+        if (v.helicity == 1){
+            hData_pos.Fill(v.dx);
+        }
+        else if(v.helicity == -1){
+            hData_neg.Fill(v.dx);
+        }
 
         // progress bar
         if (i % step == 0 || i == n - 1) {
@@ -120,7 +129,6 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                 std::cout << (j < pos ? '=' : (j == pos ? '>' : ' '));
             std::cout << "] " << static_cast<int>(frac * 100) << " %" << std::flush;
         }
-
 
     }
     
@@ -181,11 +189,38 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     TH1D * h_combined =  performFit(&hData,&hInelastic,&hQE_proton,&hQE_neutron,par0,par1,par2);
 
+    double parP0=1,parP1=1,parP2=1;
+
+    TH1D * h_combined_pos =  performFit(&hData_pos,&hInelastic,&hQE_proton,&hQE_neutron,parP0,parP1,parP2);
+
+    double parN0=1,parN1=1,parN2=1;
+
+    TH1D * h_combined_neg =  performFit(&hData_neg,&hInelastic,&hQE_proton,&hQE_neutron,parN0,parN1,parN2);
+
     h_combined->Scale(hData.Integral());
+    h_combined_pos->Scale(hData_pos.Integral());
+    h_combined_neg->Scale(hData_neg.Integral());
+
+    TH1D* hQE_proton_pos = (TH1D*) hQE_proton.Clone("hQE_proton_pos");
+    TH1D* hQE_proton_neg = (TH1D*) hQE_proton.Clone("hQE_proton_neg");
+
+    TH1D* hQE_neutron_pos = (TH1D*) hQE_neutron.Clone("hQE_neutron_pos");
+    TH1D* hQE_neutron_neg = (TH1D*) hQE_neutron.Clone("hQE_neutron_neg");
+
+    TH1D* hInelastic_pos = (TH1D*) hInelastic.Clone("hInelastic_pos");
+    TH1D* hInelastic_neg = (TH1D*) hInelastic.Clone("hInelastic_neg");
 
     hQE_proton.Scale(par0*hData.Integral()*1/hQE_proton.Integral());
     hQE_neutron.Scale(par0*par1*hData.Integral()*1/hQE_neutron.Integral());
     hInelastic.Scale(par0*par2*hData.Integral()*1/hInelastic.Integral());
+
+    hQE_proton_pos->Scale(parP0*hData_pos.Integral()*1/hQE_proton_pos->Integral());
+    hQE_neutron_pos->Scale(parP0*parP1*hData_pos.Integral()*1/hQE_neutron_pos->Integral());
+    hInelastic_pos->Scale(parP0*parP2*hData_pos.Integral()*1/hInelastic_pos->Integral());
+
+    hQE_proton_neg->Scale(parN0*hData_neg.Integral()*1/hQE_proton_neg->Integral());
+    hQE_neutron_neg->Scale(parN0*parN1*hData_neg.Integral()*1/hQE_neutron_neg->Integral());
+    hInelastic_neg->Scale(parN0*parN2*hData_neg.Integral()*1/hInelastic_neg->Integral());
 
     //frac_  = wI;                 // N_inel / (N_inel+QE)
     //dfrac_ = std::sqrt(wI*wQ/(wI+wQ)/(wI+wQ)/(hD.Integral()));
@@ -193,6 +228,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double QE_events = hData.Integral(hData.FindBin(c_.dx_L),hData.FindBin(c_.dx_H));
     double inelastic_events = hInelastic.Integral(hInelastic.FindBin(c_.dx_L),hInelastic.FindBin(c_.dx_H));
     double proton_events = hQE_proton.Integral(hQE_proton.FindBin(c_.dx_L),hQE_proton.FindBin(c_.dx_H));
+
+    double inelastic_events_pos = hInelastic_pos->Integral(hInelastic_pos->FindBin(c_.dx_L),hInelastic_pos->FindBin(c_.dx_H));
+    double inelastic_events_neg = hInelastic_neg->Integral(hInelastic_neg->FindBin(c_.dx_L),hInelastic_neg->FindBin(c_.dx_H));
 
     const double R     = (1 - facc - fN2 - fpi) / QE_events;
     const double F     = inelastic_events * R;              // inelastic_frac
@@ -218,6 +256,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double proton_frac = proton_events/QE_events;
     double errproton_frac = (proton_events/QE_events)*sqrt((1/proton_events)+(1/QE_events));
 
+
+    double A_in = (inelastic_events_pos - inelastic_events_neg)/(inelastic_events_pos + inelastic_events_neg);
+    double err_A_in = 2.0 * sqrt(inelastic_events_pos * inelastic_events_neg * (inelastic_events_pos + inelastic_events_neg)) / ((inelastic_events_pos + inelastic_events_neg)*(inelastic_events_pos + inelastic_events_neg));
+
     // store
     std::ofstream txt(Form("corrections/InelasticCorrection_%s.txt",kin_));
     //TNamed n("inel_fraction", (std::to_string(frac_)+","+std::to_string(dfrac_)).c_str());
@@ -235,8 +277,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"f_p = "<<proton_frac<<"\n";
     txt<<"err_f_p = "<<errproton_frac<<"\n";
     //below values should be calculated separately, for now they are set to zero
-    txt<<"A_in = "<<0.0<<"\n";
-    txt<<"err_A_in = "<<0.0<<"\n";
+    txt<<"A_in = "<<A_in<<"\n";
+    txt<<"err_A_in = "<<err_A_in<<"\n";
     txt<<"A_p = "<<0.0<<"\n";
     txt<<"err_A_p = "<<0.0<<"\n";
 
@@ -250,6 +292,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     ///////////////////plotting and printing////////////////////////////
 
     TCanvas *C = new TCanvas("c","c",2400,1500);
+    TCanvas *C1 = new TCanvas("c1","c1",2400,1500);
+
 
     C->Divide(2,2);
     C->cd(1);
@@ -283,7 +327,71 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hQE_neutron.Draw("hist same");
     hInelastic.Draw("hist same");
 
-    C->Print(Form("images/InelasticCorrection_%s.png",kin_));
+    C->cd(2);
+    h_combined_pos->SetLineColor(3);
+    hQE_proton_pos->SetLineColor(6);
+    hQE_neutron_pos->SetLineColor(9);
+    hInelastic_pos->SetLineColor(7);
+    hData_pos.SetLineColor(kBlack);
 
+    h_combined_pos->SetLineWidth(4);
+    hQE_proton_pos->SetLineWidth(4);
+    hQE_neutron_pos->SetLineWidth(4);
+    hInelastic_pos->SetLineWidth(4);
+    hData_pos.SetLineWidth(4);
+
+    h_combined_pos->SetFillColorAlpha(19,0.1);
+    h_combined_pos->SetFillStyle(3009);
+    hQE_proton_pos->SetFillColorAlpha(6,0.5);
+    hQE_proton_pos->SetFillStyle(3004);
+    hQE_neutron_pos->SetFillColorAlpha(9,0.5);
+    hQE_neutron_pos->SetFillStyle(3005);
+    hInelastic_pos->SetFillColorAlpha(7,0.5);
+    hInelastic_pos->SetFillStyle(3009);
+
+    hData_pos.SetMarkerStyle(kFullCircle);
+
+    hData_pos.Draw("p");
+    h_combined_pos->Draw("hist same");
+    hQE_proton_pos->Draw("hist same");
+    hQE_neutron_pos->Draw("hist same");
+    hInelastic_pos->Draw("hist same");
+
+
+    C->cd(3);
+    h_combined_neg->SetLineColor(3);
+    hQE_proton_neg->SetLineColor(6);
+    hQE_neutron_neg->SetLineColor(9);
+    hInelastic_neg->SetLineColor(7);
+    hData_neg.SetLineColor(kBlack);
+
+    h_combined_neg->SetLineWidth(4);
+    hQE_proton_neg->SetLineWidth(4);
+    hQE_neutron_neg->SetLineWidth(4);
+    hInelastic_neg->SetLineWidth(4);
+    hData_neg.SetLineWidth(4);
+
+    h_combined_neg->SetFillColorAlpha(19,0.1);
+    h_combined_neg->SetFillStyle(3009);
+    hQE_proton_neg->SetFillColorAlpha(6,0.5);
+    hQE_proton_neg->SetFillStyle(3004);
+    hQE_neutron_neg->SetFillColorAlpha(9,0.5);
+    hQE_neutron_neg->SetFillStyle(3005);
+    hInelastic_neg->SetFillColorAlpha(7,0.5);
+    hInelastic_neg->SetFillStyle(3009);
+
+    hData_neg.SetMarkerStyle(kFullCircle);
+
+    hData_neg.Draw("p");
+    h_combined_neg->Draw("hist same");
+    hQE_proton_neg->Draw("hist same");
+    hQE_neutron_neg->Draw("hist same");
+    hInelastic_neg->Draw("hist same");
+
+    //C1->Divide(2,2);
+    //C1->cd(1);
+
+    C->Print(Form("images/InelasticCorrection_%s.png",kin_));
+    //C1->Print(Form("images/InelasticCorrection_%s.pdf)",kin_));
 }
 
