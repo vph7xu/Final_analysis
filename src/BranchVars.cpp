@@ -18,6 +18,7 @@ std::unordered_map<std::string, void*> BranchVars::addrMap_() {
         {"helicity",  &helicity},
         {"IHWP",      &IHWP},
         {"He3Pol",    &He3Pol},
+        {"err_He3Pol",&err_He3Pol},
         {"ePS",       &ePS},
         {"vz",        &vz},
         {"eSH",       &eSH},

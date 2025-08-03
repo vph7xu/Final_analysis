@@ -25,6 +25,7 @@ public:
     int    helicity  = 0;
     int    IHWP      = 0;
     double He3Pol    = 0.0;
+    double err_He3Pol= 0.0;
     double ePS       = 0.0;
     double vz        = 0.0;
     double eSH       = 0.0;

@@ -185,6 +185,20 @@ bool PhysicsAsymmetryCalc::run()
     sum << "Aphys = " << A_ <<"\n";
     sum << "err_Aphys_stat = "<<dA_ << '\n';
     sum << "err_Aphys_sys = " << errSys << '\n';
+    sum << "err_Aacc_sys_% = " << (facc*facc*errAacc*errAacc/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Api_sys_% = " << (fpi*fpi*errApi*errApi/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Ain_sys_% = " << (fin*fin*errAin*errAin/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Ap_sys_% = " << (fp*fp*errAp*errAp/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Afsi_sys_% = " << (ffsi*ffsi*errAfsi*errAfsi/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_fN2_sys_% = " << std::pow(A_*errfN2/fnDil,2)*100/(errSys*errSys)<<'\n';
+    sum << "err_facc_sys_% = " << std::pow((p*A_-Aacc)*errfacc/(p*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_fpi_sys_% = " << std::pow((p*A_-Api )*errfpi /(p*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_fin_sys_% = " << std::pow((p*A_-Ain )*errfin /(p*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_fp_sys_% = " << std::pow((p*A_-Ap  )*errfp  /(p*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_ffsi_sys_% = " << std::pow((p*A_-Afsi)*errffsi/(p*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_Ptar_sys_% = " << A_*A_*(dAvgHe3/avgHe3)*(dAvgHe3/avgHe3)*100/(errSys*errSys)<<'\n';
+    sum << "err_Pn_sys_% = " << A_*A_*(dPn/Pn)*(dPn/Pn) *100/(errSys*errSys)<<'\n';
+    sum << "err_Pbeam_sys_% = " << A_*A_*(dAvgBeam/avgBeam)*(dAvgBeam/avgBeam)*100/(errSys*errSys)<<'\n';
 
     sum.close();
 

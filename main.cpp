@@ -107,11 +107,11 @@ int main(int argc, char** argv)
     //RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
     //mod.process(ch, v);
 
-    PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
-    dxdy.process(ch, v);
+    //PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
+    //dxdy.process(ch, v);
 
-    AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
-    AccidentalCorrection.process(ch,v);
+    //AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
+    //AccidentalCorrection.process(ch,v);
 
     //PionCorrection PionCorrection(icuts, rqPtr,kin);
     //PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
@@ -122,14 +122,14 @@ int main(int argc, char** argv)
     //InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
     //InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
 
-    //PhysicsAsymmetryCalc phys(kin,1);
-    //phys.run();
+    PhysicsAsymmetryCalc phys(kin,1);
+    phys.run();
 
-    //AvgKinematics avgkin(icuts,rqPtr,kin);
-    //avgkin.process(ch,v);
+    AvgKinematics avgkin(icuts,rqPtr,kin);
+    avgkin.process(ch,v);
 
-    //GenExtraction gen(kin,1);
-    //gen.process();
+    GenExtraction gen(kin,1);
+    gen.process();
 
     return 0;
 }

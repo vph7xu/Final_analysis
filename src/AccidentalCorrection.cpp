@@ -78,13 +78,14 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
         if (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) QE_events++;
         if (c_.coin_L+35<v.coin_time && v.coin_time<c_.coin_H+35) acc_events++;
 
+        h_cointime->Fill(v.coin_time);
+
         auto it = std::upper_bound(edges_.begin(), edges_.end(), v.coin_time);
         if (it == edges_.begin() || it == edges_.end()) continue;
         size_t idx = static_cast<size_t>(it - edges_.begin() - 1);
         if (-1*v.helicity*v.IHWP*c_.Pkin_L == 1) ++cntP_[idx];
         else if (-1*v.helicity*v.IHWP*c_.Pkin_L == -1) ++cntM_[idx];
 
-        h_cointime->Fill(v.coin_time);
 
         // progress bar
         if (i % step == 0 || i == n - 1) {
@@ -170,7 +171,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     h_cointime->Draw();
 
     // Setup bins for cointime
-    const double binMin   = c_.coin_ac_L-20;
+    const double binMin   = c_.coin_ac_L-30;
     const double binMax   = c_.coin_ac_H+20;
     const double binWidth = 10.0;
     const int nBins = static_cast<int>((binMax - binMin) / binWidth) + 1;
