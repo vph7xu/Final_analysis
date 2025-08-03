@@ -93,6 +93,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     out<<"#run N+ N- A_raw dA_raw beamPol dBeam targetPol dTgt\n";
 
     double total_events = 0.0;
+    double total_difference = 0.0;
+    double total_Np = 0.0;
+    double total_Nm = 0.0;
     double total_avg_beam_polarization = 0.0;
     double total_avg_target_polarization = 0.0;
     double err_total_avg_beam_polarization = 0.0;
@@ -112,6 +115,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             A  = double(c.Np - c.Nm) / sum;
             dA = 2.0 * std::sqrt(c.Np * c.Nm *(sum)) / (sum * sum);
             total_events+=sum;
+            total_difference+=(c.Np - c.Nm);
+            total_Np+=c.Np;
+            total_Nm+=c.Nm;
         }
 
         if (p.w){
@@ -136,6 +142,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     out.close();
     std::cout<<"[RawAsym] table → "<<txtF_<<"\n";
 
+    double A_raw = total_difference/total_events;
+    double err_A_raw = 2* std::sqrt(total_Np*total_Nm*total_events)/(total_events*total_events);
+
     total_avg_beam_polarization=total_avg_beam_polarization/total_events;
     total_avg_target_polarization=total_avg_target_polarization/total_events;
     err_total_avg_beam_polarization=std::sqrt(err_total_avg_beam_polarization)/total_events;
@@ -150,6 +159,13 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     outpol<<"avg_Pn = "<<0.96<<"\n";
     outpol<<"err_avg_Pn = "<<0.005<<"\n";
     outpol.close();
+
+    std::ofstream rawAsym(Form("txt/raw_asym_%s.txt",kin_));
+    rawAsym<<"Np = "<<total_Np<<"\n";
+    rawAsym<<"Nm = "<<total_Nm<<"\n";
+    rawAsym<<"A_raw = "<<A_raw<<"\n";
+    rawAsym<<"err_A_raw = "<<err_A_raw<<"\n";
+    rawAsym.close();
 
     // table
     /*std::ofstream out(Form("raw_asymmetry_%s.txt",kin_));

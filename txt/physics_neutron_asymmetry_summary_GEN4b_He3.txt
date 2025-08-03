@@ -1,0 +1,3 @@
+Aphys = 0.0813507
+err_Aphys_stat = 0.110196
+err_Aphys_sys = 0.065424

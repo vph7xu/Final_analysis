@@ -9,6 +9,9 @@
 #include <iostream>
 #include <algorithm>
 #include <cmath>
+#include <TCanvas.h>
+#include <TLine.h>
+#include <TH1D.h>
 
 // ===== constructors ==========================================================
 
@@ -56,6 +59,8 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
 
     std::cout << "[AccidentalCorrection] looping over " << n << " events\n";
 
+    TH1D *h_cointime = new TH1D("h_cointime","Coincidence time (ns) ; Coincidence time (ns)" , 200,c_.coin_ac_L-30,c_.coin_ac_H+30);
+
     for (Long64_t i=0;i<n;++i){
         ch.GetEntry(i);
 
@@ -78,6 +83,8 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
         size_t idx = static_cast<size_t>(it - edges_.begin() - 1);
         if (-1*v.helicity*v.IHWP*c_.Pkin_L == 1) ++cntP_[idx];
         else if (-1*v.helicity*v.IHWP*c_.Pkin_L == -1) ++cntM_[idx];
+
+        h_cointime->Fill(v.coin_time);
 
         // progress bar
         if (i % step == 0 || i == n - 1) {
@@ -143,6 +150,52 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     txt << "err_f_acc       = " << err_f_acc        << "\n";
 
     std::cout << "[AccidentalCorrection] graph written to " << rootName_ << "\n";
+
+    // Utility to draw a vertical dashed line spanning the full y-range of pad’s frame
+    auto drawVLine = [](double x, double y1, double y2, int color=kGray+2) {
+        TLine *L = new TLine(x, y1, x, y2);
+        L->SetLineStyle(2);   // dashed
+        L->SetLineWidth(2);
+        L->SetLineColor(color);
+        L->Draw("same");
+    };
+
+
+
+
+    TCanvas *c = new TCanvas("c","c",2400,1500);
+    //TCanvas *c1 = new TCanvas("c1","c1",2400,1500);
+
+    c->Divide(2,2);
+    h_cointime->Draw();
+
+    // Setup bins for cointime
+    const double binMin   = c_.coin_ac_L-20;
+    const double binMax   = c_.coin_ac_H+20;
+    const double binWidth = 10.0;
+    const int nBins = static_cast<int>((binMax - binMin) / binWidth) + 1;
+
+    // span in y the visible histogram
+    double yLow = 0.;                 // or -10. if you prefer matching your Box y1
+    double yHigh = h_cointime->GetMaximum()*1.05;
+
+    // interior bin edges
+    for (int i=1;i<nBins;++i) {
+        double xEdge = binMin + i*binWidth;
+        drawVLine(xEdge, yLow, yHigh);
+    }
+
+    // optional “special” borders (QE and accidental window limits)
+    drawVLine(c_.coin_L,      yLow, yHigh, kRed+1);
+    drawVLine(c_.coin_H,      yLow, yHigh, kRed+1);
+    drawVLine(c_.coin_L+35, yLow, yHigh, kGreen+2);
+    drawVLine(c_.coin_H+35, yLow, yHigh, kGreen+2);
+
+
+    //c1->Divide(2,2);
+
+    c->Print(Form("images/accidentals_plots_%s.pdf",kin_));
+
 
 }
 

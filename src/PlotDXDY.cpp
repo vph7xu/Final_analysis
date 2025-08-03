@@ -2,6 +2,7 @@
 
 #include <TFile.h>
 #include <iostream>
+#include <TCanvas.h>
 
 PlotDXDY::PlotDXDY(const AnalysisCuts& cuts, const RunQuality* rq, const char* kin, const char* outRoot)
     : c_(cuts),
@@ -108,6 +109,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
         }
     }
 
+
     TFile f(Form("rootfiles/plots_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
     hvz_.Write();
     hePS_.Write();
@@ -121,4 +123,40 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
     hDY_.Write();
     f.Close();
     std::cout << "[PlotDXDY] histogram written to " << outFile_ << "\n";
+
+
+    TCanvas *c = new TCanvas("c","c",2400,1500);
+    TCanvas *c1 = new TCanvas("c1","c1",2400,1500);
+    TCanvas *c2 = new TCanvas("c2","c2",2400,1500); 
+
+    c->Divide(2,2);
+    c->cd(1);
+    hvz_.Draw();
+    c->cd(2);
+    hePS_.Draw();
+    c->cd(3);
+    heHCAL_.Draw();
+
+
+    c1->Divide(2,2);
+    c1->cd(1);
+    hDXDY_.Draw("COLZ");
+    c1->cd(2);
+    hDXW2_.Draw("COLZ");
+    c1->cd(3);
+    hDYW2_.Draw("COLZ");
+
+    c2->Divide(2,2);
+    c2->cd(1);
+    hcointime_.Draw();
+    c2->cd(2);
+    hW2_.Draw();
+    c2->cd(3);
+    hDX_.Draw();
+    c2->cd(4);
+    hDY_.Draw();
+
+    c->Print(Form("images/plots_%s.pdf(",kin_));
+    c1->Print(Form("images/plots_%s.pdf",kin_));
+    c2->Print(Form("images/plots_%s.pdf)",kin_));
 }

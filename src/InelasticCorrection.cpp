@@ -144,7 +144,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         if(vQE.fnucl == 0) hQE_neutron.Fill(vQE.dx,vQE.weight);
 
-        if(vQE.fnucl == 1) hQE_proton.Fill(vQE.dx+0.05,vQE.weight);//+0.05 is for GEN3 its hard coded for now
+        if(vQE.fnucl == 1) {
+            if(kin_ == "GEN3_He3"){
+                hQE_proton.Fill(vQE.dx+0.05,vQE.weight);
+            }
+            else{
+                hQE_proton.Fill(vQE.dx,vQE.weight);
+            }
+        }//+0.05 is for GEN3 its hard coded for now
 
         // progress bar
         if (i % step == 0 || i == nentries_QE - 1) {
@@ -167,11 +174,30 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
             (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L>vInel.dy || vInel.dy>c_.dy_H)) continue;    
 
-        hInelastic.Fill(vInel.dx+0.4,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+        if(kin_ == "GEN3_He3"){
+            
+            hInelastic.Fill(vInel.dx+0.4,vInel.weight);//+0.4 is for GEN3 its hard coded for now
 
-        if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.4,vInel.weight);
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.4,vInel.weight);
 
-        if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.4,vInel.weight);
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.4,vInel.weight);
+        }
+        if(kin_ == "GEN4b_He3"){
+            
+            hInelastic.Fill(vInel.dx+0.3,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.3,vInel.weight);
+
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.3,vInel.weight);
+        }
+        else{
+            hInelastic.Fill(vInel.dx,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx,vInel.weight);
+
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx,vInel.weight);
+
+        }
 
         // progress bar
         if (i % step == 0 || i == nentries_inel - 1) {
