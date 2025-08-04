@@ -121,7 +121,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
                 if(i%step==0||i==n-1){ double f=double(i+1)/n; int bar=42,pos=int(bar*f);
                     std::cout<<'\r'<<'['; for(int j=0;j<bar;++j) std::cout<<(j<pos?'=':(j==pos?'>':' '));
-                    std::cout<<"] "<<int(f*100)<<" %"<<std::flush; }
+                    std::cout<<"] "<<int(f*100)<<" %"<<std::flush; 
+                    //std::cout<<"err_He3Pol = " << v.err_He3Pol<<std::endl;
+                }
             }
         }
     }
@@ -183,7 +185,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
                 double sumWP_block  = kvb.second;
                 double mu           = sumWP_block / p.sumWPb;  // contribution fraction
                 double delta_frac   = p.beam_blk_err.at(idx) / b; // fractional sys of that block at Pbar scale
-                S += (delta_frac * mu) * (delta_frac * mu);
+                S += (delta_frac) * (delta_frac); //removed mu may be should add back
             }
             db = b * std::sqrt(S); // absolute
         }
@@ -191,12 +193,15 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             double S = 0.0;
             for (const auto& kvt : p.targ_blk_sumWP) {
                 long long key         = kvt.first;
-                double    sumWP_block = kvt.second;
-                double mu           = sumWP_block / p.sumWPt;
-                double delta_frac   = p.targ_blk_err.at(key) / t; // fractional at Pbar scale
-                S += (delta_frac * mu) * (delta_frac * mu);
+                if(p.targ_blk_err.at(key)>0){
+                    
+                    double    sumWP_block = kvt.second;
+                    double mu           = sumWP_block / p.sumWPt;
+                    double delta_frac   = p.targ_blk_err.at(key) / t; // fractional at Pbar scale
+                    S += (delta_frac ) * (delta_frac ); //mu removed for a check
+                }
             }
-            dt = t * std::sqrt(S); // absolute
+            dt = t * std::sqrt(S/p.sumWt); // absolute // not sure revisit
         }
 
         out << run << " " << c.Np << " " << c.Nm << " "
@@ -244,7 +249,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             double sumWP_block  = kvb.second;
             double mu           = sumWP_block / SWPb;
             double delta_frac   = beam_blk_err_glob.at(idx) / total_avg_beam_polarization;
-            S += (delta_frac * mu) * (delta_frac * mu);
+            S += (delta_frac) * (delta_frac);  //removed mu may be should add back
         }
         err_total_avg_beam_polarization = total_avg_beam_polarization * std::sqrt(S);
     }
@@ -255,9 +260,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             double    sumWP_block= kvt.second;
             double mu           = sumWP_block / SWPt;
             double delta_frac   = targ_blk_err_glob.at(key) / total_avg_target_polarization;
-            S += (delta_frac * mu) * (delta_frac * mu);
+            S += (delta_frac) * (delta_frac ); //removed mu may be should add back
         }
-        err_total_avg_target_polarization = total_avg_target_polarization * std::sqrt(S);
+        err_total_avg_target_polarization = total_avg_target_polarization * std::sqrt(S/SWt);// not sure revisit
     }
 
     // Write global polarization summary (convert to fraction if your downstream expects it)

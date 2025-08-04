@@ -141,6 +141,7 @@ bool PhysicsAsymmetryCalc::run()
     per << "#run A_phys dA_stat\n";
 
     double num = 0, den = 0; const double eps = 1e-10;
+    double SW = 0, SW_over_p = 0;
     double p_num = 0, p_den = 0;
 
     for(const auto& r: runs){
@@ -159,6 +160,8 @@ bool PhysicsAsymmetryCalc::run()
             den += 1.0/(dA*dA);
             p_num += p_i/(dA*dA);
             p_den += 1.0/(dA*dA);  
+            SW += 1.0/(dA*dA);
+            SW_over_p += 1.0/(dA*dA)/p_i ;
         }
     }
     per.close();
@@ -166,18 +169,21 @@ bool PhysicsAsymmetryCalc::run()
     if(den==0){ std::cerr << "[PhysCalc] no valid runs\n"; return false; }
     A_ = num/den; dA_ = 1.0/std::sqrt(den);
 
+
     // -------------- systematic error ---------------------------------------
     double p = p_num/p_den;
 
+    double p_eff = (SW > 0 && SW_over_p > 0) ? (SW / SW_over_p) : 0.0;
+
     double errSys = std::sqrt(
           ( facc*facc*errAacc*errAacc + fpi*fpi*errApi*errApi +
-            fin*fin*errAin*errAin   + fp*fp*errAp*errAp + ffsi*ffsi*errAfsi*errAfsi )/(p*p*fnDil*fnDil)
+            fin*fin*errAin*errAin   + fp*fp*errAp*errAp + ffsi*ffsi*errAfsi*errAfsi )/(p_eff*p_eff*fnDil*fnDil)
         + std::pow(A_*errfN2/fnDil,2)
-        + std::pow((p*A_-Aacc)*errfacc/(p*fnDil),2)
-        + std::pow((p*A_-Api )*errfpi /(p*fnDil),2)
-        + std::pow((p*A_-Ain )*errfin /(p*fnDil),2)
-        + std::pow((p*A_-Ap  )*errfp  /(p*fnDil),2)
-        + std::pow((p*A_-Afsi)*errffsi/(p*fnDil),2)
+        + std::pow((p_eff*A_-Aacc)*errfacc/(p_eff*fnDil),2)
+        + std::pow((p_eff*A_-Api )*errfpi /(p_eff*fnDil),2)
+        + std::pow((p_eff*A_-Ain )*errfin /(p_eff*fnDil),2)
+        + std::pow((p_eff*A_-Ap  )*errfp  /(p_eff*fnDil),2)
+        + std::pow((p_eff*A_-Afsi)*errffsi/(p_eff*fnDil),2)
         + A_*A_*( (dAvgHe3/avgHe3)*(dAvgHe3/avgHe3) + (dPn/Pn)*(dPn/Pn) + (dAvgBeam/avgBeam)*(dAvgBeam/avgBeam) ) );
 
     // -------------- summary -------------------------------------------------
@@ -185,17 +191,17 @@ bool PhysicsAsymmetryCalc::run()
     sum << "Aphys = " << A_ <<"\n";
     sum << "err_Aphys_stat = "<<dA_ << '\n';
     sum << "err_Aphys_sys = " << errSys << '\n';
-    sum << "err_Aacc_sys_% = " << (facc*facc*errAacc*errAacc/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
-    sum << "err_Api_sys_% = " << (fpi*fpi*errApi*errApi/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
-    sum << "err_Ain_sys_% = " << (fin*fin*errAin*errAin/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
-    sum << "err_Ap_sys_% = " << (fp*fp*errAp*errAp/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
-    sum << "err_Afsi_sys_% = " << (ffsi*ffsi*errAfsi*errAfsi/(p*p*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Aacc_sys_% = " << (facc*facc*errAacc*errAacc/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Api_sys_% = " << (fpi*fpi*errApi*errApi/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Ain_sys_% = " << (fin*fin*errAin*errAin/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Ap_sys_% = " << (fp*fp*errAp*errAp/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << "err_Afsi_sys_% = " << (ffsi*ffsi*errAfsi*errAfsi/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
     sum << "err_fN2_sys_% = " << std::pow(A_*errfN2/fnDil,2)*100/(errSys*errSys)<<'\n';
-    sum << "err_facc_sys_% = " << std::pow((p*A_-Aacc)*errfacc/(p*fnDil),2)*100/(errSys*errSys)<<'\n';
-    sum << "err_fpi_sys_% = " << std::pow((p*A_-Api )*errfpi /(p*fnDil),2)*100/(errSys*errSys)<<'\n';
-    sum << "err_fin_sys_% = " << std::pow((p*A_-Ain )*errfin /(p*fnDil),2)*100/(errSys*errSys)<<'\n';
-    sum << "err_fp_sys_% = " << std::pow((p*A_-Ap  )*errfp  /(p*fnDil),2)*100/(errSys*errSys)<<'\n';
-    sum << "err_ffsi_sys_% = " << std::pow((p*A_-Afsi)*errffsi/(p*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_facc_sys_% = " << std::pow((p_eff*A_-Aacc)*errfacc/(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_fpi_sys_% = " << std::pow((p_eff*A_-Api )*errfpi /(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_fin_sys_% = " << std::pow((p_eff*A_-Ain )*errfin /(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_fp_sys_% = " << std::pow((p_eff*A_-Ap  )*errfp  /(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << "err_ffsi_sys_% = " << std::pow((p_eff*A_-Afsi)*errffsi/(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
     sum << "err_Ptar_sys_% = " << A_*A_*(dAvgHe3/avgHe3)*(dAvgHe3/avgHe3)*100/(errSys*errSys)<<'\n';
     sum << "err_Pn_sys_% = " << A_*A_*(dPn/Pn)*(dPn/Pn) *100/(errSys*errSys)<<'\n';
     sum << "err_Pbeam_sys_% = " << A_*A_*(dAvgBeam/avgBeam)*(dAvgBeam/avgBeam)*100/(errSys*errSys)<<'\n';

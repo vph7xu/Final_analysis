@@ -276,9 +276,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     const double dFin = std::sqrt(dF2);
 
-
-    double inelastic_frac = inelastic_events * (1 - facc - fN2 - fpi)/QE_events;// this is not correct should remove other fractions before doing this
-    double errinelastic_frac =  dFin;//(inelastic_events/QE_events)*sqrt((1/inelastic_events)+(1/QE_events)); // this is not correct should remove other fractions before doing this
+    double background_frac = inelastic_events/QE_events; //before removing other fractions
+    double inelastic_frac = inelastic_events * (1 - facc - fN2 - fpi)/QE_events;    
+    double errinelastic_frac =  dFin;//(inelastic_events/QE_events)*sqrt((1/inelastic_events)+(1/QE_events)); 
     double proton_frac = proton_events/QE_events;
     double errproton_frac = (proton_events/QE_events)*sqrt((1/proton_events)+(1/QE_events));
 
@@ -293,7 +293,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"par0 = "<< par0 <<"\n";
     txt<<"par1 = "<< par1 <<"\n";
     txt<<"par2 = "<< par2 <<"\n";
-    txt<<"inelastic_fraction = "<<inelastic_frac<<"\n";
+    txt<<"background_fraction = "<<background_frac<<"\n";
     txt<<"err_inelastic_fraction = "<<errinelastic_frac<<"\n";
     txt<<"proton_fraction = "<<proton_frac<<"\n";
     txt<<"err_proton_fraction = "<<errproton_frac<<"\n";
