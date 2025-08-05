@@ -110,7 +110,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
     }
 
 
-    TFile f(Form("rootfiles/plots_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
+    TFile f(Form("rootfiles/%s/plots_%s.root",kin_,kin_) /*outFile_.c_str()*/, "RECREATE");
     hvz_.Write();
     hePS_.Write();
     heHCAL_.Write();
@@ -156,7 +156,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
     c2->cd(4);
     hDY_.Draw();
 
-    c->Print(Form("images/plots_%s.pdf(",kin_));
-    c1->Print(Form("images/plots_%s.pdf",kin_));
-    c2->Print(Form("images/plots_%s.pdf)",kin_));
+    c->Print(Form("images/%s/plots_%s.pdf(",kin_,kin_));
+    c1->Print(Form("images/%s/plots_%s.pdf",kin_,kin_));
+    c2->Print(Form("images/%s/plots_%s.pdf)",kin_,kin_));
 }

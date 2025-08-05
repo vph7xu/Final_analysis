@@ -62,10 +62,10 @@ unordered_map<string,double>PhysicsAsymmetryCalc::readSimpleKV(const string& f) 
 bool PhysicsAsymmetryCalc::run()
 {
     // ------- files -----------------------------------------------------------
-    string rawFile = "corrections/raw_asymmetry_" + kin_ + ".txt";
-    string avgPolFile = "corrections/avg_polarizations_"+kin_+".txt";
+    string rawFile = "corrections/"+kin_+"/raw_asymmetry_" + kin_ + ".txt";
+    string avgPolFile = "corrections/"+kin_+"/avg_polarizations_"+kin_+".txt";
     auto   corrFile = [&](const char* stem){
-        return string("corrections/") + stem + "Correction_" + kin_ + ".txt"; };
+        return string("corrections/")+kin_+"/"+ stem + "Correction_" + kin_ + ".txt"; };
 
     const string accFile = corrFile("Accidental");
     const string inelFile= corrFile("Inelastic");
@@ -137,7 +137,7 @@ bool PhysicsAsymmetryCalc::run()
     double Pn       = P(avgPol,"avg_Pn");
 
     // -------------- per‑run output -----------------------------------------
-    std::ofstream per("txt/physics_neutron_asymmetry_results_per_run_"+kin_+".txt");
+    std::ofstream per("txt/"+kin_+"/physics_neutron_asymmetry_results_per_run_"+kin_+".txt");
     per << "#run A_phys dA_stat\n";
 
     double num = 0, den = 0; const double eps = 1e-10;
@@ -187,23 +187,51 @@ bool PhysicsAsymmetryCalc::run()
         + A_*A_*( (dAvgHe3/avgHe3)*(dAvgHe3/avgHe3) + (dPn/Pn)*(dPn/Pn) + (dAvgBeam/avgBeam)*(dAvgBeam/avgBeam) ) );
 
     // -------------- summary -------------------------------------------------
-    std::ofstream sum("txt/physics_neutron_asymmetry_summary_"+kin_+".txt");
+    std::ofstream sum("txt/"+kin_+"/physics_neutron_asymmetry_summary_"+kin_+".txt");
     sum << "Aphys = " << A_ <<"\n";
     sum << "err_Aphys_stat = "<<dA_ << '\n';
     sum << "err_Aphys_sys = " << errSys << '\n';
+    sum << '\n';
+    sum << "err_Aacc_sys = " << std::sqrt((facc*facc*errAacc*errAacc/(p_eff*p_eff*fnDil*fnDil))) <<'\n';
     sum << "err_Aacc_sys_% = " << (facc*facc*errAacc*errAacc/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << '\n';
+    sum << "err_Api_sys = " << std::sqrt((fpi*fpi*errApi*errApi/(p_eff*p_eff*fnDil*fnDil)))<<'\n';
     sum << "err_Api_sys_% = " << (fpi*fpi*errApi*errApi/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << '\n';   
+    sum << "err_Ain_sys = " << std::sqrt((fin*fin*errAin*errAin/(p_eff*p_eff*fnDil*fnDil)))<<'\n';
     sum << "err_Ain_sys_% = " << (fin*fin*errAin*errAin/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << '\n';
+    sum << "err_Ap_sys = " << std::sqrt((fp*fp*errAp*errAp/(p_eff*p_eff*fnDil*fnDil))) <<'\n';
     sum << "err_Ap_sys_% = " << (fp*fp*errAp*errAp/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << '\n';
+    sum << "err_Afsi_sys = " << std::sqrt((ffsi*ffsi*errAfsi*errAfsi/(p_eff*p_eff*fnDil*fnDil))) <<'\n';
     sum << "err_Afsi_sys_% = " << (ffsi*ffsi*errAfsi*errAfsi/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
+    sum << '\n';
+    sum << "err_fN2_sys_% = " << std::sqrt(std::pow(A_*errfN2/fnDil,2))<<'\n';
     sum << "err_fN2_sys_% = " << std::pow(A_*errfN2/fnDil,2)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_facc_sys = " <<std::sqrt(std::pow((p_eff*A_-Aacc)*errfacc/(p_eff*fnDil),2))<<'\n';
     sum << "err_facc_sys_% = " << std::pow((p_eff*A_-Aacc)*errfacc/(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_fpi_sys = " << std::sqrt(std::pow((p_eff*A_-Api )*errfpi /(p_eff*fnDil),2))<<'\n';
     sum << "err_fpi_sys_% = " << std::pow((p_eff*A_-Api )*errfpi /(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_fin_sys = " << std::sqrt(std::pow((p_eff*A_-Ain )*errfin /(p_eff*fnDil),2))<<'\n';
     sum << "err_fin_sys_% = " << std::pow((p_eff*A_-Ain )*errfin /(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_fp_sys = " << std::sqrt(std::pow((p_eff*A_-Ap  )*errfp  /(p_eff*fnDil),2))<<'\n';
     sum << "err_fp_sys_% = " << std::pow((p_eff*A_-Ap  )*errfp  /(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_ffsi_sys = " << std::sqrt(std::pow((p_eff*A_-Afsi)*errffsi/(p_eff*fnDil),2))<<'\n';
     sum << "err_ffsi_sys_% = " << std::pow((p_eff*A_-Afsi)*errffsi/(p_eff*fnDil),2)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_Ptar_sys = " << std::sqrt(A_*A_*(dAvgHe3/avgHe3)*(dAvgHe3/avgHe3))<<'\n';
     sum << "err_Ptar_sys_% = " << A_*A_*(dAvgHe3/avgHe3)*(dAvgHe3/avgHe3)*100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_Pn_sys = " << std::sqrt(A_*A_*(dPn/Pn)*(dPn/Pn))<<'\n';
     sum << "err_Pn_sys_% = " << A_*A_*(dPn/Pn)*(dPn/Pn) *100/(errSys*errSys)<<'\n';
+    sum << '\n';
+    sum << "err_Pbeam_sys = " << std::sqrt(A_*A_*(dAvgBeam/avgBeam)*(dAvgBeam/avgBeam))<<'\n';
     sum << "err_Pbeam_sys_% = " << A_*A_*(dAvgBeam/avgBeam)*(dAvgBeam/avgBeam)*100/(errSys*errSys)<<'\n';
 
     sum.close();

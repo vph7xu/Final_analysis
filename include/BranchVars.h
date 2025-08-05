@@ -25,7 +25,6 @@ public:
     int    helicity  = 0;
     int    IHWP      = 0;
     double He3Pol    = 0.0;
-    double err_He3Pol= 0.0;
     double ePS       = 0.0;
     double vz        = 0.0;
     double eSH       = 0.0;
@@ -39,7 +38,8 @@ public:
     double ntrack_sbs       = 0.0;
     double vz_sbs           = 0.0;
     double theta_pq         = 0.0;
-    TDatime *datetime = nullptr; 
+    TDatime *datetime = nullptr;
+    double err_He3Pol= 0.0; 
     // … add more here, no other file changes needed …
 
     /** Bind all data members to the branches of a TTree. */

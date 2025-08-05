@@ -130,10 +130,10 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     std::cout<<"\nDone.\n";
 
     // histogram
-    { TFile f(Form("rootfiles/raw_asymmetry_%s.root",kin_),"RECREATE"); h_.Write(); }
+    { TFile f(Form("rootfiles/%s/raw_asymmetry_%s.root",kin_,kin_),"RECREATE"); h_.Write(); }
 
     // table
-    std::ofstream out(Form("corrections/raw_asymmetry_%s.txt",kin_));
+    std::ofstream out(Form("corrections/%s/raw_asymmetry_%s.txt",kin_,kin_));
     out<<"#run N+ N- A_raw dA_raw beamPol dBeam targetPol dTgt\n";
 
     double total_events = 0.0;
@@ -266,7 +266,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     }
 
     // Write global polarization summary (convert to fraction if your downstream expects it)
-    std::ofstream outpol(Form("corrections/avg_polarizations_%s.txt",kin_));
+    std::ofstream outpol(Form("corrections/%s/avg_polarizations_%s.txt",kin_,kin_));
     outpol<<"avg_beampol = "<<total_avg_beam_polarization*0.01<<"\n";
     outpol<<"err_avg_beampol = "<<err_total_avg_beam_polarization*0.01<<"\n";
     outpol<<"avg_He3pol = "<<total_avg_target_polarization*0.01<<"\n";
@@ -276,7 +276,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     outpol.close();
 
     // Raw asymmetry summary
-    std::ofstream rawAsym(Form("txt/raw_asym_%s.txt",kin_));
+    std::ofstream rawAsym(Form("txt/%s/raw_asym_%s.txt",kin_,kin_));
     rawAsym<<"Np = "<<total_Np<<"\n";
     rawAsym<<"Nm = "<<total_Nm<<"\n";
     rawAsym<<"A_raw = "<<A_raw<<"\n";

@@ -286,7 +286,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     }
 
     // ROOT output: store as TNamed (name:value,error)
-    std::ofstream f(Form("corrections/PionCorrection_%s.txt",kin_)) /*outFile_.c_str(), "RECREATE")*/;
+    std::ofstream f(Form("corrections/%s/PionCorrection_%s.txt",kin_,kin_)) /*outFile_.c_str(), "RECREATE")*/;
     //std::string payload = std::to_string(asym_) + "," + std::to_string(err_);
     //TNamed n("pion_asym", payload.c_str());
     //n.Write();
@@ -307,7 +307,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
     f.close();
 
-    TFile f1(Form("rootfiles/pion_correction_%s.root",kin_) /*outFile_.c_str()*/, "RECREATE");
+    TFile f1(Form("rootfiles/%s/pion_correction_%s.root",kin_,kin_) /*outFile_.c_str()*/, "RECREATE");
     h_PSe_data->Write();
     h_pion_scaled_all->Write();
     h_QE_scaled_all->Write();
@@ -392,6 +392,6 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     C->cd(4);
     h_PSe_data_grinch->Draw();
 
-    C->Print(Form("images/PionPlots_%s.png",kin_));
+    C->Print(Form("images/%s/PionPlots_%s.png",kin_,kin_));
 
 }

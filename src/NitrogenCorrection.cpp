@@ -148,7 +148,7 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
     double sigma_frac = sqrt( pow(g,2)*var_S + pow(S,2)*var_g );
 
 
-    std::ofstream txt(Form("corrections/NitrogenCorrection_%s.txt",kin_));
+    std::ofstream txt(Form("corrections/%s/NitrogenCorrection_%s.txt",kin_,kin_));
     txt<<"N_N2_sim = "<<N_N2_sim<<"\n";
     txt<<"N_He3_sim = "<<N_He3_sim<<"\n";
     txt<<"N_N2_sim_integral = "<<N_N2_sim_integral<<"\n";
@@ -174,6 +174,6 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
     C1->cd(2);
     h_dx_N2->Draw();
 
-    C1->Print(Form("images/NitrogenCorrection_%s.png",kin_));
+    C1->Print(Form("images/%s/NitrogenCorrection_%s.png",kin_,kin_));
 
 }

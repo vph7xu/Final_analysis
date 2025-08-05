@@ -1,0 +1,6 @@
+avg_beampol = 0.83701
+err_avg_beampol = 0.00177395
+avg_He3pol = 0.47607
+err_avg_He3pol = 0.0151361
+avg_Pn = 0.96
+err_avg_Pn = 0.005

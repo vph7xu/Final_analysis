@@ -120,7 +120,7 @@ bool AvgKinematics::process(TChain& ch, BranchVars& v)
 
     }
 
-    string out="txt/average_kinematic_values_"+kin_+".txt";
+    string out="txt/"+kin_+"/average_kinematic_values_"+kin_+".txt";
     
     std::ofstream txt(out);
     

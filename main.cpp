@@ -104,20 +104,20 @@ int main(int argc, char** argv)
     AnalysisCuts icuts(cutsFile);   // load once
 
     /* ---------- 5. Run RawAsymmetry module ---------- */
-    RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
-    mod.process(ch, v);
+    // RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
+    // mod.process(ch, v);
 
-    PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
-    dxdy.process(ch, v);
+    // PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
+    // dxdy.process(ch, v);
 
-    AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
-    AccidentalCorrection.process(ch,v);
+    // AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
+    // AccidentalCorrection.process(ch,v);
 
-    PionCorrection PionCorrection(icuts, rqPtr,kin);
-    PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
+    // PionCorrection PionCorrection(icuts, rqPtr,kin);
+    // PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
 
-    NitrogenCorrection NitrogenCorrection(icuts,kin);
-    NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
+    // NitrogenCorrection NitrogenCorrection(icuts,kin);
+    // NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
 
     InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
     InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
@@ -125,8 +125,8 @@ int main(int argc, char** argv)
     PhysicsAsymmetryCalc phys(kin,1);
     phys.run();
 
-    AvgKinematics avgkin(icuts,rqPtr,kin);
-    avgkin.process(ch,v);
+    // AvgKinematics avgkin(icuts,rqPtr,kin);
+    // avgkin.process(ch,v);
 
     GenExtraction gen(kin,1);
     gen.process();

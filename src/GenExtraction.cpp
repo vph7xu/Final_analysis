@@ -9,11 +9,11 @@ using std::string;
 
 namespace {
 string pathPhys(const string& kin,const string& fl)
-{ return "txt/physics_neutron_asymmetry_summary_"+kin+".txt"; }
+{ return "txt/"+kin+"/physics_neutron_asymmetry_summary_"+kin+".txt"; }
 string pathKin (const string& kin,const string& fl)
-{ return "txt/average_kinematic_values_"+kin+".txt"; }
+{ return "txt/"+kin+"/average_kinematic_values_"+kin+".txt"; }
 string pathOut (const string& kin,const string& fl)
-{ return "txt/results_eHCAL_cut_"+kin+".txt"; }
+{ return "txt/"+kin+"/results_eHCAL_cut_"+kin+".txt"; }
 }
 
 // -----------------------------------------------------------------------------
