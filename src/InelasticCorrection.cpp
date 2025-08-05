@@ -99,7 +99,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     // --- loop data
     Long64_t n=ch.GetEntries();
-    std::cout << "[InelasticCorrection] looping over " << n << " events\n";
+    std::cout << "\n"<<"[InelasticCorrection] looping over data " << n << " events\n";
     const Long64_t step     = 100;
     for(Long64_t i=0;i<n;++i){ 
         
@@ -134,7 +134,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     
     // QE sim
     Long64_t nentries_QE=ch_QE.GetEntries();
-    std::cout << "[InelasticCorrection] looping over QE sim " << nentries_QE << " events\n";
+    std::cout << "\n"<< "[InelasticCorrection] looping over QE sim " << nentries_QE << " events\n";
     for(Long64_t i=0;i<ch_QE.GetEntries();++i){ 
 
         ch_QE.GetEntry(i);
@@ -144,10 +144,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         if(vQE.fnucl == 0) {
             if(std::strcmp(kin_, "GEN3_He3") == 0){
-                hQE_neutron.Fill(vQE.dx-0.05,vQE.weight);
+                hQE_neutron.Fill(vQE.dx-0.1,vQE.weight);
             }
             if(std::strcmp(kin_, "GEN4_He3") == 0){
-                hQE_neutron.Fill(vQE.dx-0.05,vQE.weight);
+                hQE_neutron.Fill(vQE.dx-0.07,vQE.weight);
             }
             else{
                 hQE_neutron.Fill(vQE.dx,vQE.weight);
@@ -160,7 +160,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                 hQE_proton.Fill(vQE.dx,vQE.weight);
             }
             if(std::strcmp(kin_, "GEN4_He3") == 0){
-                hQE_proton.Fill(vQE.dx-0.05,vQE.weight);
+                hQE_proton.Fill(vQE.dx-0.02,vQE.weight);
             }
             else{
                 hQE_proton.Fill(vQE.dx,vQE.weight);
@@ -181,7 +181,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     // inelastic sim
     Long64_t nentries_inel=ch_inel.GetEntries();
-    std::cout << "[InelasticCorrection] looping over Inelastic sim " << nentries_QE << " events\n";
+    std::cout << "\n"<<"[InelasticCorrection] looping over Inelastic sim " << nentries_inel << " events\n";
     for(Long64_t i=0;i<ch_inel.GetEntries();++i){ 
         ch_inel.GetEntry(i);
     
@@ -198,21 +198,21 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         }
         if(std::strcmp(kin_, "GEN4_He3") == 0){
             
-            hInelastic.Fill(vInel.dx+0.2,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+            hInelastic.Fill(vInel.dx+0.6,vInel.weight);//+0.4 is for GEN3 its hard coded for now
 
-            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.4,vInel.weight);
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.6,vInel.weight);
 
-            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.4,vInel.weight);
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.6,vInel.weight);
         }
         if(std::strcmp(kin_, "GEN4b_He3") == 0){
             
             //std::cout<<"debug here"<<'\n';
 
-            hInelastic.Fill(vInel.dx+0.2,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+            hInelastic.Fill(vInel.dx+0.25,vInel.weight);//+0.4 is for GEN3 its hard coded for now
 
-            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.4,vInel.weight);
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx+0.25,vInel.weight);
 
-            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.4,vInel.weight);
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx+0.25,vInel.weight);
         }
         else{
             //std::cout<<"debug here in else"<<'\n';
@@ -329,6 +329,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"f_p = "<<proton_frac<<"\n";
     txt<<"err_f_p = "<<errproton_frac<<"\n";
     //below values should be calculated separately, for now they are set to zero
+    txt<<"inelastic_events_pos = "<<inelastic_events_pos<<"\n";
+    txt<<"inelastic_events_neg = "<<inelastic_events_neg<<"\n";
     txt<<"A_in = "<<A_in<<"\n";
     txt<<"err_A_in = "<<err_A_in<<"\n";
     txt<<"A_p = "<<0.0<<"\n";
