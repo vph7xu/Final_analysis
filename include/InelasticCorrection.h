@@ -55,6 +55,13 @@ private:
     // helpers
     TH1D* performFit(TH1D* h_data, TH1D* h_inel, TH1D* h_QE_proton, TH1D* h_QE_neutron,
                      double& par0, double& par1, double& par2);
+                     
+    TH1D* performFitW2(TH1D* h_data, TH1D* h_inel, TH1D* h_QE_proton, TH1D* h_QE_neutron,
+                     double& par0, double& par1, double Rnop);
+                     
+    TH1D* performFitW2_1(TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
+		      double& alpha, double Rnop); 
+
 };
 
 #endif // INELASTIC_CORRECTION_H
