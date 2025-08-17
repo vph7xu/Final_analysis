@@ -60,7 +60,7 @@ TH1D* InelasticCorrection::performFitW2(TH1D* hD, TH1D* hInel, TH1D* hQE_proton,
         int bin1 = qe_p->FindBin(x[0]);
         int bin2 = qe_n->FindBin(x[0]);
         int bin3 = inel->FindBin(x[0]);
-        return par[0]*(qe_p->GetBinContent(bin1) + Rnop*qe_n->GetBinContent(bin2) + par[1]*inel->GetBinContent(bin3));
+        return par[0]*(qe_p->GetBinContent(bin1) + Rnop*qe_n->GetBinContent(bin2)) + par[1]*inel->GetBinContent(bin3);
     }, d->GetXaxis()->GetXmin(), d->GetXaxis()->GetXmax(), 2);
 
     //f->SetParameters(0.5,0.5); f->SetParLimits(0,0,1); f->SetParLimits(1,0,1);
@@ -78,7 +78,7 @@ TH1D* InelasticCorrection::performFitW2(TH1D* hD, TH1D* hInel, TH1D* hQE_proton,
 
     TH1D* comb=(TH1D*)inel->Clone("hComb"); comb->Reset();
     for(int i=1;i<=comb->GetNbinsX();++i)
-        comb->SetBinContent(i, par0*(qe_p->GetBinContent(i) + Rnop*qe_n->GetBinContent(i) + par1*inel->GetBinContent(i)));
+        comb->SetBinContent(i, par0*(qe_p->GetBinContent(i) + Rnop*qe_n->GetBinContent(i)) + par1*inel->GetBinContent(i));
     return comb;
 
 }
@@ -184,10 +184,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        100, -4.0, 3.0);
     TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
 
-    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", 50, -1, 2);
-    TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          50, -1, 2);
-    TH1D hQE_neutron_W2("hQE_neutron_W2", "W^{2} QE sim neutrons",          50, -1, 2);
-    TH1D hInelastic_W2("hInelastic_W2",  "W^{2} inelastic sim",        50, -1, 2);
+    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", 100, -1, 2);
+    TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          100, -1, 2);
+    TH1D hQE_neutron_W2("hQE_neutron_W2", "W^{2} QE sim neutrons",          100, -1, 2);
+    TH1D hInelastic_W2("hInelastic_W2",  "W^{2} inelastic sim",        100, -1, 2);
 
     // --- loop data
     Long64_t n=ch.GetEntries();
@@ -474,21 +474,35 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     double parW0=1,parW1=1; 
 
-    TH1D * h_combined_W2 =  performFitW2(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,parW0,parW1,Rnop);
+    //TH1D * h_combined_W2 =  performFitW2(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,parW0,parW1,Rnop);
 
-    h_combined_W2->Scale(hData_W2.Integral());
+    //h_combined_W2->Scale(hData_W2.Integral());
 
-    hQE_proton_W2.Scale(parW0*hData_W2.Integral()*1/hQE_proton_W2.Integral());
-    hQE_neutron_W2.Scale(parW0*Rnop*hData_W2.Integral()*1/hQE_neutron_W2.Integral());
-    hInelastic_W2.Scale(parW0*parW1*hData_W2.Integral()*1/hInelastic_W2.Integral());
+    //hQE_proton_W2.Scale(parW0*hData_W2.Integral()*1/hQE_proton_W2.Integral());
+    //hQE_neutron_W2.Scale(parW0*Rnop*hData_W2.Integral()*1/hQE_neutron_W2.Integral());
+    //hInelastic_W2.Scale(parW1*hData_W2.Integral()*1/hInelastic_W2.Integral());
 
     std::cout<<"parW0 : "<<parW0<<std::endl;
     std::cout<<"parW1 : "<<parW1<<std::endl;
     //std::cout<<"parW2 : "<<parW2<<std::endl;
 
 
+    double alpha = 0.0;
 
+    TH1D * h_combined_W2 =  performFitW2_1(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,alpha,Rnop);
 
+    // ---- scale components to data counts for plotting ----
+    const double N = hData_W2.Integral();
+    const double denom = (1.0 + Rnop + alpha);
+
+    h_combined_W2->Scale(N);
+    hQE_proton_W2.Scale( N *1/hQE_proton_W2.Integral() * 1/denom);
+    hQE_neutron_W2.Scale( N * Rnop *1/hQE_neutron_W2.Integral() * 1/denom);
+    hInelastic_W2.Scale( N * alpha*1/hInelastic_W2.Integral() * 1/denom);
+
+    std::cout<<"alpha : "<<alpha<<std::endl;
+    std::cout<<"denom : "<<denom<<std::endl;
+    std::cout<<"N : "<<N<<std::endl;
 
     ///////////////////plotting and printing////////////////////////////
 
