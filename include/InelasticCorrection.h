@@ -19,6 +19,7 @@
 
 #include <TChain.h>
 #include <TH1D.h>
+#include <TH2D.h>
 #include <TF1.h>
 #include <string>
 #include <functional>
@@ -60,7 +61,10 @@ private:
                      double& par0, double& par1, double Rnop);
                      
     TH1D* performFitW2_1(TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
-		      double& alpha, double Rnop); 
+		      double& alpha, double& delta , double Rnop);
+		      
+    TH1D* performFitW2_2(TH1D* hD, TH1D* hInel, TH1D* hQE, 
+    		      double& par0, double& par1, double& delta);
 
 };
 

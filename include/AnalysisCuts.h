@@ -19,6 +19,8 @@ struct AnalysisCuts
     double W2_L      = 0, W2_H      = 0;
     double dx_L      = 0, dx_H      = 0;
     double dy_L      = 0, dy_H      = 0;
+    double dx_P_L      = 0, dx_P_H      = 0;
+    double dy_P_L      = 0, dy_P_H      = 0;
     double eHCAL_L   = 0, eHCAL_H   = 0;
     double coin_L    = 0, coin_H    = 0;
     double coin_ac_L = 0, coin_ac_H = 0;
@@ -48,6 +50,8 @@ struct AnalysisCuts
         fetch(W2_L,      "W2_L");      fetch(W2_H,      "W2_H");
         fetch(dx_L,      "dx_L");      fetch(dx_H,      "dx_H");
         fetch(dy_L,      "dy_L");      fetch(dy_H,      "dy_H");
+        fetch(dx_P_L,      "dx_P_L");      fetch(dx_P_H,      "dx_P_H");
+        fetch(dy_P_L,      "dy_P_L");      fetch(dy_P_H,      "dy_P_H");
         fetch(eHCAL_L,   "eHCAL_L");   fetch(eHCAL_H,   "eHCAL_H");
         fetch(coin_L,    "coin_L");    fetch(coin_H,    "coin_H");
         fetch(coin_ac_L, "coin_ac_L"); fetch(coin_ac_H, "coin_ac_H");

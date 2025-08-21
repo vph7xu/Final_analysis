@@ -38,6 +38,9 @@ private:
     TH2D        hDYW2_;
     TH1D        hDX_;
     TH1D        hDY_;
+    TH2D        hDXcointime_;
+    TH2D        hDYcointime_;
+    TH2D        hePSeoverP_;
     std::string outFile_;
     const char* kin_;
 

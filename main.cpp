@@ -122,8 +122,8 @@ int main(int argc, char** argv)
     InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
     InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);
 
-    PhysicsAsymmetryCalc phys(kin,1);
-    phys.run();
+    // PhysicsAsymmetryCalc phys(kin,1);
+    // phys.run();
 
     // AvgKinematics avgkin(icuts,rqPtr,kin);
     // avgkin.process(ch,v);

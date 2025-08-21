@@ -83,32 +83,133 @@ TH1D* InelasticCorrection::performFitW2(TH1D* hD, TH1D* hInel, TH1D* hQE_proton,
 
 }
 
-TH1D* InelasticCorrection::performFitW2_1(TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
-                                        double& alpha, double Rnop)
+// α = N_inel / (N_QE_p + N_QE_n), Δ = W2 shift of inelastic (GeV^2)
+TH1D* InelasticCorrection::performFitW2_1(
+    TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
+    double& alpha, double& delta, double Rnop)
 {
-    TH1D *d=(TH1D*)hD->Clone("hDW2");      d->Scale(1.0/d->Integral());
-    TH1D *pi=(TH1D*)hQEp->Clone("qepW2");  pi->Scale(1.0/pi->Integral());
-    TH1D *ni=(TH1D*)hQEn->Clone("qenW2");  ni->Scale(1.0/ni->Integral());
-    TH1D *ii=(TH1D*)hInel->Clone("inelW2");ii->Scale(1.0/ii->Integral());
+    auto unit = [&](TH1D* h, const char* tag)->bool{
+        double s=h->Integral(); if(s<=0){ std::cerr<<"[W2_1] Empty "<<tag<<"\n"; return false; }
+        h->Scale(1.0/s); return true;
+    };
 
-    // unique name avoids collisions
-    TF1* f = new TF1(Form("fW2_%p", d), [&](double* x, double* par){
-        int bp = pi->FindBin(x[0]), bn = ni->FindBin(x[0]), bi = ii->FindBin(x[0]);
-        double num = pi->GetBinContent(bp) + Rnop*ni->GetBinContent(bn) + par[0]*ii->GetBinContent(bi);
-        return num / (1.0 + Rnop + par[0]);  // normalized mixture PDF
-    }, d->GetXaxis()->GetXmin(), d->GetXaxis()->GetXmax(), 1);
+    TH1D *d  =(TH1D*)hD->Clone("hDW2");        if(!unit(d,"data"))  return (TH1D*)hInel->Clone("hComb_empty");
+    TH1D *pi =(TH1D*)hQEp->Clone("qepW2");     if(!unit(pi,"QEp"))  return (TH1D*)hInel->Clone("hComb_empty");
+    TH1D *ni =(TH1D*)hQEn->Clone("qenW2");     if(!unit(ni,"QEn"))  return (TH1D*)hInel->Clone("hComb_empty");
+    TH1D *ii =(TH1D*)hInel->Clone("inelW2");   if(!unit(ii,"Inel")) return (TH1D*)hInel->Clone("hComb_empty");
 
-    f->SetParameters(0,0.5);        // alpha start
-    f->SetParLimits(0, 0.0, 100); // alpha >= 0
+    const double xmin = d->GetXaxis()->GetXmin();
+    const double xmax = d->GetXaxis()->GetXmax();
+
+    auto inel_shift = [&](double x, double del)->double {
+        const double xq = x - del;
+        if (xq<=xmin || xq>=xmax) return 0.0;
+        const int bi = ii->FindBin(xq);
+        return ii->GetBinContent(bi);               // smooth shift (better than FindBin)
+    };
+
+    TF1* f = new TF1(Form("fW2mix_%p", d),
+        [&](double* x, double* par){
+            const double a  = par[0];             // alpha
+            const double dL = par[1];             // delta (GeV^2)
+            
+            //const double qep = pi->Interpolate(x[0]);      // was FindBin/GetBinContent
+            //const double qen = ni->Interpolate(x[0]);      // was FindBin/GetBinContent
+            //const double ine = ii->Interpolate(x[0] - dL); // your inel_shift does this too
+
+            const int bp = pi->FindBin(x[0]);
+            const int bn = ni->FindBin(x[0]);
+            const double qep = pi->GetBinContent(bp);
+            const double qen = ni->GetBinContent(bn);
+            const double ine = inel_shift(x[0], dL);
+            // simple normalized mixture (good if Δ is small or range wide)
+            
+
+            return (qep + Rnop*qen + a*ine)/(1.0 + Rnop + a);
+        }, xmin, xmax, 2);
+
+    f->SetParameter(0, 0.5);     // alpha start
+    f->SetParLimits(0, 0.0, 1000.0);
+    f->SetParameter(1, 0.0);     // delta start (GeV^2)
+    f->SetParLimits(1,-0.4, 0.4); // tune to your expected shift range
+
     d->Fit(f, "RQ");
 
     alpha = f->GetParameter(0);
+    delta = f->GetParameter(1);
 
-    // Build combined PDF (unit-area) to draw
+    // Build combined unit-area PDF using fitted Δ
     TH1D* comb=(TH1D*)ii->Clone("hCombW2"); comb->Reset();
     for (int i=1;i<=comb->GetNbinsX();++i){
-        double num = pi->GetBinContent(i) + Rnop*ni->GetBinContent(i) + alpha*ii->GetBinContent(i);
-        comb->SetBinContent(i, num/(1.0+Rnop+alpha));
+        const double x = comb->GetXaxis()->GetBinCenter(i);
+        const double qep = pi->GetBinContent(pi->FindBin(x));
+        const double qen = ni->GetBinContent(ni->FindBin(x));
+        const double ine = inel_shift(x, delta);
+        // double qep = pi->Interpolate(x);           // was GetBinContent(FindBin(x))
+        // double qen = ni->Interpolate(x);
+        // double ine = ii->Interpolate(x - delta);   // or inel_shift(x, delta)
+        comb->SetBinContent(i, (qep + Rnop*qen + alpha*ine)/(1.0 + Rnop + alpha));
+    }
+    return comb;
+}
+
+
+
+// par0 = QE scale (fraction or yield proxy), par1 = Inel scale, par2 = Δ shift (GeV^2)
+TH1D* InelasticCorrection::performFitW2_2(
+    TH1D* hD, TH1D* hInel, TH1D* hQE, double& par0, double& par1, double& delta)
+{
+    auto unit = [&](TH1D* h, const char* tag)->bool{
+        double s=h->Integral(); if(s<=0){ std::cerr<<"[W2_2] Empty "<<tag<<"\n"; return false; }
+        h->Scale(1.0/s); return true;
+    };
+    TH1D *d  =(TH1D*)hD->Clone("hDW2_2");       if(!unit(d,"data")) return (TH1D*)hInel->Clone("hComb_empty");
+    TH1D *qe =(TH1D*)hQE->Clone("qeW2");        if(!unit(qe,"QE"))  return (TH1D*)hInel->Clone("hComb_empty");
+    TH1D *ii =(TH1D*)hInel->Clone("inelW2_2");  if(!unit(ii,"Inel"))return (TH1D*)hInel->Clone("hComb_empty");
+
+    const double xmin = d->GetXaxis()->GetXmin();
+    const double xmax = d->GetXaxis()->GetXmax();
+
+    auto inel_shift = [&](double x, double del)->double {
+        const double xq = x - del;
+        if (xq<=xmin || xq>=xmax) return 0.0;
+        const int bi = ii->FindBin(xq);
+        return ii->GetBinContent(bi); 
+    };
+
+    TF1* f = new TF1(Form("fW2qeIn_%p", d),
+        [&](double* x, double* par){
+            const double aQ = par[0];  // QE weight
+            const double aI = par[1];  // Inel weight
+            const double dL = par[2];  // Δ
+
+            // const double q  = qe->Interpolate(x[0]);
+            //const double ine= ii->Interpolate(x[0] - dL);
+            const double q  = qe->GetBinContent(qe->FindBin(x[0]));
+            const double ine= inel_shift(x[0], dL);
+            return aQ*q + aI*ine;      // not forced to unit area; fit handles norm
+        }, xmin, xmax, 3);
+
+    f->SetParameters(0.5, 0.5, 0.0);
+    f->SetParLimits(0, 0.0, 100.0);
+    f->SetParLimits(1, 0.0, 100.0);
+    f->SetParLimits(2, -0.4, 0.4);
+
+    d->Fit(f,"RQ");
+
+    par0  = f->GetParameter(0);
+    par1  = f->GetParameter(1);
+    delta = f->GetParameter(2);
+
+    // Combined model (same form as fit)
+    TH1D* comb=(TH1D*)ii->Clone("hCombW2_2"); comb->Reset();
+    for(int i=1;i<=comb->GetNbinsX();++i){
+        const double x = comb->GetXaxis()->GetBinCenter(i);
+        // const double q  = qe->Interpolate(x);
+        // const double ine = ii->Interpolate(x - delta);
+        const double q  = qe->GetBinContent(qe->FindBin(x));
+        const double ine= inel_shift(x, delta);
+        comb->SetBinContent(i, par0*q + par1*ine);
     }
     return comb;
 }
@@ -125,6 +226,25 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //trying to readsome files
 
     Utility utility;
+
+        // Build a unit-area shifted copy of a 1D template
+    auto make_shifted_unit = [&](TH1D* src, const char* name, double delta)->TH1D* {
+        TH1D* h = (TH1D*)src->Clone(name);
+        h->Reset();
+        TAxis* ax = h->GetXaxis();
+        const double xmin = ax->GetXmin(), xmax = ax->GetXmax();
+
+        for (int i=1; i<=h->GetNbinsX(); ++i) {
+            double x    = ax->GetBinCenter(i);
+            double xsrc = x - delta;
+            double y    = (xsrc<=xmin || xsrc>=xmax) ? 0.0 : src->GetBinContent(src->FindBin(xsrc)); //src->Interpolate(xsrc);
+            h->SetBinContent(i, y);
+        }
+        double s = h->Integral();
+        if (s>0) h->Scale(1.0/s); // unit area
+        return h;
+    };
+
 
     auto dx_shifted_QE = [&](const BranchVarsSim& s){
         double d = s.dx;
@@ -184,10 +304,33 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        100, -4.0, 3.0);
     TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
 
-    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", 100, -1, 2);
-    TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          100, -1, 2);
-    TH1D hQE_neutron_W2("hQE_neutron_W2", "W^{2} QE sim neutrons",          100, -1, 2);
-    TH1D hInelastic_W2("hInelastic_W2",  "W^{2} inelastic sim",        100, -1, 2);
+    double W2_hist_upper_limit = 0.0;
+
+    if(std::strcmp(kin_, "GEN3_He3") == 0){
+        W2_hist_upper_limit = 3.0;
+    }
+    else if(std::strcmp(kin_, "GEN4b_He3") == 0 || std::strcmp(kin_, "GEN4_He3") == 0){
+        W2_hist_upper_limit = 5.0;
+    }
+    else{
+        W2_hist_upper_limit = 2.0;
+    }
+
+    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", 100, -1, W2_hist_upper_limit);
+    TH1D hData_W2_Neutrons("hData_W2_Neutrons",  "W2 data; W^{2} (GeV^{2})", 100, -1, W2_hist_upper_limit);
+    TH1D hQE_W2("hQE_W2", "W^{2} QE sim",          100, -1, W2_hist_upper_limit);
+    TH1D hQE_W2_Neutrons("hQE_W2_Neutrons", "W^{2} QE sim",          100, -1, W2_hist_upper_limit);
+    TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          100, -1, W2_hist_upper_limit);
+    TH1D hQE_proton_W2_Neutrons("hQE_proton_W2_Neutrons", "W^{2} QE sim protons",          100, -1, W2_hist_upper_limit);
+    TH1D hQE_neutron_W2("hQE_neutron_W2", "W^{2} QE sim neutrons",          100, -1, W2_hist_upper_limit);
+    TH1D hQE_neutron_W2_Neutrons("hQE_neutron_W2_Neutrons", "W^{2} QE sim neutrons",          100, -1, W2_hist_upper_limit);
+    TH1D hInelastic_W2("hInelastic_W2",  "W^{2} inelastic sim",        100, -1, W2_hist_upper_limit);
+    TH1D hInelastic_W2_Neutrons("hInelastic_W2_Neutrons",  "W^{2} inelastic sim",        100, -1, W2_hist_upper_limit);
+    TH1D hInelastic_W2_2("hInelastic_W2_2",  "W^{2} inelastic sim",        100, -1, W2_hist_upper_limit);
+    TH1D hInelastic_W2_2_Neutrons("hInelastic_W2_2_Neutrons",  "W^{2} inelastic sim",        100, -1, W2_hist_upper_limit);
+
+    TH2D hDxdy("hDxdy", "dxdy distribution ; dx(m)",100,-4,3,100,-4,3);
+    TH2D hDxdy_cut("hDxdy_cut", "dxdy distribution ; dx(m)",100,-4,3,100,-4,3);
 
     // --- loop data
     Long64_t n=ch.GetEntries();
@@ -203,9 +346,21 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 || v.ePS<0.2 ||
             (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || 
             abs(v.helicity)!=1) continue;
+
         
-        if(((pow((v.dy-0.0)/0.2,2)+pow((v.dx-0.0)/0.2,2))<=1)){
+        if(c_.W2_L<v.W2 && v.W2<c_.W2_H){
+            hDxdy.Fill(v.dy,v.dx);
+        }
+
+        if((c_.dy_L<v.dy && v.dy<c_.dy_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) /*((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.3,2))<=1)*/) {
+            hData_W2_Neutrons.Fill(v.W2);
+        }
+
+        if(((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.3,2))<=1) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)){
             hData_W2.Fill(v.W2);
+            if(c_.W2_L<v.W2 && v.W2<c_.W2_H){
+                hDxdy_cut.Fill(v.dy,v.dx);
+            }
         }
 
         if( v.runnum<c_.runnum_L || v.runnum>c_.runnum_H ||
@@ -245,7 +400,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         double dxq = dx_shifted_QE(vQE);
 
-        if (((pow((vQE.dy-0.0)/0.2,2)+pow((dxq-0.0)/0.2,2))<=1)) {
+        if ((c_.dy_L<vQE.dy && vQE.dy<c_.dy_H) && (c_.dx_L<dxq && dxq<c_.dx_H) /*((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1)*/) {
+            hQE_W2_Neutrons.Fill(vQE.W2, vQE.weight);
+            if (vQE.fnucl == 0) hQE_neutron_W2_Neutrons.Fill(vQE.W2, vQE.weight);  // see #3
+            if (vQE.fnucl == 1) hQE_proton_W2_Neutrons.Fill(vQE.W2, vQE.weight);
+        }
+
+        if (((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1) || ((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)) {
+            hQE_W2.Fill(vQE.W2, vQE.weight);
             if (vQE.fnucl == 0) hQE_neutron_W2.Fill(vQE.W2, vQE.weight);  // see #3
             if (vQE.fnucl == 1) hQE_proton_W2.Fill(vQE.W2, vQE.weight);
         }
@@ -303,8 +465,15 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2) continue;
 
         double dxi = dx_shifted_Inel(vInel);
-        if (((pow((vInel.dy-0.0)/0.2,2)+pow((dxi-0.0)/0.2,2))<=1)) {
-            hInelastic_W2.Fill(vInel.W2, vInel.weight);                    // see #3
+
+        if ( (c_.dy_L<vInel.dy && vInel.dy<c_.dy_H) && (c_.dx_L<dxi && dxi<c_.dx_H) /*((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1)*/) {
+            hInelastic_W2_Neutrons.Fill(vInel.W2, vInel.weight);
+            hInelastic_W2_2_Neutrons.Fill(vInel.W2, vInel.weight);                    // see #3
+        }
+
+        if (((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1) || ((pow((vInel.dy-0)/0.4,2)+pow((dxi-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1) ) {
+            hInelastic_W2.Fill(vInel.W2, vInel.weight);
+            hInelastic_W2_2.Fill(vInel.W2, vInel.weight);                    // see #3
         }
 
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
@@ -488,26 +657,94 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
 
     double alpha = 0.0;
+    double delta_1 = 0.1;
+    double delta_2 = 0.1;
 
-    TH1D * h_combined_W2 =  performFitW2_1(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,alpha,Rnop);
+    TH1D * h_combined_W2 =  performFitW2_1(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,alpha, delta_1 ,Rnop);
 
-    // ---- scale components to data counts for plotting ----
+    double par0_2 = 0.5; double par1_2 = 0.5;
+
+    TH1D * h_combined_W2_2 = performFitW2_2(&hData_W2,&hInelastic_W2_2,&hQE_W2,par0_2, par1_2, delta_2);
+
+    // --- build shifted inelastic templates ---
+    TH1D* hInelastic_W2_shift1 = make_shifted_unit(&hInelastic_W2,   "hInelastic_W2_shift1", delta_1);
+    TH1D* hInelastic_W2_shift2 = make_shifted_unit(&hInelastic_W2_2, "hInelastic_W2_shift2", delta_2);
+
+    // --- scale components to data counts ---
     const double N = hData_W2.Integral();
     const double denom = (1.0 + Rnop + alpha);
 
+    // branch 1: (QEp + Rnop*QEn + alpha*Inel_shift)/denom
     h_combined_W2->Scale(N);
-    hQE_proton_W2.Scale( N *1/hQE_proton_W2.Integral() * 1/denom);
-    hQE_neutron_W2.Scale( N * Rnop *1/hQE_neutron_W2.Integral() * 1/denom);
-    hInelastic_W2.Scale( N * alpha*1/hInelastic_W2.Integral() * 1/denom);
+    hQE_proton_W2.Scale( N * (1.0/hQE_proton_W2.Integral()) / denom );
+    hQE_neutron_W2.Scale( N * Rnop * (1.0/hQE_neutron_W2.Integral()) / denom );
+    hInelastic_W2_shift1->Scale( N * alpha * (1.0/hInelastic_W2_shift1->Integral()) / denom );
+
+    // branch 2: par0_2*QE + par1_2*Inel_shift
+    h_combined_W2_2->Scale(N);
+    hQE_W2.Scale(          N * (1.0/hQE_W2.Integral())           * par0_2 );
+    hInelastic_W2_shift2->Scale( N * (1.0/hInelastic_W2_shift2->Integral())* par1_2 );
 
     std::cout<<"alpha : "<<alpha<<std::endl;
     std::cout<<"denom : "<<denom<<std::endl;
     std::cout<<"N : "<<N<<std::endl;
 
+    std::cout<<"par0_2 : "<<par0_2<<std::endl;
+    std::cout<<"par1_2 : "<<par1_2<<std::endl;
+
+    std::cout<<"delta_1: "<<delta_1<<std::endl;
+    std::cout<<"delta_2: "<<delta_2<<std::endl;
+
+    /////////////////////////////////////W2 Fitting Neutrons only/////////////////////////////////////////////////////////
+
+    double alpha_Neutrons = 0.0;
+    double delta_1_Neutrons = 0.1;
+    double delta_2_Neutrons = 0.1;
+
+    TH1D * h_combined_W2_Neutrons =  performFitW2_1(&hData_W2_Neutrons,&hInelastic_W2_Neutrons,
+        &hQE_proton_W2_Neutrons,&hQE_neutron_W2_Neutrons,alpha_Neutrons,delta_1_Neutrons,Rnop);
+
+    double par0_2_Neutrons = 0.5; double par1_2_Neutrons = 0.5;
+
+    TH1D * h_combined_W2_2_Neutrons = performFitW2_2(&hData_W2_Neutrons,&hInelastic_W2_2_Neutrons,&hQE_W2_Neutrons,
+        par0_2_Neutrons,par1_2_Neutrons,delta_2_Neutrons);
+
+
+    // --- build shifted inelastic templates ---
+    TH1D* hInelastic_W2_shift1_Neutrons = make_shifted_unit(&hInelastic_W2_Neutrons,   "hInelastic_W2_shift1_Neutrons", delta_1_Neutrons);
+    TH1D* hInelastic_W2_shift2_Neutrons = make_shifted_unit(&hInelastic_W2_2_Neutrons, "hInelastic_W2_shift2_Neutrons", delta_2_Neutrons);
+
+    // --- scale components to data counts ---
+    const double N_Neutrons = hData_W2_Neutrons.Integral();
+    const double denom_Neutrons = (1.0 + Rnop + alpha_Neutrons);
+
+    // branch 1: (QEp + Rnop*QEn + alpha*Inel_shift)/denom
+    h_combined_W2_Neutrons->Scale(N_Neutrons);
+    hQE_proton_W2_Neutrons.Scale( N_Neutrons * (1.0/hQE_proton_W2_Neutrons.Integral()) / denom_Neutrons );
+    hQE_neutron_W2_Neutrons.Scale( N_Neutrons * Rnop * (1.0/hQE_neutron_W2_Neutrons.Integral()) / denom_Neutrons );
+    hInelastic_W2_shift1_Neutrons->Scale( N_Neutrons * alpha_Neutrons /** (1.0/hInelastic_W2_shift1_Neutrons->Integral())*/ / denom_Neutrons );
+
+    // branch 2: par0_2*QE + par1_2*Inel_shift
+    h_combined_W2_2_Neutrons->Scale(N_Neutrons);
+    hQE_W2_Neutrons.Scale(          N_Neutrons * (1.0/hQE_W2_Neutrons.Integral())           * par0_2_Neutrons );
+    hInelastic_W2_shift2_Neutrons->Scale( N_Neutrons /*(1.0/hInelastic_W2_shift2_Neutrons->Integral())*/* par1_2_Neutrons );
+
+    std::cout<<"alpha_Neutrons : "<<alpha_Neutrons<<std::endl;
+    std::cout<<"denom_Neutrons : "<<denom_Neutrons<<std::endl;
+    std::cout<<"N_Neutrons : "<<N_Neutrons<<std::endl;
+
+    std::cout<<"par0_2_Neutrons : "<<par0_2_Neutrons<<std::endl;
+    std::cout<<"par1_2_Neutrons : "<<par1_2_Neutrons<<std::endl;
+
+    std::cout<<"delta_1_Neutrons : "<<delta_1_Neutrons<<std::endl;
+    std::cout<<"delta_2_Neutrons : "<<delta_2_Neutrons<<std::endl;
+
     ///////////////////plotting and printing////////////////////////////
 
     TCanvas *C = new TCanvas("c","c",2400,1500);
     TCanvas *C1 = new TCanvas("c1","c1",2400,1500);
+    TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
+    //TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
     //TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
 
     C->Divide(2,2);
@@ -620,17 +857,18 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     C1->Divide(2,2);
     C1->cd(1);
+    //gPad->SetLogy();
 
     h_combined_W2->SetLineColor(3);
     hQE_proton_W2.SetLineColor(6);
     hQE_neutron_W2.SetLineColor(9);
-    hInelastic_W2.SetLineColor(7);
+    hInelastic_W2_shift1->SetLineColor(7);
     hData_W2.SetLineColor(kBlack);
 
     h_combined_W2->SetLineWidth(4);
     hQE_proton_W2.SetLineWidth(4);
     hQE_neutron_W2.SetLineWidth(4);
-    hInelastic_W2.SetLineWidth(4);
+    hInelastic_W2_shift1->SetLineWidth(4);
     hData_W2.SetLineWidth(4);
 
     h_combined_W2->SetFillColorAlpha(19,0.1);
@@ -639,18 +877,120 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hQE_proton_W2.SetFillStyle(3004);
     hQE_neutron_W2.SetFillColorAlpha(9,0.5);
     hQE_neutron_W2.SetFillStyle(3005);
-    hInelastic_W2.SetFillColorAlpha(7,0.5);
-    hInelastic_W2.SetFillStyle(3009);
+    hInelastic_W2_shift1->SetFillColorAlpha(7,0.5);
+    hInelastic_W2_shift1->SetFillStyle(3009);
 
-    hData_W2.SetMarkerStyle(kFullCircle);
+    hData_W2.SetMarkerStyle(kFullSquare);
 
-    hData_W2.Draw("p");
-    h_combined_W2->Draw("hist same");
+    hData_W2.Draw("PE1");
     hQE_proton_W2.Draw("hist same");
     hQE_neutron_W2.Draw("hist same");
-    hInelastic_W2.Draw("hist same");    
+    hInelastic_W2_shift1->Draw("hist same");   
+    h_combined_W2->Draw("hist same"); 
+
+    C1->cd(2);
+
+    //gPad->SetLogy();
+
+    h_combined_W2_2->SetLineColor(3);
+    hQE_W2.SetLineColor(6);
+    hInelastic_W2_shift2->SetLineColor(7);
+    hData_W2.SetLineColor(kBlack);
+
+    h_combined_W2_2->SetLineWidth(4);
+    hQE_W2.SetLineWidth(4);
+    hInelastic_W2_shift2->SetLineWidth(4);
+    hData_W2.SetLineWidth(4);
+
+    h_combined_W2_2->SetFillColorAlpha(19,0.1);
+    h_combined_W2_2->SetFillStyle(3009);
+    hQE_W2.SetFillColorAlpha(6,0.5);
+    hQE_W2.SetFillStyle(3004);
+    hInelastic_W2_shift2->SetFillColorAlpha(7,0.5);
+    hInelastic_W2_shift2->SetFillStyle(3009);
+
+    hData_W2.SetMarkerStyle(kFullSquare);
+
+    hData_W2.Draw("PE1");
+    hQE_W2.Draw("hist same");
+    hInelastic_W2_shift2->Draw("hist same");   
+    h_combined_W2_2->Draw("same");   
+
+    C1->cd(3);
+    hDxdy.Draw("COLZ");
+
+    C1->cd(4);
+    hDxdy_cut.Draw("COLZ");
+
+
+    C2->Divide(2,2);
+    C2->cd(1);
+    h_combined_W2_Neutrons->SetLineColor(3);
+    hQE_proton_W2_Neutrons.SetLineColor(6);
+    hQE_neutron_W2_Neutrons.SetLineColor(9);
+    hInelastic_W2_shift1_Neutrons->SetLineColor(7);
+    hData_W2_Neutrons.SetLineColor(kBlack);
+
+    h_combined_W2_Neutrons->SetLineWidth(4);
+    hQE_proton_W2_Neutrons.SetLineWidth(4);
+    hQE_neutron_W2_Neutrons.SetLineWidth(4);
+    hInelastic_W2_shift1_Neutrons->SetLineWidth(4);
+    hData_W2_Neutrons.SetLineWidth(4);
+
+    h_combined_W2_Neutrons->SetFillColorAlpha(19,0.1);
+    h_combined_W2_Neutrons->SetFillStyle(3009);
+    hQE_proton_W2_Neutrons.SetFillColorAlpha(6,0.5);
+    hQE_proton_W2_Neutrons.SetFillStyle(3004);
+    hQE_neutron_W2_Neutrons.SetFillColorAlpha(9,0.5);
+    hQE_neutron_W2_Neutrons.SetFillStyle(3005);
+    hInelastic_W2_shift1_Neutrons->SetFillColorAlpha(7,0.5);
+    hInelastic_W2_shift1_Neutrons->SetFillStyle(3009);
+
+    hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
+
+    hData_W2_Neutrons.Draw("PE1");
+
+    hQE_proton_W2_Neutrons.Draw("hist same");
+    hQE_neutron_W2_Neutrons.Draw("hist same");
+    hInelastic_W2_shift1_Neutrons->Draw("hist same");    
+    h_combined_W2_Neutrons->Draw("hist same");
+
+    C2->cd(2);
+
+    //gPad->SetLogy();
+
+    h_combined_W2_2_Neutrons->SetLineColor(3);
+    hQE_W2_Neutrons.SetLineColor(6);
+    hInelastic_W2_shift2_Neutrons->SetLineColor(7);
+    hData_W2_Neutrons.SetLineColor(kBlack);
+
+    h_combined_W2_2_Neutrons->SetLineWidth(4);
+    hQE_W2_Neutrons.SetLineWidth(4);
+    hInelastic_W2_shift2_Neutrons->SetLineWidth(4);
+    hData_W2_Neutrons.SetLineWidth(4);
+
+    h_combined_W2_2_Neutrons->SetFillColorAlpha(19,0.1);
+    h_combined_W2_2_Neutrons->SetFillStyle(3009);
+    hQE_W2_Neutrons.SetFillColorAlpha(6,0.5);
+    hQE_W2_Neutrons.SetFillStyle(3004);
+    hInelastic_W2_shift2_Neutrons->SetFillColorAlpha(7,0.5);
+    hInelastic_W2_shift2_Neutrons->SetFillStyle(3009);
+
+    hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
+
+    hData_W2_Neutrons.Draw("PE1");
+    hQE_W2_Neutrons.Draw("hist same");
+    hInelastic_W2_shift2_Neutrons->Draw("hist same");   
+    h_combined_W2_2_Neutrons->Draw("same");
+
+    C2->cd(3);
+    hInelastic_W2_Neutrons.Draw("hist");
+
+    C2->cd(4);
+    hInelastic_W2_2_Neutrons.Draw("hist");
 
     C->Print(Form("images/%s/InelasticCorrection_%s.png",kin_,kin_));
     C1->Print(Form("images/%s/InelasticCorrection_W2_%s.png",kin_,kin_));
+    C2->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_%s.png",kin_,kin_));
 }
 
