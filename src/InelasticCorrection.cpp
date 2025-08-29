@@ -102,6 +102,7 @@ TH1D* InelasticCorrection::performFitW2_1(
     const double xmax = d->GetXaxis()->GetXmax();
 
     auto inel_shift = [&](double x, double del)->double {
+        //const double xq = x; //- del;
         const double xq = x - del;
         if (xq<=xmin || xq>=xmax) return 0.0;
         const int bi = ii->FindBin(xq);
@@ -121,6 +122,7 @@ TH1D* InelasticCorrection::performFitW2_1(
             const int bn = ni->FindBin(x[0]);
             const double qep = pi->GetBinContent(bp);
             const double qen = ni->GetBinContent(bn);
+            //const double ine = ii->GetBinContent(ii->FindBin(x[0]));//inel_shift(x[0], dL);
             const double ine = inel_shift(x[0], dL);
             // simple normalized mixture (good if Δ is small or range wide)
             
@@ -144,6 +146,7 @@ TH1D* InelasticCorrection::performFitW2_1(
         const double x = comb->GetXaxis()->GetBinCenter(i);
         const double qep = pi->GetBinContent(pi->FindBin(x));
         const double qen = ni->GetBinContent(ni->FindBin(x));
+        //const double ine = ii->GetBinContent(ii->FindBin(x));//inel_shift(x, delta);
         const double ine = inel_shift(x, delta);
         // double qep = pi->Interpolate(x);           // was GetBinContent(FindBin(x))
         // double qen = ni->Interpolate(x);
@@ -171,7 +174,8 @@ TH1D* InelasticCorrection::performFitW2_2(
     const double xmax = d->GetXaxis()->GetXmax();
 
     auto inel_shift = [&](double x, double del)->double {
-        const double xq = x - del;
+        //const double xq = x; //- del;
+        const double xq = x- del;
         if (xq<=xmin || xq>=xmax) return 0.0;
         const int bi = ii->FindBin(xq);
         return ii->GetBinContent(bi); 
@@ -186,6 +190,7 @@ TH1D* InelasticCorrection::performFitW2_2(
             // const double q  = qe->Interpolate(x[0]);
             //const double ine= ii->Interpolate(x[0] - dL);
             const double q  = qe->GetBinContent(qe->FindBin(x[0]));
+            //const double ine= ii->GetBinContent(qe->FindBin(x[0]));//inel_shift(x[0], dL);
             const double ine= inel_shift(x[0], dL);
             return aQ*q + aI*ine;      // not forced to unit area; fit handles norm
         }, xmin, xmax, 3);
@@ -208,6 +213,7 @@ TH1D* InelasticCorrection::performFitW2_2(
         // const double q  = qe->Interpolate(x);
         // const double ine = ii->Interpolate(x - delta);
         const double q  = qe->GetBinContent(qe->FindBin(x));
+        //const double ine= ii->GetBinContent(ii->FindBin(x));//inel_shift(x, delta);
         const double ine= inel_shift(x, delta);
         comb->SetBinContent(i, par0*q + par1*ine);
     }
@@ -575,6 +581,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     double Rnop = neutron_events/proton_events;
 
+    double Rn = neutron_events/(neutron_events+proton_events);
+    double Rp = proton_events/(neutron_events+proton_events);
+
     double inelastic_events_pos = hInelastic_pos->Integral();//(hInelastic_pos->FindBin(c_.dx_L),hInelastic_pos->FindBin(c_.dx_H));
     double inelastic_events_neg = hInelastic_neg->Integral();//(hInelastic_neg->FindBin(c_.dx_L),hInelastic_neg->FindBin(c_.dx_H));
 
@@ -739,12 +748,21 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     std::cout<<"delta_1_Neutrons : "<<delta_1_Neutrons<<std::endl;
     std::cout<<"delta_2_Neutrons : "<<delta_2_Neutrons<<std::endl;
 
+
+    TH1D *h_QE_W2_split_N  =(TH1D*)hQE_W2_Neutrons.Clone("h_QE_W2_split_N"); 
+    TH1D *h_QE_W2_split_P  =(TH1D*)hQE_W2_Neutrons.Clone("h_QE_W2_split_P");
+
+    h_QE_W2_split_N->Scale(Rn);
+    h_QE_W2_split_P->Scale(Rp); 
+
+
+
     ///////////////////plotting and printing////////////////////////////
 
     TCanvas *C = new TCanvas("c","c",2400,1500);
     TCanvas *C1 = new TCanvas("c1","c1",2400,1500);
     TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
-    //TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
+    TCanvas *C3 = new TCanvas("c3","c3",2400,1500);
     //TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
 
     C->Divide(2,2);
@@ -893,7 +911,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //gPad->SetLogy();
 
     h_combined_W2_2->SetLineColor(3);
-    hQE_W2.SetLineColor(6);
+    hQE_W2.SetLineColor(207);
     hInelastic_W2_shift2->SetLineColor(7);
     hData_W2.SetLineColor(kBlack);
 
@@ -904,7 +922,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     h_combined_W2_2->SetFillColorAlpha(19,0.1);
     h_combined_W2_2->SetFillStyle(3009);
-    hQE_W2.SetFillColorAlpha(6,0.5);
+    hQE_W2.SetFillColorAlpha(207,0.5);
     hQE_W2.SetFillStyle(3004);
     hInelastic_W2_shift2->SetFillColorAlpha(7,0.5);
     hInelastic_W2_shift2->SetFillStyle(3009);
@@ -960,28 +978,38 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //gPad->SetLogy();
 
     h_combined_W2_2_Neutrons->SetLineColor(3);
-    hQE_W2_Neutrons.SetLineColor(6);
+    hQE_W2_Neutrons.SetLineColor(207);
     hInelastic_W2_shift2_Neutrons->SetLineColor(7);
     hData_W2_Neutrons.SetLineColor(kBlack);
+    h_QE_W2_split_N->SetLineColor(9);
+    h_QE_W2_split_P->SetLineColor(6);
 
     h_combined_W2_2_Neutrons->SetLineWidth(4);
     hQE_W2_Neutrons.SetLineWidth(4);
     hInelastic_W2_shift2_Neutrons->SetLineWidth(4);
     hData_W2_Neutrons.SetLineWidth(4);
+    h_QE_W2_split_N->SetLineWidth(4);
+    h_QE_W2_split_P->SetLineWidth(4);
 
     h_combined_W2_2_Neutrons->SetFillColorAlpha(19,0.1);
     h_combined_W2_2_Neutrons->SetFillStyle(3009);
-    hQE_W2_Neutrons.SetFillColorAlpha(6,0.5);
+    hQE_W2_Neutrons.SetFillColorAlpha(207,0.5);
     hQE_W2_Neutrons.SetFillStyle(3004);
     hInelastic_W2_shift2_Neutrons->SetFillColorAlpha(7,0.5);
     hInelastic_W2_shift2_Neutrons->SetFillStyle(3009);
+    h_QE_W2_split_N->SetFillColorAlpha(9,0.5);
+    h_QE_W2_split_N->SetFillStyle(3005);
+    h_QE_W2_split_P->SetFillColorAlpha(6,0.5);
+    h_QE_W2_split_P->SetFillStyle(3005);
 
     hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
 
     hData_W2_Neutrons.Draw("PE1");
     hQE_W2_Neutrons.Draw("hist same");
     hInelastic_W2_shift2_Neutrons->Draw("hist same");   
-    h_combined_W2_2_Neutrons->Draw("same");
+    h_combined_W2_2_Neutrons->Draw("hist same");
+    h_QE_W2_split_N->Draw("hist same");
+    h_QE_W2_split_P->Draw("hist same");
 
     C2->cd(3);
     hInelastic_W2_Neutrons.Draw("hist");
@@ -989,8 +1017,42 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     C2->cd(4);
     hInelastic_W2_2_Neutrons.Draw("hist");
 
+    C3->Divide(2,2);
+
+    // --- Pad (1): Neutrons, (QEp + Rnp*QEn + α*Inel^Δ)/(1+Rnp+α)
+    C3->cd(1);
+    // ... your Draw() calls above ...
+    auto legN1 = new TLegend(0.28, 0.28, 0.88, 0.88);  // x1,y1,x2,y2 in NDC
+    legN1->SetBorderSize(0);
+    legN1->SetFillStyle(0);
+    legN1->SetTextSize(0.032);
+    legN1->AddEntry(&hData_W2_Neutrons,             "Data", "p");
+    legN1->AddEntry(h_combined_W2_Neutrons,         "Fit: (QEp + R_{np} QEn + #alpha Inel{#Delta})/(1+R_{np}+ #alpha)", "lf");
+    legN1->AddEntry(&hQE_proton_W2_Neutrons,        "QE p (sim)", "f");
+    legN1->AddEntry(&hQE_neutron_W2_Neutrons,       "QE n (sim)", "f");
+    legN1->AddEntry(hInelastic_W2_shift1_Neutrons,  "Inelastic (shifted)", "f");
+    legN1->Draw();
+
+    // --- Pad (2): Neutrons, a_QE*QE + a_Inel*Inel^Δ
+    C3->cd(2);
+    // ... your Draw() calls above ...
+    auto legN2 = new TLegend(0.28, 0.28, 0.88, 0.88);
+    legN2->SetBorderSize(0);
+    legN2->SetFillStyle(0);
+    legN2->SetTextSize(0.032);
+    legN2->AddEntry(&hData_W2_Neutrons,               "Data", "p");
+    legN2->AddEntry(h_combined_W2_2_Neutrons,         "Fit: a_{QE} QE + a_{inel} Inel{#Delta}", "lf");
+    legN2->AddEntry(&hQE_W2_Neutrons,                 "QE (sim)", "f");
+    legN2->AddEntry(hInelastic_W2_shift2_Neutrons,    "Inelastic (sim shifted)", "f");
+    legN2->AddEntry(h_QE_W2_split_N,    "QE Neutrons (sim)", "f");
+    legN2->AddEntry(h_QE_W2_split_P,    "QE Protons (sim)", "f");
+
+    legN2->Draw();
+
+
     C->Print(Form("images/%s/InelasticCorrection_%s.png",kin_,kin_));
     C1->Print(Form("images/%s/InelasticCorrection_W2_%s.png",kin_,kin_));
     C2->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_%s.png",kin_,kin_));
+    C3->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_legend%s.png",kin_,kin_));
 }
 
