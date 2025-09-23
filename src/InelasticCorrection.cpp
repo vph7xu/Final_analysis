@@ -485,10 +485,26 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double W2hist_low = -2;
     double W2hist_high = 8;
 
+    double dxhist_low = -4;
+    double dxhist_high = 3;
+
+    double dyhist_low = -2;
+    double dyhist_high = 2;
+
     if (std::strcmp(kin_, "GEN2_He3") == 0){W2hist_low = -0.5; W2hist_high = 2;}
     else if (std::strcmp(kin_, "GEN3_He3") == 0){W2hist_low = -1.5; W2hist_high = 4;} 
     else if (std::strcmp(kin_, "GEN4_He3") == 0){W2hist_low = -2; W2hist_high = 6;}
     else if (std::strcmp(kin_, "GEN4b_He3") == 0){W2hist_low = -2; W2hist_high = 6;}
+
+    if (std::strcmp(kin_, "GEN2_He3") == 0){dxhist_low = -4; dxhist_high = 3;}
+    else if (std::strcmp(kin_, "GEN3_He3") == 0){dxhist_low = -4; dxhist_high = 3;} 
+    else if (std::strcmp(kin_, "GEN4_He3") == 0){dxhist_low = -3; dxhist_high = 2;}
+    else if (std::strcmp(kin_, "GEN4b_He3") == 0){dxhist_low = -3; dxhist_high = 2;}
+
+    if (std::strcmp(kin_, "GEN2_He3") == 0){dyhist_low = -2; dyhist_high = 2;}
+    else if (std::strcmp(kin_, "GEN3_He3") == 0){dyhist_low = -2; dyhist_high = 2;} 
+    else if (std::strcmp(kin_, "GEN4_He3") == 0){dyhist_low = -1.5; dyhist_high = 1.5;}
+    else if (std::strcmp(kin_, "GEN4b_He3") == 0){dyhist_low = -1.5; dyhist_high = 1.5;}
 
     // W² distributions per cut (no helicity split) for the right panel
     TH1D hW2_dxonly     ("hW2_dxonly",     "W^{2};W^{2} (GeV^{2})", NBW2, W2hist_low, W2hist_high);
@@ -520,23 +536,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // dx distributions per cut (no helicity split) for the right panel
-    TH1D hDx_W2only     ("hDx_W2only",     "dx;W^{2} (m)", NBW2, -4, 3);
-    TH1D hDx_W2dy       ("hDx_W2dy",       "dx;W^{2} (m)", NBW2, -4, 3);
-    TH1D hDx_W2AntiDy   ("hDx_W2AntiDy",   "dx;W^{2} (m)", NBW2, -4, 3);
-    TH1D hDx_dyAntiW2   ("hDx_dyAntiW2",   "dx;W^{2} (m)", NBW2, -4, 3);
+    TH1D hDx_W2only     ("hDx_W2only",     "dx;W^{2} (m)", NBW2, dxhist_low, dxhist_high);
+    TH1D hDx_W2dy       ("hDx_W2dy",       "dx;W^{2} (m)", NBW2, dxhist_low, dxhist_high);
+    TH1D hDx_W2AntiDy   ("hDx_W2AntiDy",   "dx;W^{2} (m)", NBW2, dxhist_low, dxhist_high);
+    TH1D hDx_dyAntiW2   ("hDx_dyAntiW2",   "dx;W^{2} (m)", NBW2, dxhist_low, dxhist_high);
 
     // dx split by helicity for asymmetry vs dx (left panel)
-    TH1D hDx_W2only_pos   ("hDx_W2only_pos",   "dx;W^{2} (m)", NBW2_low, -4, 3);
-    TH1D hDx_W2only_neg   ("hDx_W2only_neg",   "dx;W^{2} (m)", NBW2_low, -4, 3);
+    TH1D hDx_W2only_pos   ("hDx_W2only_pos",   "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
+    TH1D hDx_W2only_neg   ("hDx_W2only_neg",   "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
 
-    TH1D hDx_W2dy_pos     ("hDx_W2dy_pos",     "dx;W^{2} (m)", NBW2_low, -4, 3);
-    TH1D hDx_W2dy_neg     ("hDx_W2dy_neg",     "dx;W^{2} (m)", NBW2_low, -4, 3);
+    TH1D hDx_W2dy_pos     ("hDx_W2dy_pos",     "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
+    TH1D hDx_W2dy_neg     ("hDx_W2dy_neg",     "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
 
-    TH1D hDx_W2AntiDy_pos ("hDx_W2AntiDy_pos", "dx;W^{2} (m)", NBW2_low, -4, 3);
-    TH1D hDx_W2AntiDy_neg ("hDx_W2AntiDy_neg", "dx;W^{2} (m)", NBW2_low, -4, 3);
+    TH1D hDx_W2AntiDy_pos ("hDx_W2AntiDy_pos", "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
+    TH1D hDx_W2AntiDy_neg ("hDx_W2AntiDy_neg", "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
 
-    TH1D hDx_dyAntiW2_pos ("hDx_dyAntiW2_pos", "dx;W^{2} (m)", NBW2_low, -4, 3);
-    TH1D hDx_dyAntiW2_neg ("hDx_dyAntiW2_neg", "dx;W^{2} (m)", NBW2_low, -4, 3);
+    TH1D hDx_dyAntiW2_pos ("hDx_dyAntiW2_pos", "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
+    TH1D hDx_dyAntiW2_neg ("hDx_dyAntiW2_neg", "dx;W^{2} (m)", NBW2_low, dxhist_low, dxhist_high);
 
     // (optional) get ROOT to store per-bin variances
     hDx_W2only.Sumw2(); hDx_W2dy.Sumw2(); hDx_W2AntiDy.Sumw2(); hDx_dyAntiW2.Sumw2();
@@ -548,11 +564,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    TH1D hDy_W2dx     ("hDy_W2dx",     "dy;W^{2} (m)", NBW2, -2, 2);
+    TH1D hDy_W2dx     ("hDy_W2dx",     "dy;W^{2} (m)", NBW2, dyhist_low, dyhist_high);
 
 
-    TH1D hDy_W2dx_pos     ("hDy_W2dx_pos",     "dy;W^{2} (m)", NBW2, -2, 2);
-    TH1D hDy_W2dx_neg     ("hDy_W2dx_neg",     "dy;W^{2} (m)", NBW2, -2, 2);
+    TH1D hDy_W2dx_pos     ("hDy_W2dx_pos",     "dy;W^{2} (m)", NBW2, dyhist_low, dyhist_high);
+    TH1D hDy_W2dx_neg     ("hDy_W2dx_neg",     "dy;W^{2} (m)", NBW2, dyhist_low, dyhist_high);
 
     hDy_W2dx.Sumw2();
     hDy_W2dx_pos.Sumw2();   hDy_W2dx_neg.Sumw2();
@@ -566,6 +582,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     const Long64_t step     = 100;
     for(Long64_t i=0;i<n;++i){ 
         
+        int helCorr = -1*v.helicity*v.IHWP*c_.Pkin_L;
+
         ch.GetEntry(i);
         
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
@@ -621,20 +639,20 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         // --- helicity-split W² (for A(W²), left panel) ---
         if (pass_dx){
-          if (v.helicity==+1) hW2_dxonly_pos.Fill(v.W2);
-          else if (v.helicity==-1) hW2_dxonly_neg.Fill(v.W2);
+          if (helCorr==+1) hW2_dxonly_pos.Fill(v.W2);
+          else if (helCorr==-1) hW2_dxonly_neg.Fill(v.W2);
         }
         if (pass_dx && pass_dy){
-          if (v.helicity==+1) hW2_dxdy_pos.Fill(v.W2);
-          else if (v.helicity==-1) hW2_dxdy_neg.Fill(v.W2);
+          if (helCorr==+1) hW2_dxdy_pos.Fill(v.W2);
+          else if (helCorr==-1) hW2_dxdy_neg.Fill(v.W2);
         }
         if (pass_dx && pass_anti_dy){
-          if (v.helicity==+1) hW2_dxAntiDy_pos.Fill(v.W2);
-          else if (v.helicity==-1) hW2_dxAntiDy_neg.Fill(v.W2);
+          if (helCorr==+1) hW2_dxAntiDy_pos.Fill(v.W2);
+          else if (helCorr==-1) hW2_dxAntiDy_neg.Fill(v.W2);
         }
         if (pass_dy && pass_anti_dx){
-          if (v.helicity==+1) hW2_dyAntiDx_pos.Fill(v.W2);
-          else if (v.helicity==-1) hW2_dyAntiDx_neg.Fill(v.W2);
+          if (helCorr==+1) hW2_dyAntiDx_pos.Fill(v.W2);
+          else if (helCorr==-1) hW2_dyAntiDx_neg.Fill(v.W2);
         }
 
         // define the 3 cut flavors you want to compare
@@ -651,20 +669,20 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         // --- helicity-split dx (for A(dx), left panel) ---
         if (pass_W2){
-          if (v.helicity==+1) hDx_W2only_pos.Fill(v.dx);
-          else if (v.helicity==-1) hDx_W2only_neg.Fill(v.dx);
+          if (helCorr==+1) hDx_W2only_pos.Fill(v.dx);
+          else if (helCorr==-1) hDx_W2only_neg.Fill(v.dx);
         }
         if (pass_W2 && pass_dy){
-          if (v.helicity==+1) hDx_W2dy_pos.Fill(v.dx);
-          else if (v.helicity==-1) hDx_W2dy_neg.Fill(v.dx);
+          if (helCorr==+1) hDx_W2dy_pos.Fill(v.dx);
+          else if (helCorr==-1) hDx_W2dy_neg.Fill(v.dx);
         }
         if (pass_W2 && pass_anti_dy){
-          if (v.helicity==+1) hDx_W2AntiDy_pos.Fill(v.dx);
-          else if (v.helicity==-1) hDx_W2AntiDy_neg.Fill(v.dx);
+          if (helCorr==+1) hDx_W2AntiDy_pos.Fill(v.dx);
+          else if (helCorr==-1) hDx_W2AntiDy_neg.Fill(v.dx);
         }
         if (pass_dy && pass_anti_W2){
-          if (v.helicity==+1) hDx_dyAntiW2_pos.Fill(v.dx);
-          else if (v.helicity==-1) hDx_dyAntiW2_neg.Fill(v.dx);
+          if (helCorr==+1) hDx_dyAntiW2_pos.Fill(v.dx);
+          else if (helCorr==-1) hDx_dyAntiW2_neg.Fill(v.dx);
         }
 
 
@@ -673,8 +691,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if (pass_dx && pass_W2) hDy_W2dx.Fill(v.dy);
 
         if (pass_dx && pass_W2) {
-            if (v.helicity==+1) hDy_W2dx_pos.Fill(v.dy);
-            if (v.helicity==-1) hDy_W2dx_neg.Fill(v.dy);
+            if (helCorr==+1) hDy_W2dx_pos.Fill(v.dy);
+            if (helCorr==-1) hDy_W2dx_neg.Fill(v.dy);
         }  
 
 
@@ -685,10 +703,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         
         hData.Fill(v.dx);
         
-        if (v.helicity == 1){
+        if (helCorr == 1){
             hData_pos.Fill(v.dx);
         }
-        else if(v.helicity == -1){
+        else if(helCorr == -1){
             hData_neg.Fill(v.dx);
         }
 
@@ -1571,8 +1589,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // --- Stacked, x-aligned dx panels (TOP: dx shape, BOTTOM: A(dx)) ---
     gStyle->SetOptStat(0);
 
-    const double xMin_dx = -4.0;
-    const double xMax_dx =  3.0;
+    const double xMin_dx = dxhist_low;
+    const double xMax_dx = dxhist_high;
     const double yMin_A  = -15.0;   // adjust if you like
     const double yMax_A  =  15.0;
 
@@ -1643,8 +1661,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         // --- Stacked, x-aligned dy panels (TOP: dy shape, BOTTOM: A(dy)) ---
     gStyle->SetOptStat(0);
 
-    const double xMin_dy = -2.0;
-    const double xMax_dy =  2.0;
+    const double xMin_dy = dyhist_low;
+    const double xMax_dy =  dyhist_high;
     //const double yMin_A  = -15.0;   // adjust if you like
     //const double yMax_A  =  15.0;
 

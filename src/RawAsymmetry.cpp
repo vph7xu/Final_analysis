@@ -81,17 +81,34 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     Long64_t n = ch.GetEntries(); Long64_t step=100;
     std::cout<<"[RawAsym] processing "<<n<<" events…\n";
 
+    double count_protons_plus =0.0; 
+    double count_protons_minus =0.0;
+
+    double count_neutrons_plus =0.0; 
+    double count_neutrons_minus =0.0;
+
+
     for(Long64_t i=0;i<n;++i){ ch.GetEntry(i);
-        if(!cuts_.passAll(v)) continue;
+        //if(!cuts_.passAll(v)) continue;
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
 
-        if (v.ntrack>0 && v.ePS>0.2 && std::abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L){
+        if (v.ntrack>0 && v.ePS>0.2 && std::abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L && abs(((v.ePS+v.eSH)/v.trP)-1.0)<0.2){
+
+            if((c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
+                && (c_.dx_P_L<v.dx && v.dx<c_.dx_P_H) && (c_.dy_P_L<v.dy && v.dy<c_.dy_P_H)){
+
+                int helCorr_p = -1*v.helicity*v.IHWP*c_.Pkin_L;
+                if(helCorr_p==1) ++count_protons_plus; else if(helCorr_p==-1) ++count_protons_minus;
+
+            }
+
             if( (c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
                 && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (c_.dy_L<v.dy && v.dy<c_.dy_H)){
 
                 auto& cnt = counts_[v.runnum];
                 int helCorr = -1*v.helicity*v.IHWP*c_.Pkin_L;
                 if(helCorr==1) ++cnt.Np; else if(helCorr==-1) ++cnt.Nm;
+                if(helCorr==1) ++count_neutrons_plus; else if(helCorr==-1) ++count_neutrons_minus;
 
                 // NOTE: Axis title says A but you're filling dx; keep if intentional.
                 h_.Fill(v.dx);
@@ -141,6 +158,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     double total_Np = 0.0;
     double total_Nm = 0.0;
 
+    double A_raw_verify_numerator = 0.0;
+    double A_raw_verify_denominator = 0.0;
+
     std::vector<int> runs; runs.reserve(counts_.size());
     for (const auto& kv : counts_) runs.push_back(kv.first);
     std::sort(runs.begin(), runs.end());
@@ -170,6 +190,10 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             total_difference += (Np - Nm);
             total_Np         += Np;
             total_Nm         += Nm;
+            if (dA>0){
+                A_raw_verify_numerator += (A/(dA*dA));
+                A_raw_verify_denominator += (1/(dA*dA));
+            }
         }
 
         // Per-run event-weighted polarization means
@@ -234,6 +258,13 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     double A_raw    = (total_events > 0.0) ? (total_difference/total_events) : 0.0;
     double err_Araw = (total_events > 0.0) ? std::sqrt(std::max(0.0, (1.0 - A_raw*A_raw)/total_events)) : 0.0;
 
+    //Global raw proton asymmetry
+    double total_protons = count_protons_plus + count_protons_minus;
+    double diff_protons = count_protons_plus - count_protons_minus;
+
+    double A_raw_p =  (total_protons>0.0) ? (diff_protons/total_protons) : 0.0;
+    double err_Araw_p = (total_protons>0.0) ? std::sqrt(std::max(0.0,(1.0 - A_raw_p*A_raw_p)/total_protons)) : 0.0;
+
     // Global polarization means (event-weighted across runs)
     double total_avg_beam_polarization   = (SWb>0.0) ? (SWPb/SWb) : -1.0;
     double total_avg_target_polarization = (SWt>0.0) ? (SWPt/SWt) : -1.0;
@@ -241,6 +272,9 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     // Global SYSTEMATIC errors (absolute), blockwise combination across all runs
     double err_total_avg_beam_polarization   = -1.0;
     double err_total_avg_target_polarization = -1.0;
+
+    double A_raw_verify = A_raw_verify_numerator/A_raw_verify_denominator;
+
 
     if (total_avg_beam_polarization > 0.0 && SWPb > 0.0) {
         double S = 0.0;
@@ -281,5 +315,13 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     rawAsym<<"Nm = "<<total_Nm<<"\n";
     rawAsym<<"A_raw = "<<A_raw<<"\n";
     rawAsym<<"err_A_raw = "<<err_Araw<<"\n";
+    rawAsym<<"Np_p = "<<count_protons_plus<<"\n";
+    rawAsym<<"Np_m = "<<count_protons_minus<<"\n";
+    rawAsym<<"A_raw_p = "<<A_raw_p<<"\n";
+    rawAsym<<"err_Araw_p = "<<err_Araw_p<<"\n";
+    rawAsym<<"Np_verify = "<<count_neutrons_plus<<"\n";
+    rawAsym<<"Nm_verify = "<<count_neutrons_minus<<"\n";
+    rawAsym<<"A_raw_verify = "<<A_raw_verify<<"\n";
+    rawAsym<<"err_A_raw_verify = "<<std::sqrt(1/A_raw_verify_denominator)<<"\n";
     rawAsym.close();
 }
