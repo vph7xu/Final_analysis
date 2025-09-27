@@ -1,0 +1,45 @@
+Aphys = -0.283992
+err_Aphys_stat = 0.0256534
+err_Aphys_sys = 0.00781457
+
+err_Aacc_sys = 0.000919861
+err_Aacc_sys_% = 1.38559
+
+err_Api_sys = 0
+err_Api_sys_% = 0
+
+err_Ain_sys = 0.00137303
+err_Ain_sys_% = 3.08709
+
+err_Ap_sys = 0
+err_Ap_sys_% = 0
+
+err_Afsi_sys = 0
+err_Afsi_sys_% = 0
+
+err_fN2_sys_% = 0.00616297
+err_fN2_sys_% = 62.1971
+
+err_facc_sys = 0.000237123
+err_facc_sys_% = 0.0920739
+
+err_fpi_sys = 0
+err_fpi_sys_% = 0
+
+err_fin_sys = 0.000430009
+err_fin_sys_% = 0.302793
+
+err_fp_sys = 0.000295165
+err_fp_sys_% = 0.142665
+
+err_ffsi_sys = 0
+err_ffsi_sys_% = 0
+
+err_Ptar_sys = 0.00417902
+err_Ptar_sys_% = 28.5982
+
+err_Pn_sys = 0.00147912
+err_Pn_sys_% = 3.58261
+
+err_Pbeam_sys = 0.000611287
+err_Pbeam_sys_% = 0.6119

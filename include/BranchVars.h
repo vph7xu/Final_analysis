@@ -40,6 +40,15 @@ public:
     double theta_pq         = 0.0;
     TDatime *datetime = nullptr;
     double err_He3Pol= 0.0; 
+    double thtgt = 0.0;
+    double thetabend = 0.0;
+    int    hcal_nclus = 0;
+    double hcal_clus_e[100];
+    double hcal_clus_x[100];
+    double hcal_clus_y[100];
+    double hcal_clus_atime[100];
+    double hcal_clus_nblk[100];
+    
     // … add more here, no other file changes needed …
 
     /** Bind all data members to the branches of a TTree. */

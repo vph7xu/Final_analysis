@@ -33,6 +33,14 @@ std::unordered_map<std::string, void*> BranchVars::addrMap_() {
         {"theta_pq",  &theta_pq},
         {"datetime",            &datetime},
         {"err_He3Pol",&err_He3Pol},
+        {"thtgt"     ,&thtgt},
+        {"thetabend" ,&thetabend},
+        {"Ndata_clus_id", &hcal_nclus},
+        {"hcal_clus_e", hcal_clus_e},
+        {"hcal_clus_x", hcal_clus_x},
+        {"hcal_clus_y", hcal_clus_y},
+        {"hcal_clus_atime", hcal_clus_atime},
+        {"hcal_clus_nblk", hcal_clus_nblk},
         // --- extend when you add a new data member! ---
     };
 }

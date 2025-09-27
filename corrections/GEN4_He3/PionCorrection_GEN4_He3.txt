@@ -10,5 +10,5 @@ asymGrinch = 0.0278638
 err_asymGrinch = 0.0393292
 A_pi = 0.0278638
 err_A_pi = 0.0393292
-f_pi = 0.0657929
-err_f_pi = 0.0577852
+f_pi = 0.0589998
+err_f_pi = 0.0510232

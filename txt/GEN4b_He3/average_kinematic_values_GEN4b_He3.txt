@@ -1,5 +1,5 @@
-Q2_avg = 9.78824
-tau_avg = 2.78124
-epsilon_avg = 0.573837
-Px_avg = 0.990129
-Pz_avg = -0.0291828
+Q2_avg = 9.81084
+tau_avg = 2.78766
+epsilon_avg = 0.571923
+Px_avg = 0.990346
+Pz_avg = -0.0284837
