@@ -196,6 +196,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     //c1->Divide(2,2);
 
     c->Print(Form("images/%s/accidentals_plots_%s.pdf",kin_,kin_));
+    c->Print(Form("images/%s/accidentals_plots_%s.png",kin_,kin_));
 
 
 }

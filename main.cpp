@@ -110,8 +110,8 @@ int main(int argc, char** argv)
     // PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
     // dxdy.process(ch, v);
 
-    // AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
-    // AccidentalCorrection.process(ch,v);
+    AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
+    AccidentalCorrection.process(ch,v);
 
     // PionCorrection PionCorrection(icuts, rqPtr,kin);
     // PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
