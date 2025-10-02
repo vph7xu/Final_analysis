@@ -1,15 +1,15 @@
-Aphys = 0.219529
-err_Aphys_stat = 0.102593
-err_Aphys_sys = 0.0440632
+Aphys = 0.341422
+err_Aphys_stat = 0.102626
+err_Aphys_sys = 0.0596652
 
-err_Aacc_sys = 0.00772697
-err_Aacc_sys_% = 3.07516
+err_Aacc_sys = 0.00797003
+err_Aacc_sys_% = 1.78434
 
-err_Api_sys = 0.0158713
-err_Api_sys_% = 12.974
+err_Api_sys = 0.0177063
+err_Api_sys_% = 8.80666
 
-err_Ain_sys = 0.0331645
-err_Ain_sys_% = 56.6494
+err_Ain_sys = 0.0330813
+err_Ain_sys_% = 30.7413
 
 err_Ap_sys = 0
 err_Ap_sys_% = 0
@@ -17,29 +17,29 @@ err_Ap_sys_% = 0
 err_Afsi_sys = 0
 err_Afsi_sys_% = 0
 
-err_fN2_sys_% = 0.000892917
-err_fN2_sys_% = 0.0410649
+err_fN2_sys_% = 0.00140063
+err_fN2_sys_% = 0.0551067
 
-err_facc_sys = 0.000322078
-err_facc_sys_% = 0.00534282
+err_facc_sys = 0.00141259
+err_facc_sys_% = 0.0560522
 
-err_fpi_sys = 0.0198493
-err_fpi_sys_% = 20.2926
+err_fpi_sys = 0.0363492
+err_fpi_sys_% = 37.1147
 
-err_fin_sys = 0.00916825
-err_fin_sys_% = 4.32934
+err_fin_sys = 0.0252919
+err_fin_sys_% = 17.9689
 
-err_fp_sys = 0.00111916
-err_fp_sys_% = 0.0645104
+err_fp_sys = 0.00181463
+err_fp_sys_% = 0.0924988
 
 err_ffsi_sys = 0
 err_ffsi_sys_% = 0
 
-err_Ptar_sys = 0.00695315
-err_Ptar_sys_% = 2.49007
+err_Ptar_sys = 0.0108007
+err_Ptar_sys_% = 3.27688
 
-err_Pn_sys = 0.00114338
-err_Pn_sys_% = 0.0673335
+err_Pn_sys = 0.00177824
+err_Pn_sys_% = 0.0888254
 
-err_Pbeam_sys = 0.000465432
-err_Pbeam_sys_% = 0.0111574
+err_Pbeam_sys = 0.000723873
+err_Pbeam_sys_% = 0.0147191

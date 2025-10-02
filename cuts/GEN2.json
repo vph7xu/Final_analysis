@@ -13,7 +13,7 @@
   "dy_ac_H"   :  2.5,
   "eHCAL_L"   :  0.025,
   "eHCAL_H"   :  100.0,
-  "coin_L"    :  127,
+  "coin_L"    :  125,
   "coin_H"    :  133,
   "coin_ac_L" :  80,
   "coin_ac_H" :  180,

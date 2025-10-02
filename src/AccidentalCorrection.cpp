@@ -12,6 +12,7 @@
 #include <TCanvas.h>
 #include <TLine.h>
 #include <TH1D.h>
+#include <TStyle.h>
 
 // ===== constructors ==========================================================
 
@@ -156,18 +157,19 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     auto drawVLine = [](double x, double y1, double y2, int color=kGray+2) {
         TLine *L = new TLine(x, y1, x, y2);
         L->SetLineStyle(2);   // dashed
-        L->SetLineWidth(2);
+        L->SetLineWidth(3);
         L->SetLineColor(color);
         L->Draw("same");
     };
 
-
-
+    gStyle->SetOptStat(0);
 
     TCanvas *c = new TCanvas("c","c",2400,1500);
     //TCanvas *c1 = new TCanvas("c1","c1",2400,1500);
 
     c->Divide(2,2);
+    h_cointime->SetLineColor(kBlack);
+    h_cointime->SetLineWidth(3);
     h_cointime->Draw();
 
     // Setup bins for cointime

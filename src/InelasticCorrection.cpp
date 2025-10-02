@@ -102,7 +102,7 @@ TH1D* InelasticCorrection::performFit(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, T
     f->SetParLimits(0, 0.0, 10.0); // amplitude
     f->SetParLimits(1, 0.0, 5.0);  // N/P ratio
     f->SetParLimits(2, 0.0, 5.0);  // Inel/P ratio
-    const double maxShift = 0.30;  // units = your dx units; e.g., 0.02 m or 2 cm (adjust!)
+    const double maxShift = 0.05;  // units = your dx units; e.g., 0.02 m or 2 cm (adjust!)
     f->SetParLimits(3, -maxShift, +maxShift);
     f->SetParLimits(4, -maxShift, +maxShift);
     f->SetParLimits(5, -maxShift, +maxShift);
@@ -443,40 +443,45 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
 
     double W2_hist_upper_limit = 0.0;
+    double W2_hist_lower_limit = 0.0;
 
     if(std::strcmp(kin_, "GEN3_He3") == 0){
-        W2_hist_upper_limit = 1.4;
+        W2_hist_upper_limit = 1.45;
+        W2_hist_lower_limit = -1; 
     }
     else if( std::strcmp(kin_, "GEN4_He3") == 0){
-        W2_hist_upper_limit = 2;
+        W2_hist_upper_limit = 1.45;
+        W2_hist_lower_limit = -1; 
     }
     else if(std::strcmp(kin_, "GEN4b_He3") == 0 ){
-        W2_hist_upper_limit = 1.4;
+        W2_hist_upper_limit = 1.45;
+        W2_hist_lower_limit = -1; 
     }
     else{
-        W2_hist_upper_limit = 1.4;
+        W2_hist_upper_limit = 1.45;
+        W2_hist_lower_limit = -1; 
     }
 
     const int NBW2 = 100; // match your other W² binning
 
-    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", NBW2, -1, W2_hist_upper_limit);
-    TH1D hData_W2_Neutrons("hData_W2_Neutrons",  "W2 data; W^{2} (GeV^{2})", NBW2, -1, W2_hist_upper_limit);
-    TH1D hQE_W2("hQE_W2", "W^{2} QE sim",          NBW2, -1, W2_hist_upper_limit);
-    TH1D hQE_W2_Neutrons("hQE_W2_Neutrons", "W^{2} QE sim",          NBW2, -1, W2_hist_upper_limit);
-    TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          NBW2, -1, W2_hist_upper_limit);
-    TH1D hQE_proton_W2_Neutrons("hQE_proton_W2_Neutrons", "W^{2} QE sim protons",          NBW2, -1, W2_hist_upper_limit);
-    TH1D hQE_neutron_W2("hQE_neutron_W2", "W^{2} QE sim neutrons",          NBW2, -1, W2_hist_upper_limit);
-    TH1D hQE_neutron_W2_Neutrons("hQE_neutron_W2_Neutrons", "W^{2} QE sim neutrons",          NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2("hInelastic_W2",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2_Neutrons("hInelastic_W2_Neutrons",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2_Neutrons_eHCALcut_1("hInelastic_W2_Neutrons_eHCALcut_1",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2_Neutrons_eHCALcut_2("hInelastic_W2_Neutrons_eHCALcut_2",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2_Neutrons_eHCALcut_3("hInelastic_W2_Neutrons_eHCALcut_3",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2_Neutrons_eHCALcut_4("hInelastic_W2_Neutrons_eHCALcut_4",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
+    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hData_W2_Neutrons("hData_W2_Neutrons",  "W2 data; W^{2} (GeV^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hQE_W2("hQE_W2", "W^{2} QE sim",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hQE_W2_Neutrons("hQE_W2_Neutrons", "W^{2} QE sim",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hQE_proton_W2_Neutrons("hQE_proton_W2_Neutrons", "W^{2} QE sim protons",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hQE_neutron_W2("hQE_neutron_W2", "W^{2} QE sim neutrons",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hQE_neutron_W2_Neutrons("hQE_neutron_W2_Neutrons", "W^{2} QE sim neutrons",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2("hInelastic_W2",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2_Neutrons("hInelastic_W2_Neutrons",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2_Neutrons_eHCALcut_1("hInelastic_W2_Neutrons_eHCALcut_1",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2_Neutrons_eHCALcut_2("hInelastic_W2_Neutrons_eHCALcut_2",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2_Neutrons_eHCALcut_3("hInelastic_W2_Neutrons_eHCALcut_3",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2_Neutrons_eHCALcut_4("hInelastic_W2_Neutrons_eHCALcut_4",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
 
 
-    TH1D hInelastic_W2_2("hInelastic_W2_2",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
-    TH1D hInelastic_W2_2_Neutrons("hInelastic_W2_2_Neutrons",  "W^{2} inelastic sim",        NBW2, -1, W2_hist_upper_limit);
+    TH1D hInelastic_W2_2("hInelastic_W2_2",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hInelastic_W2_2_Neutrons("hInelastic_W2_2_Neutrons",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
 
     TH2D hDxdy("hDxdy", "dxdy distribution ; dx(m)",100,-4,3,100,-4,3);
     TH2D hDxdy_cut("hDxdy_cut", "dxdy distribution ; dx(m)",100,-4,3,100,-4,3);
@@ -651,7 +656,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             hDy_both.Fill(v.dy);
         }
 
-        if((c_.dy_L<v.dy && v.dy<c_.dy_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) /*((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.3,2))<=1)*/) {
+        if((c_.dy_L<v.dy && v.dy<c_.dy_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (W2_hist_lower_limit<v.W2 && v.W2<W2_hist_upper_limit) 
+        /*((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.3,2))<=1)*/) {
             if(std::strcmp(kin_, "GEN4_He3") == 0){
                 hData_W2_Neutrons.Fill(W2_new);
             }
@@ -660,7 +666,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             }
         }
 
-        if(((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.3,2))<=1) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)){
+        if(((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.3,2))<=1) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)
+            &&(W2_hist_lower_limit<v.W2 && v.W2<W2_hist_upper_limit)){
             
             if(std::strcmp(kin_, "GEN4_He3") == 0){
                 hData_W2.Fill(W2_new);
@@ -834,18 +841,6 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         double dxq = vQE.dx;//-0.02;//dx_shifted_QE(vQE);
 
-        //if ((c_.dy_L<vQE.dy && vQE.dy<c_.dy_H) && (c_.dx_L<dxq && dxq<c_.dx_H) /*((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1)*/) {
-        //    hQE_W2_Neutrons.Fill(vQE.W2, vQE.weight);
-        //    if (vQE.fnucl == 0) hQE_neutron_W2_Neutrons.Fill(vQE.W2, vQE.weight);  // see #3
-        //    if (vQE.fnucl == 1) hQE_proton_W2_Neutrons.Fill(vQE.W2, vQE.weight);
-        //}
-
-        //if (((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1) || ((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)) {
-        //    hQE_W2.Fill(vQE.W2, vQE.weight);
-        //    if (vQE.fnucl == 0) hQE_neutron_W2.Fill(vQE.W2, vQE.weight);  // see #3
-        //    if (vQE.fnucl == 1) hQE_proton_W2.Fill(vQE.W2, vQE.weight);
-        //}
-
 
         if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2 ||
             (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)) continue;
@@ -907,32 +902,6 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2) continue;
 
         double dxi = vInel.dx; /*-0.02*/ //dx_shifted_Inel(vInel);
-
-        // if ( (c_.dy_L<vInel.dy && vInel.dy<c_.dy_H) && (c_.dx_L<dxi && dxi<c_.dx_H) /*((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1)*/) {
-        //     hInelastic_W2_Neutrons.Fill(vInel.W2, vInel.weight);
-        //     hInelastic_W2_2_Neutrons.Fill(vInel.W2, vInel.weight);                    // see #3
-
-        //     if (vInel.eHCAL>0.250) {
-        //         hInelastic_W2_Neutrons_eHCALcut_1.Fill(vInel.W2,vInel.weight);
-        //     }
-
-        //     if (vInel.eHCAL>0.275) {
-        //         hInelastic_W2_Neutrons_eHCALcut_2.Fill(vInel.W2,vInel.weight);
-        //     }
-
-        //     if (vInel.eHCAL>0.300) {
-        //         hInelastic_W2_Neutrons_eHCALcut_3.Fill(vInel.W2,vInel.weight);
-        //     }
-        //     if (vInel.eHCAL>0.325) {
-        //         hInelastic_W2_Neutrons_eHCALcut_4.Fill(vInel.W2,vInel.weight);
-        //     }
-
-        // }
-
-        // if (((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1) || ((pow((vInel.dy-0)/0.4,2)+pow((dxi-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1) ) {
-        //     hInelastic_W2.Fill(vInel.W2, vInel.weight);
-        //     hInelastic_W2_2.Fill(vInel.W2, vInel.weight);                    // see #3
-        // }
 
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
             (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L>vInel.dy || vInel.dy>c_.dy_H)) continue;    
@@ -1010,6 +979,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     h_combined_pos->Scale(hData_pos.Integral());
     h_combined_neg->Scale(hData_neg.Integral());
 
+    TH1D* hQE_proton_dx_shifted = make_shifted_unit(&hQE_proton,   "hQE_proton_dx_shifted", dx_p_out);
+    TH1D* hQE_neutron_dx_shifted = make_shifted_unit(&hQE_neutron,   "hQE_neutron_dx_shifted", dx_n_out);
+    TH1D* hInelastic_dx_shifted = make_shifted_unit(&hInelastic,   "hinelastic_dx_shifted", dx_inel_out);
+
     TH1D* hQE_proton_pos = (TH1D*) hQE_proton.Clone("hQE_proton_pos");
     TH1D* hQE_proton_neg = (TH1D*) hQE_proton.Clone("hQE_proton_neg");
 
@@ -1019,9 +992,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D* hInelastic_pos = (TH1D*) hInelastic.Clone("hInelastic_pos");
     TH1D* hInelastic_neg = (TH1D*) hInelastic.Clone("hInelastic_neg");
 
-    hQE_proton.Scale(par0*hData.Integral()*1/hQE_proton.Integral());
-    hQE_neutron.Scale(par0*par1*hData.Integral()*1/hQE_neutron.Integral());
-    hInelastic.Scale(par0*par2*hData.Integral()*1/hInelastic.Integral());
+    hQE_proton_dx_shifted->Scale(par0*hData.Integral()*1/hQE_proton_dx_shifted->Integral());
+    hQE_neutron_dx_shifted->Scale(par0*par1*hData.Integral()*1/hQE_neutron_dx_shifted->Integral());
+    hInelastic_dx_shifted->Scale(par0*par2*hData.Integral()*1/hInelastic_dx_shifted->Integral());
 
     hQE_proton_pos->Scale(parP0*hData_pos.Integral()*1/hQE_proton_pos->Integral());
     hQE_neutron_pos->Scale(parP0*parP1*hData_pos.Integral()*1/hQE_neutron_pos->Integral());
@@ -1035,9 +1008,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //dfrac_ = std::sqrt(wI*wQ/(wI+wQ)/(wI+wQ)/(hD.Integral()));
 
     double QE_events = hData.Integral(hData.FindBin(c_.dx_L),hData.FindBin(c_.dx_H));
-    double inelastic_events = hInelastic.Integral(hInelastic.FindBin(c_.dx_L),hInelastic.FindBin(c_.dx_H));
-    double proton_events = hQE_proton.Integral(hQE_proton.FindBin(c_.dx_L),hQE_proton.FindBin(c_.dx_H));
-    double neutron_events = hQE_neutron.Integral(hQE_neutron.FindBin(c_.dx_L),hQE_neutron.FindBin(c_.dx_H));
+    double inelastic_events = hInelastic_dx_shifted->Integral(hInelastic_dx_shifted->FindBin(c_.dx_L),hInelastic_dx_shifted->FindBin(c_.dx_H));
+    double proton_events = hQE_proton_dx_shifted->Integral(hQE_proton_dx_shifted->FindBin(c_.dx_L),hQE_proton_dx_shifted->FindBin(c_.dx_H));
+    double neutron_events = hQE_neutron_dx_shifted->Integral(hQE_neutron_dx_shifted->FindBin(c_.dx_L),hQE_neutron_dx_shifted->FindBin(c_.dx_H));
 
     double Rnop = neutron_events/proton_events;
 
@@ -1066,6 +1039,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     const double dFin = std::sqrt(dF2);
 
     double background_frac = inelastic_events/QE_events; //before removing other fractions
+    double err_background_frac = (inelastic_events/QE_events)*sqrt((1/inelastic_events)+(1/QE_events));
     double inelastic_frac = inelastic_events * (1 - facc - fN2 - fpi)/QE_events;    
     double errinelastic_frac =  dFin;//(inelastic_events/QE_events)*sqrt((1/inelastic_events)+(1/QE_events)); 
     double proton_frac = proton_events/QE_events;
@@ -1082,8 +1056,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"par0 = "<< par0 <<"\n";
     txt<<"par1 = "<< par1 <<"\n";
     txt<<"par2 = "<< par2 <<"\n";
+    txt<<"data events = "<<QE_events<<"\n";
+    txt<<"background events = "<<inelastic_events<<"\n";
     txt<<"background_fraction = "<<background_frac<<"\n";
-    txt<<"err_inelastic_fraction = "<<errinelastic_frac<<"\n";
+    txt<<"err_background_fraction = "<<err_background_frac<<"\n";
+    //txt<<"err_inelastic_fraction = "<<errinelastic_frac<<"\n";
     txt<<"proton_fraction = "<<proton_frac<<"\n";
     txt<<"err_proton_fraction = "<<errproton_frac<<"\n";
     
@@ -1134,51 +1111,19 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             dxq = vQE.dx - dx_n_out;
         }
 
-        if ((c_.dy_L<vQE.dy && vQE.dy<c_.dy_H) && (c_.dx_L<dxq && dxq<c_.dx_H) /*((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1)*/) {
+        if ((c_.dy_L<vQE.dy && vQE.dy<c_.dy_H) && (c_.dx_L<dxq && dxq<c_.dx_H) && (W2_hist_lower_limit<vQE.W2 && vQE.W2<W2_hist_upper_limit)
+        /*((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1)*/) {
             hQE_W2_Neutrons.Fill(vQE.W2, vQE.weight);
             if (vQE.fnucl == 0) hQE_neutron_W2_Neutrons.Fill(vQE.W2, vQE.weight);  // see #3
             if (vQE.fnucl == 1) hQE_proton_W2_Neutrons.Fill(vQE.W2, vQE.weight);
         }
 
-        if (((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1) || ((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)) {
+        if (((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1) || ((pow((vQE.dy-0.0)/0.4,2)+pow((dxq-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)
+            && (W2_hist_lower_limit<vQE.W2 && vQE.W2<W2_hist_upper_limit)) {
             hQE_W2.Fill(vQE.W2, vQE.weight);
             if (vQE.fnucl == 0) hQE_neutron_W2.Fill(vQE.W2, vQE.weight);  // see #3
             if (vQE.fnucl == 1) hQE_proton_W2.Fill(vQE.W2, vQE.weight);
         }
-
-        // if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2 ||
-        //     (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)) continue;
-
-        // if(vQE.fnucl == 0) {
-        //     if(std::strcmp(kin_, "GEN3_He3") == 0){
-        //         hQE_neutron.Fill(vQE.dx/*-0.1*/,vQE.weight);
-        //     }
-        //     else if(std::strcmp(kin_, "GEN4_He3") == 0){
-        //         hQE_neutron.Fill(vQE.dx/*-0.07*/,vQE.weight);
-        //     }
-        //     else if(std::strcmp(kin_, "GEN4b_He3") == 0){
-        //         hQE_neutron.Fill(vQE.dx/*-0.025*/,vQE.weight);
-        //     }
-        //     else{
-        //         hQE_neutron.Fill(vQE.dx,vQE.weight);
-        //     }
-
-        // }
-
-        // if(vQE.fnucl == 1) {
-        //     if(std::strcmp(kin_, "GEN3_He3") == 0){
-        //         hQE_proton.Fill(vQE.dx,vQE.weight);
-        //     }
-        //     else if(std::strcmp(kin_, "GEN4_He3") == 0){
-        //         hQE_proton.Fill(vQE.dx/*-0.02*/,vQE.weight);
-        //     }
-        //     else if(std::strcmp(kin_, "GEN4b_He3") == 0){
-        //         hQE_proton.Fill(vQE.dx/*+0.05*/,vQE.weight);
-        //     }
-        //     else{
-        //         hQE_proton.Fill(vQE.dx,vQE.weight);
-        //     }
-        // }//+0.05 is for GEN3 its hard coded for now
 
         // progress bar
         if (i % step == 0 || i == nentries_QE - 1) {
@@ -1207,7 +1152,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         double dxi = vInel.dx - dx_inel_out;
 
-        if ( (c_.dy_L<vInel.dy && vInel.dy<c_.dy_H) && (c_.dx_L<dxi && dxi<c_.dx_H) /*((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1)*/) {
+        if ( (c_.dy_L<vInel.dy && vInel.dy<c_.dy_H) && (c_.dx_L<dxi && dxi<c_.dx_H) && (W2_hist_lower_limit<vInel.W2 && vInel.W2<W2_hist_upper_limit) 
+        /*((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1)*/) {
+        
             hInelastic_W2_Neutrons.Fill(vInel.W2, vInel.weight);
             hInelastic_W2_2_Neutrons.Fill(vInel.W2, vInel.weight);                    // see #3
 
@@ -1228,50 +1175,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         }
 
-        if (((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1) || ((pow((vInel.dy-0)/0.4,2)+pow((dxi-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1) ) {
+        if (((pow((vInel.dy-0.0)/0.4,2)+pow((dxi-0.0)/0.3,2))<=1) || ((pow((vInel.dy-0)/0.4,2)+pow((dxi-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1) 
+            && (W2_hist_lower_limit<vInel.W2 && vInel.W2<W2_hist_upper_limit) ) {
             hInelastic_W2.Fill(vInel.W2, vInel.weight);
             hInelastic_W2_2.Fill(vInel.W2, vInel.weight);                    // see #3
         }
-
-        // if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
-        //     (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L>vInel.dy || vInel.dy>c_.dy_H)) continue;    
-
-        // if(std::strcmp(kin_, "GEN3_He3") == 0){
-            
-        //     hInelastic.Fill(vInel.dx/*+0.4*/,vInel.weight);//+0.4 is for GEN3 its hard coded for now
-
-        //     if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx/*+0.4*/,vInel.weight);
-
-        //     if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx/*+0.4*/,vInel.weight);
-        // }
-        // else if(std::strcmp(kin_, "GEN4_He3") == 0){
-            
-        //     hInelastic.Fill(vInel.dx/*+0.6*/,vInel.weight);//+0.4 is for GEN3 its hard coded for now
-
-        //     if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx/*+0.6*/,vInel.weight);
-
-        //     if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx/*+0.6*/,vInel.weight);
-        // }
-        // else if(std::strcmp(kin_, "GEN4b_He3") == 0){
-            
-        //     //std::cout<<"debug here"<<'\n';
-
-        //     hInelastic.Fill(vInel.dx/*+0.25*/,vInel.weight);//+0.4 is for GEN3 its hard coded for now
-
-        //     if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx/*+0.25*/,vInel.weight);
-
-        //     if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx/*+0.25*/,vInel.weight);
-        // }
-        // else{
-        //     //std::cout<<"debug here in else"<<'\n';
-
-        //     hInelastic.Fill(vInel.dx,vInel.weight);
-
-        //     if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx,vInel.weight);
-
-        //     if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx,vInel.weight);
-
-        // }
 
         // progress bar
         if (i % step == 0 || i == nentries_inel - 1) {
@@ -1384,19 +1292,22 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hQE_W2_Neutrons.Scale(          N_Neutrons * (1.0/hQE_W2_Neutrons.Integral())           * par0_2_Neutrons );
     hInelastic_W2_shift2_Neutrons->Scale( N_Neutrons /*(1.0/hInelastic_W2_shift2_Neutrons->Integral())*/* par1_2_Neutrons );
 
-
+    double W2_data_events = hData_W2_Neutrons.Integral(hData_W2_Neutrons.FindBin(c_.W2_L),hData_W2_Neutrons.FindBin(c_.W2_H));
     double W2_fit_events = h_combined_W2_Neutrons->Integral(h_combined_W2_Neutrons->FindBin(c_.W2_L),h_combined_W2_Neutrons->FindBin(c_.W2_H));
     double W2_neutron_events = hQE_neutron_W2_Neutrons.Integral(hQE_neutron_W2_Neutrons.FindBin(c_.W2_L),hQE_neutron_W2_Neutrons.FindBin(c_.W2_H));
     double W2_bkg_events = hInelastic_W2_shift1_Neutrons->Integral(hInelastic_W2_shift1_Neutrons->FindBin(c_.W2_L),hInelastic_W2_shift1_Neutrons->FindBin(c_.W2_H));
     double W2_proton_events = hQE_proton_W2_Neutrons.Integral(hQE_proton_W2_Neutrons.FindBin(c_.W2_L),hQE_proton_W2_Neutrons.FindBin(c_.W2_H));
 
-    double W2_fit_bkg_fraction = W2_bkg_events/W2_fit_events;
+    double W2_fit_bkg_fraction = W2_bkg_events/W2_data_events;
+    double W2_fit_err_background_frac = (W2_bkg_events/W2_data_events)*sqrt((1/W2_bkg_events)+(1/W2_data_events));
 
+    txt<<"W2_data_events = "<<W2_data_events<<"\n";
     txt<<"W2_fit_events = "<<W2_fit_events<<"\n";
     txt<<"W2_neutron_events = "<<W2_neutron_events<<"\n";
     txt<<"W2_bkg_events = "<<W2_bkg_events<<"\n";
     txt<<"W2_proton_events = "<<W2_proton_events<<"\n";
     txt<<"background_fraction_W2_fit = "<<W2_fit_bkg_fraction<<"\n";
+    txt<<"err_background_fraction_W2_fit = "<<W2_fit_err_background_frac<<"\n";
     txt.close();
 
 
@@ -1434,33 +1345,33 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     C->cd(1);
     
     h_combined->SetLineColor(3);
-    hQE_proton.SetLineColor(6);
-    hQE_neutron.SetLineColor(9);
-    hInelastic.SetLineColor(7);
+    hQE_proton_dx_shifted->SetLineColor(6);
+    hQE_neutron_dx_shifted->SetLineColor(9);
+    hInelastic_dx_shifted->SetLineColor(7);
     hData.SetLineColor(kBlack);
 
     h_combined->SetLineWidth(4);
-    hQE_proton.SetLineWidth(4);
-    hQE_neutron.SetLineWidth(4);
-    hInelastic.SetLineWidth(4);
+    hQE_proton_dx_shifted->SetLineWidth(4);
+    hQE_neutron_dx_shifted->SetLineWidth(4);
+    hInelastic_dx_shifted->SetLineWidth(4);
     hData.SetLineWidth(4);
 
     h_combined->SetFillColorAlpha(19,0.1);
     h_combined->SetFillStyle(3009);
-    hQE_proton.SetFillColorAlpha(6,0.5);
-    hQE_proton.SetFillStyle(3004);
-    hQE_neutron.SetFillColorAlpha(9,0.5);
-    hQE_neutron.SetFillStyle(3005);
-    hInelastic.SetFillColorAlpha(7,0.5);
-    hInelastic.SetFillStyle(3009);
+    hQE_proton_dx_shifted->SetFillColorAlpha(6,0.5);
+    hQE_proton_dx_shifted->SetFillStyle(3004);
+    hQE_neutron_dx_shifted->SetFillColorAlpha(9,0.5);
+    hQE_neutron_dx_shifted->SetFillStyle(3005);
+    hInelastic_dx_shifted->SetFillColorAlpha(7,0.5);
+    hInelastic_dx_shifted->SetFillStyle(3009);
 
     hData.SetMarkerStyle(kFullCircle);
 
     hData.Draw("p");
     h_combined->Draw("hist same");
-    hQE_proton.Draw("hist same");
-    hQE_neutron.Draw("hist same");
-    hInelastic.Draw("hist same");
+    hQE_proton_dx_shifted->Draw("hist same");
+    hQE_neutron_dx_shifted->Draw("hist same");
+    hInelastic_dx_shifted->Draw("hist same");
 
     C->cd(2);
     h_combined_pos->SetLineColor(3);
