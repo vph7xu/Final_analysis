@@ -154,9 +154,17 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     std::cout << "[AccidentalCorrection] graph written to " << rootName_ << "\n";
 
     // Utility to draw a vertical dashed line spanning the full y-range of pad’s frame
-    auto drawVLine = [](double x, double y1, double y2, int color=kGray+2) {
+    auto drawVLine_dashed = [](double x, double y1, double y2, int color=kGray+2) {
         TLine *L = new TLine(x, y1, x, y2);
         L->SetLineStyle(2);   // dashed
+        L->SetLineWidth(3);
+        L->SetLineColor(color);
+        L->Draw("same");
+    };
+
+    auto drawVLine = [](double x, double y1, double y2, int color=kGray+2) {
+        TLine *L = new TLine(x, y1, x, y2);
+        L->SetLineStyle(1);   
         L->SetLineWidth(3);
         L->SetLineColor(color);
         L->Draw("same");
@@ -185,14 +193,14 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     // interior bin edges
     for (int i=1;i<nBins;++i) {
         double xEdge = binMin + i*binWidth;
-        drawVLine(xEdge, yLow, yHigh);
+        drawVLine_dashed(xEdge, yLow, yHigh);
     }
 
     // optional “special” borders (QE and accidental window limits)
-    drawVLine(c_.coin_L,      yLow, yHigh, kRed+1);
-    drawVLine(c_.coin_H,      yLow, yHigh, kRed+1);
-    drawVLine(c_.coin_L+35, yLow, yHigh, kGreen+2);
-    drawVLine(c_.coin_H+35, yLow, yHigh, kGreen+2);
+    drawVLine(c_.coin_L,      yLow, yHigh, kGreen);
+    drawVLine(c_.coin_H,      yLow, yHigh, kGreen);
+    drawVLine(c_.coin_L+35, yLow, yHigh, kRed);
+    drawVLine(c_.coin_H+35, yLow, yHigh, kRed);
 
 
     //c1->Divide(2,2);

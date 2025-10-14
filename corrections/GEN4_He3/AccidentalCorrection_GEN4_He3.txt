@@ -1,8 +1,8 @@
-N_plus_all      = 165
-N_minus_all     = 153
-A_acc           = 0.0377358
-err_A_acc       = 0.0560373
-accidental_events = 90
-QE_events       = 4382
-f_acc           = 0.0205386
-err_f_acc       = 0.00216496
+N_plus_all      = 158
+N_minus_all     = 142
+A_acc           = 0.0533333
+err_A_acc       = 0.0576529
+accidental_events = 83
+QE_events       = 4306
+f_acc           = 0.0192754
+err_f_acc       = 0.00211575

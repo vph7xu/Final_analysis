@@ -56,6 +56,12 @@ private:
     // helpers
     TH1D* performFit(TH1D* h_data, TH1D* h_inel, TH1D* h_QE_proton, TH1D* h_QE_neutron,
                      double& par0, double& par1, double& par2, double& dx_p_out, double& dx_n_out, double& dx_inel_out);
+                    
+    TH2D* performFitDxDy(TH2D* hD2, TH2D* hInel2, TH2D* hQEp2, TH2D* hQEn2,
+	    double& A, double& rNP, double& rI,
+	    double& dx_p, double& dy_p,double& dx_n, double& dy_n,double& dx_i, double& dy_i
+	);
+
                      
     TH1D* performFitW2(TH1D* h_data, TH1D* h_inel, TH1D* h_QE_proton, TH1D* h_QE_neutron,
                      double& par0, double& par1, double Rnop);
