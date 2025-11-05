@@ -52,8 +52,11 @@ private:
     double asym_ = 0.0;
     double err_  = 0.0;
     
+    // perform a shape fit of (pion + QE) to data. Returns the combined shape
+    // and fills pion/qe fitted weights plus their 1-sigma parameter errors.
     TH1D* performFit(TH1D* h_data, TH1D* h_pion, TH1D* h_QE,
-                 double &pion_weight, double &qe_weight);
+                 double &pion_weight, double &qe_weight,
+                 double &pion_weight_err, double &qe_weight_err);
     
 };
 

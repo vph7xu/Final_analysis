@@ -1,10 +1,17 @@
 #include "PionCorrection.h"
+#include "Utility.h"
 
 #include <TFile.h>
 #include <TCanvas.h>
 #include <TNamed.h>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
+#include <TLegend.h>
+#include <TStyle.h>
+#include <string>
+
+using std::string; using std::vector; using std::unordered_map;
 
 PionCorrection::PionCorrection(const AnalysisCuts& cuts,
                                const RunQuality* rq,
@@ -14,7 +21,8 @@ PionCorrection::PionCorrection(const AnalysisCuts& cuts,
 
 
 TH1D* PionCorrection::performFit(TH1D* h_data, TH1D* h_pion, TH1D* h_QE,
-                 double &pion_weight, double &qe_weight)
+                 double &pion_weight, double &qe_weight,
+                 double &pion_weight_err, double &qe_weight_err)
 {
     // 1) Clone each histogram so we can re-scale them for shape fitting
     //    without affecting the originals.
@@ -45,11 +53,16 @@ TH1D* PionCorrection::performFit(TH1D* h_data, TH1D* h_pion, TH1D* h_QE,
     fitFunction->SetParLimits(1, 0, 1);
 
     // 4) Fit the normalized data histogram using the shape model.
+    // Request the fit and quietly retrieve parameter values/errors.
+    // Using option "RQ" (Range, Quiet) — TF1 stores parameter errors accessible
+    // via GetParError after the fit.
     h_data_norm->Fit(fitFunction, "RQ"); // R=Range-limit, Q=Quiet
 
-    // 5) Retrieve the fitted weights.
+    // 5) Retrieve the fitted weights and their 1-sigma errors.
     pion_weight = fitFunction->GetParameter(0);
     qe_weight   = fitFunction->GetParameter(1);
+    pion_weight_err = fitFunction->GetParError(0);
+    qe_weight_err   = fitFunction->GetParError(1);
 
     // 6) Construct a shape-only combined fit histogram:
     //    combined_fit(bin) = pion_weight*pion_norm(bin) + qe_weight*QE_norm(bin).
@@ -70,20 +83,50 @@ TH1D* PionCorrection::performFit(TH1D* h_data, TH1D* h_pion, TH1D* h_QE,
 void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, BranchVars& v, 
     BranchVarsSim& vQE, BranchVarsSim& vPim)
 {
+    Utility utility;
+
+    auto   corrFile = [&](const char* stem){
+        return string("corrections/")+kin_+"/" + stem + "Correction_" + kin_ + ".txt"; };
+
+    const string accFile = corrFile("Accidental");
+    const string nitFile = corrFile("Nitrogen");
+
+    // -------- read TXT correction files directly -------------------------------
+    const auto accMap  = utility.readSimpleKVGlobal(accFile);
+    const auto nitMap  = utility.readSimpleKVGlobal(nitFile);
+
+    auto V=[&](const auto& M,const char* k){ auto it=M.find(k); return it!=M.end()? it->second : 0.0; };
+
+    // central values
+    double Aacc = V(accMap ,"A_acc");           // not provided yet
+
+    double facc = V(accMap ,"f_acc");
+    double fN2  = V(nitMap ,"f_N2");
+
+    // errors
+    double errAacc = V(accMap ,"err_A_acc");
+
+    double errfacc = V(accMap ,"err_f_acc");
+    double errfN2  = V(nitMap ,"err_f_N2");
+
+
     if (c_.pion_L == 0 && c_.pion_H == 0) {
         std::cerr << "[PionCorrection] Warning: pion_L/H not defined — skipping." << std::endl;
         return;
     }
 
-    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (pion sim) ; Energy(GeV)",  200, 0.01, 2);
-    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 2);
-    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (pion sim) ; Energy(GeV)",  200, 0.01, 2);
-    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 2);
-    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy ; Energy (GeV)",    200, 0.01, 2);
-    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 200,0.01,2);
-    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 200,0.01,2);
+    std::cout<< "pion_L" << c_.pion_L<<"\n";
+    std::cout<< "pion_H" << c_.pion_H<<"\n";
 
-    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 2);
+    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 3);
+    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 3);
+    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 3);
+    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 3);
+    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy ; Energy (GeV)",    200, 0.01, 3);
+    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 200,0.01,3);
+    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 200,0.01,3);
+
+    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 3);
 
     double Ngrinch_pos = 0;
     double Ngrinch_neg = 0;
@@ -93,6 +136,8 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     Long64_t nentries = ch.GetEntries();
     const Long64_t step     = 100;
     std::cout << "[PionCorrection] looping over " << nentries << " events\n";
+
+
 
     for (Long64_t i=0;i<nentries;++i){
         ch.GetEntry(i);
@@ -208,16 +253,22 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     }
 
     double pion_weight_all=0, qe_weight_all=0;
+    double pion_weight_all_err=0, qe_weight_all_err=0;
     TH1D* h_combined_all = performFit(h_PSe_data, h_PSe_pion, h_PSe_QE,
-                                      pion_weight_all, qe_weight_all);
+                                      pion_weight_all, qe_weight_all,
+                                      pion_weight_all_err, qe_weight_all_err);
 
     double pion_weight_pos=0, qe_weight_pos=0;
+    double pion_weight_pos_err=0, qe_weight_pos_err=0;
     TH1D* h_combined_pos = performFit(h_PSe_data_pos, h_PSe_pion_loose_cuts, h_PSe_QE_loose_cuts,
-                                      pion_weight_pos, qe_weight_pos);
+                                      pion_weight_pos, qe_weight_pos,
+                                      pion_weight_pos_err, qe_weight_pos_err);
 
     double pion_weight_neg=0, qe_weight_neg=0;
+    double pion_weight_neg_err=0, qe_weight_neg_err=0;
     TH1D* h_combined_neg = performFit(h_PSe_data_neg, h_PSe_pion_loose_cuts, h_PSe_QE_loose_cuts,
-                                      pion_weight_neg, qe_weight_neg);
+                                      pion_weight_neg, qe_weight_neg,
+                                      pion_weight_neg_err, qe_weight_neg_err);
 
     // For "all data" 
     double dataIntegral_all = h_PSe_data->Integral();
@@ -252,7 +303,14 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
     long long sum = Np_ + Nm_;
     asym_ = (sum>0)? double(Np_ - Nm_) / sum : 0.0;
-    err_  = (sum>0)? 2.0*std::sqrt(double(Np_)*Nm_)/(sum*sum) : 0.0;
+    if (sum > 0) {
+        const double sum_d = double(sum);
+        // Correct propagation for A = (N+ - N-)/N where N=N+ + N-
+        // sigma_A = 2*sqrt(N+ * N-) / N^(3/2)
+        err_ = 2.0 * std::sqrt(double(Np_) * double(Nm_)) / std::pow(sum_d, 1.5);
+    } else {
+        err_ = 0.0;
+    }
 
     double Cpi_pos = pion_weight_pos;
     double Cpi_neg = pion_weight_neg;
@@ -260,8 +318,18 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     double pos_integral = h_pion_scaled_pos->Integral();
     double neg_integral = h_pion_scaled_neg->Integral();
 
-    double asymCpi = (Cpi_pos - Cpi_neg)/(Cpi_pos + Cpi_neg);
-    double err_asymCpi = 2*sqrt(Cpi_pos*Cpi_neg/pow(Cpi_pos+Cpi_neg,3));
+    double asymCpi = 0.0;
+    double err_asymCpi = 0.0;
+    double denomC = (Cpi_pos + Cpi_neg);
+    if (denomC > 0) {
+        asymCpi = (Cpi_pos - Cpi_neg) / denomC;
+        // propagate parameter errors from the fit. We neglect the covariance term
+        // between the two fit parameters here (could be added if available).
+        double dCpos = 2.0 * Cpi_neg / (denomC * denomC);
+        double dCneg = -2.0 * Cpi_pos / (denomC * denomC);
+        err_asymCpi = std::sqrt(dCpos*dCpos * pion_weight_pos_err*pion_weight_pos_err
+                              + dCneg*dCneg * pion_weight_neg_err*pion_weight_neg_err);
+    }
 
     double asymIntegral = (pos_integral - neg_integral)/(pos_integral + neg_integral);
     double err_asymIntegral = 2*sqrt(pos_integral*neg_integral/pow(pos_integral+neg_integral,3));
@@ -275,14 +343,33 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     double pi_events_all = h_pion_scaled_all->Integral(h_pion_scaled_all->FindBin(c_.pion_L),h_pion_scaled_all->FindBin(c_.pion_H));
     double QE_events_all = h_PSe_data->Integral(h_PSe_data->FindBin(c_.pion_L),h_PSe_data->FindBin(c_.pion_H));
 
-    if( pi_events_all<1) {
+    // full propagation for f_pi = (A * C) / B, with A = pi_events_all,
+    // B = QE_events_all, C = (1 - facc - fN2).
+    if (pi_events_all <= 0.0 || QE_events_all <= 0.0) {
         f_pi = 0.0;
         err_f_pi = 0.0;
-    }
-    else{
-        f_pi = pi_events_all/QE_events_all;
+    } else {
+        const double A = pi_events_all;
+        const double B = QE_events_all;
+        const double C = 1.0 - facc - fN2;
 
-        err_f_pi = (pi_events_all/QE_events_all)*sqrt((1/pi_events_all)+(1/QE_events_all));
+        f_pi = (A * C) / B;
+
+        // Uncertainties: sigma_A = sqrt(A) (Poisson), sigma_B = sqrt(B),
+        // sigma_C = sqrt(err_facc^2 + err_fN2^2) (assume independent)
+        const double sigmaA = std::sqrt(std::max(0.0, A));
+        const double sigmaB = std::sqrt(std::max(0.0, B));
+        const double sigmaC = std::sqrt(errfacc*errfacc + errfN2*errfN2);
+
+        // Propagate using partial derivatives:
+        // df/dA = C / B
+        // df/dC = A / B
+        // df/dB = -A*C / B^2
+        const double termA = (C / B) * sigmaA;
+        const double termC = (A / B) * sigmaC;
+        const double termB = (A * C / (B*B)) * sigmaB;
+
+        err_f_pi = std::sqrt(termA*termA + termC*termC + termB*termB);
     }
 
     // ROOT output: store as TNamed (name:value,error)
@@ -300,6 +387,8 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     f<< "err_asymIntegral = "<<err_asymIntegral<<"\n";
     f<< "asymGrinch = "<<asymGrinch<<"\n";
     f<< "err_asymGrinch = "<<err_asymGrinch<<"\n";
+    f<< "pi_events_all = "<<pi_events_all<<"\n";
+    f<< "QE_events_all = "<<QE_events_all<<"\n";
     f<< "A_pi = "<<asymGrinch<<"\n";
     f<< "err_A_pi = "<<err_asymGrinch<<"\n";
     f<< "f_pi = "<<f_pi<<"\n";
@@ -331,10 +420,13 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
               << " ± " << err_ << " written to " << outFile_ << "\n";
 
 
+    gStyle->SetOptStat(0);
     /////////////////// Canvas and Printing ////////////////////////
     TCanvas *C = new TCanvas("c","c",2400,1500);
+    TCanvas *C1 = new TCanvas("c1","c1",2400,1500);
+    TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
 
-    C->Divide(2,2);
+    C->Divide(1,1);
     C->cd(1);
     h_combined_scaled_all->SetLineColor(kGreen);
     h_PSe_data->SetLineColor(kBlack);
@@ -353,7 +445,22 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     h_pion_scaled_all->Draw("same hist");
     h_QE_scaled_all->Draw("same hist");
 
-    C->cd(2);
+    TLegend* leg = new TLegend(0.55, 0.62, 0.88, 0.88); // x1,y1,x2,y2 (NDC)
+    leg->SetBorderSize(0);
+    leg->SetFillStyle(0);
+    leg->SetTextSize(0.035);
+
+    leg->AddEntry(h_PSe_data,           "Data (PS e)",   "p"); // points
+    leg->AddEntry(h_QE_scaled_all,      "QE ",   "l"); // blue line
+    leg->AddEntry(h_pion_scaled_all,    "#pi^{-} background","l"); // red line
+    leg->AddEntry(h_combined_scaled_all,"Fit (C_{#pi^{-}}S_{#pi^{-}} + C_{e}S_{e})","l"); // green line
+
+    leg->Draw();
+    gPad->Update();
+
+    C1->Divide(2,1);
+
+    C1->cd(1);
     h_combined_scaled_pos->SetLineColor(kGreen);
     h_PSe_data_pos->SetLineColor(kBlack);
     h_QE_scaled_pos->SetLineColor(kBlue);
@@ -371,7 +478,20 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     h_pion_scaled_pos->Draw("same hist");
     h_QE_scaled_pos->Draw("same hist");
 
-    C->cd(3);
+    TLegend* leg_p = new TLegend(0.55, 0.62, 0.88, 0.88); // x1,y1,x2,y2 (NDC)
+    leg_p->SetBorderSize(0);
+    leg_p->SetFillStyle(0);
+    leg_p->SetTextSize(0.035);
+
+    leg_p->AddEntry(h_PSe_data_pos,           "Data (PS e)",   "p"); // points
+    leg_p->AddEntry(h_QE_scaled_pos,      "QE ",   "l"); // blue line
+    leg_p->AddEntry(h_pion_scaled_pos,    "#pi^{-} background","l"); // red line
+    leg_p->AddEntry(h_combined_scaled_pos,"Fit (C_{#pi^{-}}^{+} S_{#pi^{-}} + C_{e}^{+} S_{e})","l"); // green line
+
+    leg_p->Draw();
+    gPad->Update();
+
+    C1->cd(2);
     h_combined_scaled_neg->SetLineColor(kGreen);
     h_PSe_data_neg->SetLineColor(kBlack);
     h_QE_scaled_neg->SetLineColor(kBlue);
@@ -389,9 +509,26 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     h_pion_scaled_neg->Draw("same hist");
     h_QE_scaled_neg->Draw("same hist");
 
-    C->cd(4);
+    TLegend* leg_m = new TLegend(0.55, 0.62, 0.88, 0.88); // x1,y1,x2,y2 (NDC)
+    leg_m->SetBorderSize(0);
+    leg_m->SetFillStyle(0);
+    leg_m->SetTextSize(0.035);
+
+    leg_m->AddEntry(h_PSe_data_neg,           "Data (PS e)",   "p"); // points
+    leg_m->AddEntry(h_QE_scaled_neg,      "QE ",   "l"); // blue line
+    leg_m->AddEntry(h_pion_scaled_neg,    "#pi^{-} background","l"); // red line
+    leg_m->AddEntry(h_combined_scaled_neg,"Fit (C_{#pi^{-}}^{-} S_{#pi^{-}} + C_{e}^{-} S_{e})","l"); // green line
+
+    leg_m->Draw();
+    gPad->Update();
+
+    C2->Divide(2,2);
+    C2->cd(1);
     h_PSe_data_grinch->Draw();
 
     C->Print(Form("images/%s/PionPlots_%s.png",kin_,kin_));
+    C1->Print(Form("images/%s/PionPlots_1_%s.png",kin_,kin_));
+    C2->Print(Form("images/%s/PionPlots_GRINCH_%s.png",kin_,kin_));
+
 
 }

@@ -57,7 +57,7 @@ struct AnalysisCuts
         fetch(coin_ac_L, "coin_ac_L"); fetch(coin_ac_H, "coin_ac_H");
         fetch(runnum_L,  "runnum_L");  fetch(runnum_H,  "runnum_H");
         fetch(Pkin_L,	  "Pkin_L");    fetch(Pkin_H,    "Pkin_H");
-        fetch(pion_L,    "pion_L");    fetch(pion_L,    "pion_H");
+        fetch(pion_L,    "pion_L");    fetch(pion_H,    "pion_H");
              
         if (j.contains("helicity"))
             helicity = j["helicity"].get<int>();

@@ -20,7 +20,7 @@
   "Pkin_L"    :  -1,
   "Pkin_H"    :  -1,
   "pion_L"    :  0.2,
-  "pion_H"    :  10.0,
+  "pion_H"    :  2.8,
   "runnum_L"  :  2000,
   "runnum_H"  :  2350
 }

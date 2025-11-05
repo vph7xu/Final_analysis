@@ -20,7 +20,10 @@
 #include <TChain.h>
 #include <TH1D.h>
 #include <TH2D.h>
+#include <TH3D.h>
 #include <TF1.h>
+#include <TF2.h>
+#include <TF3.h>
 #include <string>
 #include <functional>
 
@@ -59,9 +62,12 @@ private:
                     
     TH2D* performFitDxDy(TH2D* hD2, TH2D* hInel2, TH2D* hQEp2, TH2D* hQEn2,
 	    double& A, double& rNP, double& rI,
-	    double& dx_p, double& dy_p,double& dx_n, double& dy_n,double& dx_i, double& dy_i
-	);
+	    double& dx_p, double& dy_p,double& dx_n, double& dy_n,double& dx_i, double& dy_i);
 
+    TH3D* performFitDxDyW2(TH3D* hD3, TH3D* hInel3, TH3D* hQEp3, TH3D* hQEn3,
+    			    double& A, double& rNP, double& rI,
+    			    double& dx_p, double& dy_p, double& dW2_p, double& dx_n, double& dy_n, double& dW2_n,
+    			    double& dx_i, double& dy_i, double& dW2_i);
                      
     TH1D* performFitW2(TH1D* h_data, TH1D* h_inel, TH1D* h_QE_proton, TH1D* h_QE_neutron,
                      double& par0, double& par1, double Rnop);

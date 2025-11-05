@@ -1,0 +1,16 @@
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 204  err = 14.2829
+ROI_Proton      = 0.986345  err = 0.993149  ratio = 0.00483502  err_ratio = 0.00488013
+ROI_Neutron     = 204.505  err = 14.3005  ratio = 1.00248  err_ratio = 0.0991986
+ROI_Inelastic   = 7.17099  err = 2.67787  ratio = 0.0351519  err_ratio = 0.0133555
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 189  err = 13.7477
+ROI_Proton      = 0.700108  err = 0.836725  ratio = 0.00370428  err_ratio = 0.00443531
+ROI_Neutron     = 152.766  err = 12.3599  ratio = 0.808287  err_ratio = 0.0879398
+ROI_Inelastic   = 6.88638  err = 2.62419  ratio = 0.0364359  err_ratio = 0.0141353
