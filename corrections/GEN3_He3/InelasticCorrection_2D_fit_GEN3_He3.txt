@@ -62,3 +62,347 @@ ROI_Data_counts = 5856  err = 76.5245
 ROI_Proton      = 96.5424  err = 9.8256  ratio = 0.0164861  err_ratio = 0.00169164
 ROI_Neutron     = 4245.17  err = 65.155  ratio = 0.724927  err_ratio = 0.0146127
 ROI_Inelastic   = 1388.28  err = 37.2596  ratio = 0.237069  err_ratio = 0.00707675
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 5856  err = 76.5245
+ROI_Proton      = 80.6612  err = 8.98116  ratio = 0.0137741  err_ratio = 0.00154419
+ROI_Neutron     = 4508.95  err = 67.1487  ratio = 0.769971  err_ratio = 0.0152553
+ROI_Inelastic   = 1288.05  err = 35.8895  ratio = 0.219954  err_ratio = 0.0067692
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 0  err = 0
+ROI_Proton      = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Neutron     = 0  err = 0  ratio = 0  err_ratio = 0
+ROI_Inelastic   = 0  err = 0  ratio = 0  err_ratio = 0
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 10817  err = 104.005
+ROI_Proton      = 171.373  err = 13.0909  ratio = 0.0158429  err_ratio = 0.00121977
+ROI_Neutron     = 8937.73  err = 94.5396  ratio = 0.826267  err_ratio = 0.0118111
+ROI_Inelastic   = 2274.9  err = 47.6959  ratio = 0.210307  err_ratio = 0.00485089
+
+# --- Neutron-spot ROI results (dx,dy centered at 0,0) ---
+roi_a_dx = 0.3
+roi_b_dy = 0.4
+ROI_Data_counts = 10817  err = 104.005
+ROI_Proton      = 171.373  err = 13.0909  ratio = 0.0158429  err_ratio = 0.00121977
+ROI_Neutron     = 8937.73  err = 94.5396  ratio = 0.826267  err_ratio = 0.0118111
+ROI_Inelastic   = 2274.9  err = 47.6959  ratio = 0.210307  err_ratio = 0.00485089

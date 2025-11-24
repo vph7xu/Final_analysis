@@ -9,6 +9,8 @@
 #include <cmath>
 #include <TLegend.h>
 #include <TStyle.h>
+#include <TLine.h>
+#include <TLatex.h>
 #include <string>
 
 using std::string; using std::vector; using std::unordered_map;
@@ -118,15 +120,20 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     std::cout<< "pion_L" << c_.pion_L<<"\n";
     std::cout<< "pion_H" << c_.pion_H<<"\n";
 
-    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 3);
-    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 3);
-    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 3);
-    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 3);
-    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy ; Energy (GeV)",    200, 0.01, 3);
-    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 200,0.01,3);
-    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 200,0.01,3);
+    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 2.5);
+    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 2.5);
+    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 2.5);
+    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 2.5);
+    TH1D *h_PSe_data_loose_cuts = new TH1D("h_PSe_data_loose_cuts",  "Preshower Energy (relaxed cuts) ; Energy (GeV)",    200, 0.01, 2.5);
+    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy (analysis cuts); Energy (GeV)",    200, 0.01, 2.5);
+    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 200,0.01,2.5);
+    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 200,0.01,2.5);
 
-    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 3);
+    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
+    TH1D *h_PSe_data_antigrinch = new TH1D("h_PSe_data_antigrinch",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
+
+    TH1D *h_PSe_data_grinch_loose_cuts = new TH1D("h_PSe_data_grinch_loose_cuts",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
+    TH1D *h_PSe_data_antigrinch_loose_cuts = new TH1D("h_PSe_data_antigrinch_loose_cuts",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
 
     double Ngrinch_pos = 0;
     double Ngrinch_neg = 0;
@@ -149,27 +156,39 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
             */(c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || /*(c_.dx_L>v.dx || v.dx>c_.dx_H) || (c_.dy_L>v.dy || v.dy>c_.dy_H) ||*/ 
             abs(v.helicity)!=1) continue; //no ePS since we are looking at pions
 
+        h_PSe_data_loose_cuts->Fill(v.ePS);
+
         if(v.helicity==1) h_PSe_data_pos->Fill(v.ePS);
             
         if(v.helicity==-1) h_PSe_data_neg->Fill(v.ePS);
 
-        //grinch for verification
 
-        if(v.grinch_track!=0 && v.grinch_clus_size<2){ // this could be an or 
-            h_PSe_data_grinch->Fill(v.ePS);
+        //grinch for verification
+        if(v.grinch_track!=0 || v.grinch_clus_size<2){ // this could be an or 
+            h_PSe_data_grinch_loose_cuts->Fill(v.ePS);
 
             if(v.helicity==1) Ngrinch_pos++;
             if(v.helicity==-1) Ngrinch_neg++;
         
+        }else{
+            h_PSe_data_antigrinch_loose_cuts->Fill(v.ePS);
         }
-
 
         ///////////////////////tight cuts for fraction calculation///////////////
         if (v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 ||
-            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || (c_.dx_L>v.dx || v.dx>c_.dx_H) || (c_.dy_L>v.dy || v.dy>c_.dy_H) || 
+            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1) || 
             abs(v.helicity)!=1) continue; //no ePS since we are looking at pions
 
         h_PSe_data->Fill(v.ePS);
+
+        //grinch for verification
+
+        if(v.grinch_track!=0 || v.grinch_clus_size<2){ // this could be an or 
+            h_PSe_data_grinch->Fill(v.ePS);
+        
+        }else{
+            h_PSe_data_antigrinch->Fill(v.ePS);
+        }
 
 
         if (v.ePS<c_.pion_L){ 
@@ -205,7 +224,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         ///////////////tight cuts for fraction calculation/////////////////
         if (abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 ||
-           (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dx_L>vQE.dx || vQE.dx>c_.dx_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)) continue; //no ePS since we are looking at pions
+           (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || ((pow((vQE.dy-0.0)/0.4,2)+pow((vQE.dx-0.0)/0.4,2))>1)) continue;
 
         h_PSe_QE->Fill(vQE.ePS,vQE.weight);
 
@@ -237,7 +256,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         ///////////////tight cuts for fraction calculation//////////////////
         if (abs(vPim.vz)>0.27 || /*vPim.eHCAL<c_.eHCAL_L ||*/ abs((vPim.ePS+vPim.eSH)/(vPim.trP)-1)>0.2 ||
-           (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) || (c_.dx_L>vPim.dx || vPim.dx>c_.dx_H) || (c_.dy_L>vPim.dy || vPim.dy>c_.dy_H)) continue; //no ePS since we are looking at pions
+           (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) /*|| ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1)*/) continue;
 
         h_PSe_pion->Fill(vPim.ePS,vPim.weight);
 
@@ -419,6 +438,15 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     std::cout << "[PionCorrection] raw pion asym = " << asym_
               << " ± " << err_ << " written to " << outFile_ << "\n";
 
+    // Diagnostic output: show integrals so an empty canvas can be investigated
+    std::cout << "[PionCorrection] integrals: data=" << dataIntegral_all
+              << " combined=" << h_combined_scaled_all->Integral()
+              << " pion_scaled=" << h_pion_scaled_all->Integral()
+              << " qe_scaled=" << h_QE_scaled_all->Integral() << "\n";
+    if (h_combined_scaled_all->Integral() <= 0.0) {
+        std::cerr << "[PionCorrection] Warning: combined fit histogram is empty. "
+                  << "This usually means no events passed the tight selection or the fit failed." << std::endl;
+    }
 
     gStyle->SetOptStat(0);
     /////////////////// Canvas and Printing ////////////////////////
@@ -428,22 +456,35 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
     C->Divide(1,1);
     C->cd(1);
-    h_combined_scaled_all->SetLineColor(kGreen);
-    h_PSe_data->SetLineColor(kBlack);
-    h_QE_scaled_all->SetLineColor(kBlue);
-    h_pion_scaled_all->SetLineColor(kRed);
+    // If combined histogram is empty, draw a helpful message instead of blank canvas.
+    if (h_combined_scaled_all->Integral() > 0.0) {
+        h_combined_scaled_all->SetLineColor(kGreen);
+        h_PSe_data->SetLineColor(kBlack);
+        h_QE_scaled_all->SetLineColor(kBlue);
+        h_pion_scaled_all->SetLineColor(kRed);
 
-    h_combined_scaled_all->SetLineWidth(4);
-    h_PSe_data->SetLineWidth(4);
-    h_QE_scaled_all->SetLineWidth(4);
-    h_pion_scaled_all->SetLineWidth(4);
+        h_combined_scaled_all->SetLineWidth(4);
+        h_PSe_data->SetLineWidth(4);
+        h_QE_scaled_all->SetLineWidth(4);
+        h_pion_scaled_all->SetLineWidth(4);
 
-    h_PSe_data->SetMarkerStyle(kFullCircle);
+        h_PSe_data->SetMarkerStyle(kFullCircle);
 
-    h_combined_scaled_all->Draw("hist");
-    h_PSe_data->Draw("same p");
-    h_pion_scaled_all->Draw("same hist");
-    h_QE_scaled_all->Draw("same hist");
+        h_combined_scaled_all->Draw("hist");
+        h_PSe_data->Draw("same p");
+        h_pion_scaled_all->Draw("same hist");
+        h_QE_scaled_all->Draw("same hist");
+    } else {
+        TH1D *h_dummy = new TH1D("h_dummy_no_entries", "No entries after selection", 10, 0, 1);
+        h_dummy->SetStats(0);
+        h_dummy->GetXaxis()->SetTitle("preshower energy");
+        h_dummy->GetYaxis()->SetTitle("counts");
+        h_dummy->Draw();
+        TLatex t; t.SetNDC(); t.SetTextSize(0.03);
+        t.DrawLatex(0.12, 0.8, Form("dataIntegral_all = %.0f", dataIntegral_all));
+        t.DrawLatex(0.12, 0.75, Form("pion_weight = %.4g  qe_weight = %.4g", pion_weight_all, qe_weight_all));
+        t.DrawLatex(0.12, 0.70, "Check tight selection windows (eHCAL, dx/dy, W2, coin_time) and fit status.");
+    }
 
     TLegend* leg = new TLegend(0.55, 0.62, 0.88, 0.88); // x1,y1,x2,y2 (NDC)
     leg->SetBorderSize(0);
@@ -457,6 +498,17 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
     leg->Draw();
     gPad->Update();
+
+    gPad->Update(); // make sure pad limits are known
+    double yminPS = gPad->GetUymin();
+    double ymaxPS = gPad->GetUymax();
+
+    auto cutLinePS = new TLine(0.2, yminPS, 0.2, ymaxPS);
+    cutLinePS->SetLineStyle(1); //1-solid 2-dashed
+    cutLinePS->SetLineWidth(4);
+    cutLinePS->SetLineColor(kMagenta);
+    cutLinePS->Draw();
+    gPad->RedrawAxis();
 
     C1->Divide(2,1);
 
@@ -473,8 +525,8 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
     h_PSe_data_pos->SetMarkerStyle(kFullCircle);
 
-    h_combined_scaled_pos->Draw("hist");
-    h_PSe_data_pos->Draw("same p");
+    h_PSe_data_pos->Draw("p");
+    h_combined_scaled_pos->Draw("hist same");
     h_pion_scaled_pos->Draw("same hist");
     h_QE_scaled_pos->Draw("same hist");
 
@@ -491,6 +543,17 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     leg_p->Draw();
     gPad->Update();
 
+    gPad->Update(); // make sure pad limits are known
+    double yminPSp = gPad->GetUymin();
+    double ymaxPSp = gPad->GetUymax();
+
+    auto cutLinePSp = new TLine(0.2, yminPSp, 0.2, ymaxPSp);
+    cutLinePSp->SetLineStyle(1); //1-solid 2-dashed
+    cutLinePSp->SetLineWidth(4);
+    cutLinePSp->SetLineColor(kMagenta);
+    cutLinePSp->Draw();
+    gPad->RedrawAxis();
+
     C1->cd(2);
     h_combined_scaled_neg->SetLineColor(kGreen);
     h_PSe_data_neg->SetLineColor(kBlack);
@@ -504,8 +567,8 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
     h_PSe_data_neg->SetMarkerStyle(kFullCircle);
 
-    h_combined_scaled_neg->Draw("hist");
-    h_PSe_data_neg->Draw("same p");
+    h_PSe_data_neg->Draw("p");
+    h_combined_scaled_neg->Draw("hist same");
     h_pion_scaled_neg->Draw("same hist");
     h_QE_scaled_neg->Draw("same hist");
 
@@ -522,13 +585,87 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     leg_m->Draw();
     gPad->Update();
 
-    C2->Divide(2,2);
+    gPad->Update(); // make sure pad limits are known
+    double yminPSm = gPad->GetUymin();
+    double ymaxPSm = gPad->GetUymax();
+
+    auto cutLinePSm = new TLine(0.2, yminPSm, 0.2, ymaxPSm);
+    cutLinePSm->SetLineStyle(1); //1-solid 2-dashed
+    cutLinePSm->SetLineWidth(4);
+    cutLinePSm->SetLineColor(kMagenta);
+    cutLinePSm->Draw();
+    gPad->RedrawAxis();
+
+    C2->Divide(2,1);
+
     C2->cd(1);
-    h_PSe_data_grinch->Draw();
+
+    h_PSe_data->SetLineColor(kBlue);
+    h_PSe_data_grinch->SetLineColor(kBlack);
+    h_PSe_data_antigrinch->SetLineColor(kOrange);
+    
+    h_PSe_data->SetLineWidth(4);
+    h_PSe_data_grinch->SetLineWidth(4);
+    h_PSe_data_antigrinch->SetLineWidth(4);
+
+    h_PSe_data->Draw();
+    h_PSe_data_grinch->Draw("same");
+    h_PSe_data_antigrinch->Draw("same");
+
+    gPad->Update(); // make sure pad limits are known
+    double ymin = gPad->GetUymin();
+    double ymax = gPad->GetUymax();
+
+    auto legg = new TLegend(0.60, 0.70, 0.88, 0.88); // x1,y1,x2,y2 (NDC)
+    legg->SetBorderSize(0);
+    legg->SetFillStyle(0);
+    legg->SetTextSize(0.035);
+    legg->AddEntry(h_PSe_data,          "All data",        "l");
+    legg->AddEntry(h_PSe_data_grinch,   "GRINCH", "l");
+    legg->AddEntry(h_PSe_data_antigrinch,"anti-GRINCH",     "l");
+    legg->Draw();
+
+    auto cutLine = new TLine(0.2, ymin, 0.2, ymax);
+    cutLine->SetLineStyle(1); //1-solid 2-dashed
+    cutLine->SetLineWidth(4);
+    cutLine->SetLineColor(kMagenta);
+    cutLine->Draw();
+    gPad->RedrawAxis();
+
+    C2->cd(2);
+    h_PSe_data_loose_cuts->SetLineColor(kBlue);
+    h_PSe_data_grinch_loose_cuts->SetLineColor(kBlack);
+    h_PSe_data_antigrinch_loose_cuts->SetLineColor(kOrange);
+    
+    h_PSe_data_loose_cuts->SetLineWidth(4);
+    h_PSe_data_grinch_loose_cuts->SetLineWidth(4);
+    h_PSe_data_antigrinch_loose_cuts->SetLineWidth(4);
+
+    h_PSe_data_loose_cuts->Draw();
+    h_PSe_data_grinch_loose_cuts->Draw("same");
+    h_PSe_data_antigrinch_loose_cuts->Draw("same");
+
+    gPad->Update(); // make sure pad limits are known
+    double yminl = gPad->GetUymin();
+    double ymaxl = gPad->GetUymax();
+
+    auto leggl = new TLegend(0.60, 0.70, 0.88, 0.88); // x1,y1,x2,y2 (NDC)
+    leggl->SetBorderSize(0);
+    leggl->SetFillStyle(0);
+    leggl->SetTextSize(0.035);
+    leggl->AddEntry(h_PSe_data_loose_cuts,          "All data",        "l");
+    leggl->AddEntry(h_PSe_data_grinch_loose_cuts,   "GRINCH", "l");
+    leggl->AddEntry(h_PSe_data_antigrinch_loose_cuts,"anti-GRINCH",     "l");
+    leggl->Draw();
+
+    auto cutLinel = new TLine(0.2, yminl, 0.2, ymaxl);
+    cutLinel->SetLineStyle(1); //1-solid 2-dashed
+    cutLinel->SetLineWidth(4);
+    cutLinel->SetLineColor(kMagenta);
+    cutLinel->Draw();
+    gPad->RedrawAxis();
 
     C->Print(Form("images/%s/PionPlots_%s.png",kin_,kin_));
     C1->Print(Form("images/%s/PionPlots_1_%s.png",kin_,kin_));
     C2->Print(Form("images/%s/PionPlots_GRINCH_%s.png",kin_,kin_));
-
-
 }

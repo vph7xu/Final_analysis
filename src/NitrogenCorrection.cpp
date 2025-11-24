@@ -23,6 +23,12 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
 
 	double N_He3_sim = 0.0;
 	double N_N2_sim = 0.0;
+    // counters for elliptical selection integrals (sum of weights) and
+    // their sum-of-weights-squared for uncertainty estimation
+    double N_He3_sim_integral_ellipse = 0.0;
+    double N_He3_sim_integral_ellipse_var = 0.0;
+    double N_N2_sim_integral_ellipse = 0.0;
+    double N_N2_sim_integral_ellipse_var = 0.0;
 
     /////////////////// He3 Sim ///////////////////////////////////////
 
@@ -41,6 +47,11 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
         if(vHe3.fnucl == 0) {
         	h_dx_He3_neutrons->Fill(vHe3.dx,vHe3.weight);
         	N_He3_sim++;
+            // elliptical selection in (dy,dx) plane centered at 0 with radii 0.4
+            if ((pow((vHe3.dy-0.0)/0.4,2) + pow((vHe3.dx-0.0)/0.4,2)) < 1.0) {
+                N_He3_sim_integral_ellipse += vHe3.weight;
+                N_He3_sim_integral_ellipse_var += vHe3.weight * vHe3.weight;
+            }
         }
 
         if(vHe3.fnucl == 1) h_dx_He3_protons->Fill(vHe3.dx+0.05,vHe3.weight);//+0.05 is for GEN3 its hard coded for now
@@ -74,6 +85,11 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
         if(vN2.fnucl == 0) {
         	h_dx_N2_neutrons->Fill(vN2.dx,vN2.weight);
         	N_N2_sim++;
+            // elliptical selection in (dy,dx) plane centered at 0 with radii 0.4
+            if ((pow((vN2.dy-0.0)/0.4,2) + pow((vN2.dx-0.0)/0.4,2)) < 1.0) {
+                N_N2_sim_integral_ellipse += vN2.weight;
+                N_N2_sim_integral_ellipse_var += vN2.weight * vN2.weight;
+            }
         }
 
         if(vN2.fnucl == 1) h_dx_N2_protons->Fill(vN2.dx+0.05,vN2.weight);//+0.05 is for GEN3 its hard coded for now
@@ -89,10 +105,15 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
         }
     }
 
-    double N_N2_sim_integral = h_dx_N2_neutrons->Integral(h_dx_N2_neutrons->FindBin(c_.dx_L),h_dx_N2_neutrons->FindBin(c_.dx_H));
-    double N_He3_sim_integral = h_dx_He3_neutrons->Integral(h_dx_He3_neutrons->FindBin(c_.dx_L),h_dx_He3_neutrons->FindBin(c_.dx_H));
+    // Use the elliptical-selection integrals calculated above. As a fallback
+    // (for comparison) keep the 1D dx-integrals commented out.
+    // double N_N2_sim_integral = h_dx_N2_neutrons->Integral(h_dx_N2_neutrons->FindBin(c_.dx_L),h_dx_N2_neutrons->FindBin(c_.dx_H));
+    // double N_He3_sim_integral = h_dx_He3_neutrons->Integral(h_dx_He3_neutrons->FindBin(c_.dx_L),h_dx_He3_neutrons->FindBin(c_.dx_H));
 
-    double S = (N_N2_sim_integral*nentries_He3/nentries_N2)/N_He3_sim_integral/14;
+    double N_N2_sim_integral = N_N2_sim_integral_ellipse; 
+    double N_He3_sim_integral = N_He3_sim_integral_ellipse;
+
+    double S = (N_N2_sim_integral * nentries_He3 / nentries_N2) / N_He3_sim_integral / 14;
 
     double N_N2_fill = 0.015;//fill values defined at the fill
     double N_He3_fill = 0.985;//fill values defined at the fill ask Hunter for detailed values
@@ -110,13 +131,10 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
     const double k = 14.0;
 
     // --- statistical uncertainties (examples) ----------------------
-    // histogram integrals: use ROOT’s summed bin errors if you stored them
-    double sA = h_dx_N2_neutrons->GetBinError
-                (h_dx_N2_neutrons->FindBin(c_.dx_L),
-                 h_dx_N2_neutrons->FindBin(c_.dx_H));
-    double sB = h_dx_He3_neutrons->GetBinError
-                (h_dx_He3_neutrons->FindBin(c_.dx_L),
-                 h_dx_He3_neutrons->FindBin(c_.dx_H));
+    // For the elliptical selection we don't have a single ROOT bin; use the
+    // sum-of-weights-squared to estimate the variance (sigma^2 = sum w_i^2).
+    double sA = (N_N2_sim_integral_ellipse_var > 0.0) ? std::sqrt(N_N2_sim_integral_ellipse_var) : 0.0;
+    double sB = (N_He3_sim_integral_ellipse_var > 0.0) ? std::sqrt(N_He3_sim_integral_ellipse_var) : 0.0;
 
     // Poisson for raw entry counts
     double sC = sqrt(C);

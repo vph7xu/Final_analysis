@@ -207,7 +207,7 @@ bool PhysicsAsymmetryCalc::run()
     sum << "err_Afsi_sys = " << std::sqrt((ffsi*ffsi*errAfsi*errAfsi/(p_eff*p_eff*fnDil*fnDil))) <<'\n';
     sum << "err_Afsi_sys_% = " << (ffsi*ffsi*errAfsi*errAfsi/(p_eff*p_eff*fnDil*fnDil))*100/(errSys*errSys) <<'\n';
     sum << '\n';
-    sum << "err_fN2_sys_% = " << std::sqrt(std::pow(A_*errfN2/fnDil,2))<<'\n';
+    sum << "err_fN2_sys = " << std::sqrt(std::pow(A_*errfN2/fnDil,2))<<'\n';
     sum << "err_fN2_sys_% = " << std::pow(A_*errfN2/fnDil,2)*100/(errSys*errSys)<<'\n';
     sum << '\n';
     sum << "err_facc_sys = " <<std::sqrt(std::pow((p_eff*A_-Aacc)*errfacc/(p_eff*fnDil),2))<<'\n';

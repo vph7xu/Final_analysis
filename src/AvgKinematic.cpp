@@ -78,6 +78,14 @@ bool AvgKinematics::process(TChain& ch, BranchVars& v)
 
     long long N=0; double Q2=0,tau=0,eps=0,Px=0,Pz=0; const double mN=0.938;
 
+    const int nexp = 6;
+	double T_avg[nexp] = {0};
+	double T_1_Q2 = 0;
+	double T_1_tau = 0;
+	double T_1_epsilon = 0;
+	double T_1_Px = 0;
+	double T_1_Pz = 0;
+
     Long64_t nentries = ch.GetEntries();
     const Long64_t step     = 100;
 
@@ -95,18 +103,43 @@ bool AvgKinematics::process(TChain& ch, BranchVars& v)
         TVector3 n=Pe.Vect().Cross(PeP.Vect()).Unit();
         
         double tauEv=v.Q2/(4*mN*mN);
-        
         double epsEv=1.0/(1+2*(1+tauEv)*std::tan(v.etheta/2)*std::tan(v.etheta/2));
         
         double PxEv=n.Dot(qv.Cross(tgtPolDir_));
-        
         double PzEv=qv.Dot(tgtPolDir_);
         
+		double B = -2 * sqrt(tauEv*(1+tauEv)) * std::tan(v.etheta/2) * PxEv;
+		double C = -2 * tauEv * sqrt(1+tauEv+ pow((1+tauEv)*std::tan(v.etheta/2),2)) * std::tan(v.etheta/2) * PzEv;
+		double D = tauEv/epsEv;
+
+		double T_0 = C/D;
+		double T_1 = B/D;
+		double T_2 = -1*C / (D*D);
+	  	double T_3 = -1*B / (D*D);
+	  	double T_4 = C / (D*D*D);
+	  	double T_5 = B / (D*D*D);
+
         ++N; 
+
+        T_avg[0] += (T_0 - T_avg[0]) / N;
+		T_avg[1] += (T_1 - T_avg[1]) / N;
+		T_avg[2] += (T_2 - T_avg[2]) / N;
+		T_avg[3] += (T_3 - T_avg[3]) / N;
+		T_avg[4] += (T_4 - T_avg[4]) / N;
+		T_avg[5] += (T_5 - T_avg[5]) / N;
+
+        T_1_Q2 = T_1*Q2;
+        T_1_tau = T_1*tauEv;
+        T_1_epsilon = T_1*epsEv;
+        T_1_Px = T_1*PxEv;
+        T_1_Pz = T_1*PzEv; 
+
+        
 
         auto upd=[N](double& a,double val){ a+=(val-a)/N; };
         
-        upd(Q2,v.Q2); upd(tau,tauEv); upd(eps,epsEv); upd(Px,PxEv); upd(Pz,PzEv); 
+        //upd(Q2,v.Q2); upd(tau,tauEv); upd(eps,epsEv); upd(Px,PxEv); upd(Pz,PzEv);
+        upd(Q2,T_1_Q2); upd(tau,T_1_tau); upd(eps,T_1_epsilon); upd(Px,T_1_Px); upd(Pz,T_1_Pz); 
 
         // progress bar
         if (i % step == 0 || i == nentries - 1) {
@@ -124,8 +157,8 @@ bool AvgKinematics::process(TChain& ch, BranchVars& v)
     
     std::ofstream txt(out);
     
-    txt<<"Q2_avg = "<<Q2<<"\n"<<"tau_avg = "<<tau<<"\n"<<"epsilon_avg = "<<eps<<"\n"
-       <<"Px_avg = "<<Px<<"\n"<<"Pz_avg = "<<Pz<<"\n";
+    txt<<"Q2_avg = "<<Q2/T_avg[1]<<"\n"<<"tau_avg = "<<tau/T_avg[1]<<"\n"<<"epsilon_avg = "<<eps/T_avg[1]<<"\n"
+       <<"Px_avg = "<<Px/T_avg[1]<<"\n"<<"Pz_avg = "<<Pz/T_avg[1]<<"\n";
     
     std::cout<<"[AvgKin] wrote "<<out<<" ("<<N<<" events)\n";
     

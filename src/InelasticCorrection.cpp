@@ -16,6 +16,8 @@
 #include <TF3.h>
 #include <TStyle.h>
 #include <TLine.h>
+#include <TPaveText.h>
+#include <TGaxis.h>
 
 using std::string; using std::vector; using std::unordered_map;
 
@@ -838,6 +840,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     else if (std::strcmp(kin_, "GEN3_He3") == 0){dyhist_low = -2; dyhist_high = 2;} 
     else if (std::strcmp(kin_, "GEN4_He3") == 0){dyhist_low = -1.5; dyhist_high = 1.5;}
     else if (std::strcmp(kin_, "GEN4b_He3") == 0){dyhist_low = -1.5; dyhist_high = 1.5;}
+    
+    TH1D hW2_for_asym   ("hW2_for_asym",       "W^{2};W^{2} (GeV^{2})", NBW2, -2, 6);
+    TH1D hW2_for_asym_pos   ("hW2_for_asym_pos",       "W^{2};W^{2} (GeV^{2})", NBW2, -2, 6);
+    TH1D hW2_for_asym_neg   ("hW2_for_asym_neg",       "W^{2};W^{2} (GeV^{2})", NBW2, -2, 6);
 
     // W² distributions per cut (no helicity split) for the right panel
     TH1D hW2_dxonly     ("hW2_dxonly",     "W^{2};W^{2} (GeV^{2})", NBW2, W2hist_low, W2hist_high);
@@ -951,9 +957,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
    
         if( v.runnum<c_.runnum_L || v.runnum>c_.runnum_H ||
             v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 || v.ePS<0.2 ||
-            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || abs(v.helicity)!=1 || (v.ntrack_sbs>0) || abs(v.vz_sbs)<0.27) continue; //change here to remove sbs track cut
+            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || abs(v.helicity)!=1 /*|| (v.ntrack_sbs>0) || abs(v.vz_sbs)<0.27*/) continue; //change here to remove sbs track cut
 
-        
+        // filling W2 for asymmetry calculation
+        if(v.W2>-1 && v.W2<6){    
+            hW2_for_asym.Fill(v.W2);
+            if(helCorr==+1) hW2_for_asym_pos.Fill(v.W2);
+            else if(helCorr==-1) hW2_for_asym_neg.Fill(v.W2);
+        }
         if(c_.W2_L<v.W2 && v.W2<c_.W2_H && (c_.dy_L-0.1<v.dy && v.dy<c_.dy_H+0.1)){
             if(std::strcmp(kin_, "GEN3_He3") == 0){
                 hDxdy.Fill(v.dy,v.dx);
@@ -1016,7 +1027,6 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             else{
                 hData_W2.Fill(v.W2);
             }
-            
 
             if(c_.W2_L<v.W2 && v.W2<c_.W2_H){
                 hDxdy_cut.Fill(v.dy,v.dx);
@@ -1440,8 +1450,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //below values should be calculated separately, for now they are set to zero
     txt<<"inelastic_events_pos = "<<inelastic_events_pos<<"\n";
     txt<<"inelastic_events_neg = "<<inelastic_events_neg<<"\n";
-    txt<<"A_in = "<<A_in<<"\n";
-    txt<<"err_A_in = "<<err_A_in<<"\n";
+    txt<<"A_in_dx_method = "<<A_in<<"\n";
+    txt<<"err_A_in_dx_method = "<<err_A_in<<"\n";
     txt<<"A_p = "<<0.0<<"\n";
     txt<<"err_A_p = "<<0.0<<"\n";
 
@@ -1456,6 +1466,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////        2D fit //////////////////////////////////////////////////////////////////////////////////////
+
+    gStyle->SetOptStat(0);
 
     // ---------------- 2D (dx,dy) template fit ----------------
     double A2=1.0, rNP2=0.3, rI2=0.1;
@@ -1488,14 +1500,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     }
 
     // Quick visual
-    TCanvas* Cdxdy = new TCanvas("Cdxdy","2D dx-dy fit", 2400, 900);
+    TCanvas* Cdxdy = new TCanvas("Cdxdy","2D dx-dy fit", 2400, 1500);
     Cdxdy->Divide(3,1);
     Cdxdy->cd(1); gPad->SetRightMargin(0.13); hDxdy.Draw("COLZ");     hDxdy.SetTitle("Data: dy vs dx");
     Cdxdy->cd(2); gPad->SetRightMargin(0.13); hComb2D->Draw("COLZ");  hComb2D->SetTitle("Fit Model: A[P + rNP*N + rI*I]");
     Cdxdy->cd(3); gPad->SetRightMargin(0.13); hResid2D->Draw("COLZ"); hResid2D->SetTitle("Residual: Data - Model");
 
     // Optional: pull map
-    TCanvas* CdxdyPull = new TCanvas("CdxdyPull","2D pulls", 1200, 900);
+    TCanvas* CdxdyPull = new TCanvas("CdxdyPull","2D pulls", 2400, 1500);
     gPad->SetRightMargin(0.13);
     hPull2D->SetTitle("Pulls: (Data-Model)/#sqrt{Model}");
     hPull2D->Draw("COLZ");
@@ -1607,7 +1619,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     i_dy->SetFillColorAlpha(7,0.35);
 
     // --- Draw overlays: dx (Y projection) ---
-    TCanvas* Cproj_dx = new TCanvas("Cproj_dx","dx projection: data vs model",1600,900);
+    TCanvas* Cproj_dx = new TCanvas("Cproj_dx","dx projection: data vs model",2400,1500);
     Cproj_dx->cd();
     data_dx->SetTitle("dx projection;dx (m);Counts");
     data_dx->Draw("E1");                // data with errors
@@ -1626,7 +1638,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     leg_dx->Draw();
 
     // --- Draw overlays: dy (X projection) ---
-    TCanvas* Cproj_dy = new TCanvas("Cproj_dy","dy projection: data vs model",1600,900);
+    TCanvas* Cproj_dy = new TCanvas("Cproj_dy","dy projection: data vs model",2400,1500);
     Cproj_dy->cd();
     data_dy->SetTitle("dy projection;dy (m);Counts");
     data_dy->Draw("E1");
@@ -1856,7 +1868,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         style_fill(hi, kCyan+2,   kCyan+1,   3, 3009, 0.35);
 
         // Layout: stacked pads
-        TCanvas* C = new TCanvas(cname, title, 1600, 1100);
+        TCanvas* C = new TCanvas(cname, title, 2400, 1500);
         double L=0.12, R=0.03, Tt=0.06, Bt=0.02, Tb=0.02, Bb=0.28;
         TPad* top = new TPad(Form("%s_top",cname),"",0, Bb, 1, 1);
         TPad* bot = new TPad(Form("%s_bot",cname),"",0, 0,  1, Bb);
@@ -1955,7 +1967,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         // Canvas
         TCanvas* C = new TCanvas(Form("Cslice_%s",tag_out),
-                                 Form("dx–dy slices @ %.2f<W^{2}<%.2f",W2_lo,W2_hi), 2100, 800);
+                                 Form("dx–dy slices @ %.2f<W^{2}<%.2f",W2_lo,W2_hi), 2400, 1500);
         C->Divide(3,1);
         C->cd(1); D_xy->Draw("COLZ");
         C->cd(2); M_xy->Draw("COLZ");
@@ -1982,7 +1994,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         TCanvas* C = new TCanvas(Form("Ccomp_%s",tag_out),
                                  Form("Components in dx–dy (%.2f<W^{2}<%.2f)",W2_lo,W2_hi),
-                                 2100, 800);
+                                 2400, 1500);
         C->Divide(3,1);
         C->cd(1); P_xy->Draw("COLZ");
         C->cd(2); N_xy->Draw("COLZ");
@@ -2002,7 +2014,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     TH2D* R_xy_all = (TH2D*)D_xy_all->Clone("R_xy_all"); R_xy_all->Add(M_xy_all, -1.0);
 
-    TCanvas* Cres = new TCanvas("Cres_3D","Global residuals (dx–dy)", 1800, 600);
+    TCanvas* Cres = new TCanvas("Cres_3D","Global residuals (dx–dy)", 2400, 1500);
     Cres->Divide(3,1);
     Cres->cd(1); D_xy_all->SetTitle("Data;dy (m);dx (m)"); D_xy_all->Draw("COLZ");
     Cres->cd(2); M_xy_all->SetTitle("Model;dy (m);dx (m)"); M_xy_all->Draw("COLZ");
@@ -2287,7 +2299,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"err_f_in = "<<W2_errinelastic_frac<<"\n";
     txt << "SSR_W2_single_param = " << ssr_neutrons_1 << "\n";
     txt << "SSR_W2_two_param    = " << ssr_neutrons_2 << "\n";
-    txt.close();
+    //txt.close();
 
 
     std::cout<<"single paramater method (neutrons)"<<std::endl;
@@ -2318,6 +2330,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
     TCanvas *C3 = new TCanvas("c3","c3",2400,1500);
     TCanvas *C4 = new TCanvas("c4","c4",2400,1500);
+    TCanvas *C5 = new TCanvas("c5","c5",2400,1500);
     //TCanvas *C2 = new TCanvas("c2","c2",2400,1500);
 
     C->Divide(2,2);
@@ -2637,7 +2650,48 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hDy_inelastic.Draw("same");
     hDy_elastic.Draw("same");
 
+    C5->Divide(1,1);
+    C5->cd(1);
+    h_combined_W2_Neutrons->SetLineColor(3);
+    hQE_proton_W2_Neutrons.SetLineColor(6);
+    hQE_neutron_W2_Neutrons.SetLineColor(9);
+    hInelastic_W2_shift1_Neutrons->SetLineColor(7);
+    hData_W2_Neutrons.SetLineColor(kBlack);
 
+    h_combined_W2_Neutrons->SetLineWidth(4);
+    hQE_proton_W2_Neutrons.SetLineWidth(4);
+    hQE_neutron_W2_Neutrons.SetLineWidth(4);
+    hInelastic_W2_shift1_Neutrons->SetLineWidth(4);
+    hData_W2_Neutrons.SetLineWidth(4);
+
+    h_combined_W2_Neutrons->SetFillColorAlpha(19,0.1);
+    h_combined_W2_Neutrons->SetFillStyle(3009);
+    hQE_proton_W2_Neutrons.SetFillColorAlpha(6,0.5);
+    hQE_proton_W2_Neutrons.SetFillStyle(3004);
+    hQE_neutron_W2_Neutrons.SetFillColorAlpha(9,0.5);
+    hQE_neutron_W2_Neutrons.SetFillStyle(3005);
+    hInelastic_W2_shift1_Neutrons->SetFillColorAlpha(7,0.5);
+    hInelastic_W2_shift1_Neutrons->SetFillStyle(3009);
+
+    hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
+
+    hData_W2_Neutrons.Draw("PE1");
+    hData_W2_Neutrons.SetTitle("W^{2} distribution fit for Neutrons spot on the #Delta-x #Delta-y");
+    hQE_proton_W2_Neutrons.Draw("hist same");
+    hQE_neutron_W2_Neutrons.Draw("hist same");
+    hInelastic_W2_shift1_Neutrons->Draw("hist same");    
+    h_combined_W2_Neutrons->Draw("hist same");
+
+    auto legN1_c5 = new TLegend(0.28, 0.58, 0.58, 0.88);  // x1,y1,x2,y2 in NDC
+    legN1_c5->SetBorderSize(0);
+    legN1_c5->SetFillStyle(0);
+    legN1_c5->SetTextSize(0.032);
+    legN1_c5->AddEntry(&hData_W2_Neutrons,             "Data", "p");
+    legN1_c5->AddEntry(h_combined_W2_Neutrons,         "Fit: (QEp + R_{np} QEn + #alpha Inel)/(1+R_{np}+ #alpha)", "lf");
+    legN1_c5->AddEntry(&hQE_proton_W2_Neutrons,        "QE p (sim)", "f");
+    legN1_c5->AddEntry(&hQE_neutron_W2_Neutrons,       "QE n (sim)", "f");
+    legN1_c5->AddEntry(hInelastic_W2_shift1_Neutrons,  "Inelastic (sim)", "f");
+    legN1_c5->Draw();
 
 
     ///////////////////////// Build asymmetry graphs  /////////////////////////////////////////
@@ -2821,7 +2875,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     const double yMin_A  = -15.0;   // adjust if you like
     const double yMax_A  =  15.0;
 
-    TCanvas* Cdx = new TCanvas("Cdx","dx: shape + asym",1800,1200);
+    TCanvas* Cdx = new TCanvas("Cdx","dx: shape + asym",2400,1500);
 
     // pads: same left/right margins so axes line up exactly
     double Left = 0.12, Right = 0.03, Ttop = 0.06, Btop = 0.02, Tbot = 0.02, Bbot = 0.18;
@@ -2893,7 +2947,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //const double yMin_A  = -15.0;   // adjust if you like
     //const double yMax_A  =  15.0;
 
-    TCanvas* Cdy = new TCanvas("Cdy","dy: shape + asym",1800,1200);
+    TCanvas* Cdy = new TCanvas("Cdy","dy: shape + asym",2400,1500);
 
     // pads: same left/right margins so axes line up exactly
     //double Left = 0.12, Right = 0.03, Ttop = 0.06, Btop = 0.02, Tbot = 0.02, Bbot = 0.18;
@@ -2964,7 +3018,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //const double yMin_A  = -15.0;   // adjust if you like
     //const double yMax_A  =  15.0;
 
-    TCanvas* CW2 = new TCanvas("CW2","W^{2}: shape + asym",1800,1200);
+    TCanvas* CW2 = new TCanvas("CW2","W^{2}: shape + asym",2400,1500);
 
     // pads: same left/right margins so axes line up exactly
     //double Left = 0.12, Right = 0.03, Ttop = 0.06, Btop = 0.02, Tbot = 0.02, Bbot = 0.18;
@@ -3024,7 +3078,298 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     LW20->Draw("same");
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    TCanvas* Chcal = new TCanvas("Chcal","secondary clusters",1800,1200);
+    // W² asymmetry extrapolation: fit inelastic region (W2>2) and extrapolate to elastic (W2<1.6)
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto gA_for_asym     = makeAsymGraph(hW2_for_asym_pos,     hW2_for_asym_neg,     "gA_for_asym",     kRed, kFullCircle);
+
+    // Extract asymmetry vs W2 from the existing dxdy graph
+    // Separate into inelastic (W2 > 2) and elastic (W2 < 1.6) regions
+    TGraphErrors* gA_inelastic = new TGraphErrors();
+    TGraphErrors* gA_elastic   = new TGraphErrors();
+    TGraphErrors* gA_all       = (TGraphErrors*)gA_for_asym->Clone("gA_all");
+
+    int nInelastic = 0, nElastic = 0;
+    for (int i = 0; i < gA_for_asym->GetN(); ++i) {
+        double x, y;
+        gA_for_asym->GetPoint(i, x, y);
+        double ey = gA_for_asym->GetErrorY(i);
+
+        if (x > 2.0) {
+            // Inelastic region (W2 > 2)
+            gA_inelastic->SetPoint(nInelastic, x, y);
+            gA_inelastic->SetPointError(nInelastic, 0.0, ey);
+            ++nInelastic;
+        } else if (x < c_.W2_H) {
+            // Elastic region (W2 < 1.6)
+            gA_elastic->SetPoint(nElastic, x, y);
+            gA_elastic->SetPointError(nElastic, 0.0, ey);
+            ++nElastic;
+        }
+    }
+
+    gA_inelastic->SetName("gA_inelastic");
+    gA_elastic->SetName("gA_elastic");
+    gA_inelastic->SetTitle("Asymmetry (inelastic region, W2 > 2);W^{2} (GeV^{2});Asymmetry (%)");
+    gA_elastic->SetTitle("Asymmetry (elastic region, W2 < W2_H);W^{2} (GeV^{2});Asymmetry (%)");
+
+    std::cout << "[InelasticCorrection] Inelastic region (W2 > 2): " << nInelastic << " points\n";
+    std::cout << "[InelasticCorrection] Elastic region (W2 < W2_H): " << nElastic << " points\n";
+
+    // Fit a linear model to the inelastic region: A(W2) = a0 + a1*W2
+    TF1* fLinear = new TF1("fLinear", "[0] + [1]*x", 2.0, 6.0);
+    fLinear->SetParameters(0.0, 0.01);
+    if (nInelastic > 1) {
+        gA_inelastic->Fit(fLinear, "RQ");
+    }
+
+    // TF1* fPL = new TF1("fPL", "[0] + [1]*pow(x,[2])", 2.0, 6.0);
+    // fPL->SetParameters(0.0, 1.0, 1.0);
+    // if (nInelastic > 1) {
+    //     gA_inelastic->Fit(fPL, "RQ");
+    // }
+
+    double a0 = fLinear->GetParameter(0);
+    double a1 = fLinear->GetParameter(1);
+    double ea0 = fLinear->GetParError(0);
+    double ea1 = fLinear->GetParError(1);
+
+    std::cout << std::fixed << std::setprecision(6)
+              << "[InelasticCorrection] Linear fit: A(W2) = " << a0 << " + " << a1 << "*W2\n"
+              << "  Errors: a0 = " << ea0 << ", a1 = " << ea1 << "\n";
+
+    // Create extrapolation graph in elastic region using the fit parameters
+    TGraphErrors* gA_extrapolated = new TGraphErrors();
+    gA_extrapolated->SetName("gA_extrapolated");
+    gA_extrapolated->SetTitle("Asymmetry (extrapolated into elastic region);W^{2} (GeV^{2});Asymmetry (%)");
+
+    // Extrapolate at the same W2 points where we have elastic data
+    for (int i = 0; i < gA_elastic->GetN(); ++i) {
+        double W2, A_meas;
+        gA_elastic->GetPoint(i, W2, A_meas);
+        double A_extrap = a0 + a1 * W2;
+        // Error propagation: σ_extrap = sqrt((σa0)^2 + (W2*σa1)^2)
+        double sigma_extrap = std::sqrt(ea0*ea0 + (W2*ea1)*(W2*ea1));
+
+        gA_extrapolated->SetPoint(i, W2, A_extrap);
+        gA_extrapolated->SetPointError(i, 0.0, sigma_extrap);
+    }
+
+    // Style the graphs
+    gA_inelastic->SetMarkerStyle(kFullCircle);
+    gA_inelastic->SetMarkerColor(kRed);
+    gA_inelastic->SetLineColor(kRed);
+    gA_inelastic->SetMarkerSize(1.2);
+
+    gA_elastic->SetMarkerStyle(kFullSquare);
+    gA_elastic->SetMarkerColor(kBlue);
+    gA_elastic->SetLineColor(kBlue);
+    gA_elastic->SetMarkerSize(1.2);
+
+    gA_extrapolated->SetLineStyle(2);  // dashed
+    gA_extrapolated->SetLineColor(kGreen+2);
+    gA_extrapolated->SetLineWidth(3);
+
+    fLinear->SetLineStyle(1);
+    fLinear->SetLineColor(kMagenta);
+    fLinear->SetLineWidth(3);
+
+    // fPL->SetLineStyle(1);
+    // fPL->SetLineColor(kGreen+4);
+    // fPL->SetLineWidth(3);
+
+    // ======================================================================
+    // Canvas split: top = W^2 distribution (counts), bottom = asymmetry vs W^2
+    // Both pads share the same X range (xMin..xMax)
+    // ======================================================================
+    TCanvas* CW2_extrap = new TCanvas("CW2_extrap", "W2 Asymmetry Extrapolation with Distribution", 2400, 1500);
+    CW2_extrap->cd();
+
+    // X-range already defined above for both pads
+
+    // Determine histogram Y range (counts)
+    double yminW2 = 0.0;
+    double ymaxW2 = hW2_for_asym.GetMaximum();
+    double xMin = -1.0;
+    double xMax = 6.0;
+    if (ymaxW2 <= 0) ymaxW2 = 1.0;
+
+    // --- Top pad: W^2 distribution ---------------------------------------
+    TPad* padTop_asym = new TPad("padTop_asym", "", 0.0, 0.55, 1.0, 1.0);
+    padTop_asym->SetBottomMargin(0.02);
+    padTop_asym->SetTopMargin(0.06);
+    padTop_asym->SetLeftMargin(0.12);
+    padTop_asym->SetRightMargin(0.12);
+    padTop_asym->SetTicks(1,1);
+    padTop_asym->Draw();
+    padTop_asym->cd();
+
+    TH2F* frame_top = new TH2F("frame_top", ";W^{2} (GeV^{2});Counts",
+                               100, xMin, xMax, 100, yminW2, 1.05*ymaxW2);
+    frame_top->GetXaxis()->SetLabelSize(0); // hide x labels on top pad
+    frame_top->GetYaxis()->SetTitleSize(0.045);
+    frame_top->GetYaxis()->SetLabelSize(0.04);
+    frame_top->Draw();
+
+    TH1D* hW2_draw = (TH1D*)hW2_for_asym.Clone("hW2_draw");
+    hW2_draw->GetXaxis()->SetRangeUser(xMin, xMax);
+    hW2_draw->SetLineColor(kOrange+2);
+    hW2_draw->SetLineWidth(2);
+    hW2_draw->SetFillStyle(3004);
+    hW2_draw->SetFillColorAlpha(kOrange+2, 0.15);
+    hW2_draw->Draw("HIST SAME");
+
+    // --- Bottom pad: asymmetry -------------------------------------------
+    CW2_extrap->cd();
+    TPad* padBot_asym = new TPad("padBot_asym", "", 0.0, 0.0, 1.0, 0.55);
+    padBot_asym->SetTopMargin(0.02);
+    padBot_asym->SetBottomMargin(0.12);
+    padBot_asym->SetLeftMargin(0.12);
+    padBot_asym->SetRightMargin(0.12);
+    padBot_asym->SetTicks(1,1);
+    padBot_asym->Draw();
+    padBot_asym->cd();
+
+    // bottom pad will be drawn by the existing asymmetry frame and plots below
+    // if(gA_inelastic->GetN()+gA_elastic->GetN()+gA_extrapolated->GetN() > 0){
+    //     double ymin =  1e9, ymax = -1e9;
+    //     if(gA_inelastic->GetN()){ ymin = std::min(ymin, getYmin(gA_inelastic)); ymax = std::max(ymax, getYmax(gA_inelastic)); }
+    //     if(gA_elastic->GetN()){   ymin = std::min(ymin, getYmin(gA_elastic));   ymax = std::max(ymax, getYmax(gA_elastic)); }
+    //     if(gA_extrapolated->GetN()){ ymin = std::min(ymin, getYmin(gA_extrapolated)); ymax = std::max(ymax, getYmax(gA_extrapolated)); }
+    //     // add 10% headroom
+    //     double pad = 0.10*(ymax - ymin + 1e-9);
+    //     ylo = ymin - pad; yhi = ymax + pad;
+    // }
+
+    // X-range unified for both pads
+    //const double xMin = c_.W2_L;
+    //const double xMax =  6.0;
+
+    double ylo = -15.0;
+    double yhi =  15.0;
+
+    TH2F* frame_extrap = new TH2F("frame_extrap",
+        "Asymmetry Extrapolation with W^{2} Distribution;W^{2} (GeV^{2});Asymmetry (%)",
+        100, xMin, xMax, 100, ylo, yhi);
+    frame_extrap->GetXaxis()->SetLabelSize(0.035);
+    frame_extrap->GetXaxis()->SetTitleSize(0.040);
+    // Restore asymmetry axis on the left (default)
+    frame_extrap->GetYaxis()->SetLabelSize(0.035);
+    frame_extrap->GetYaxis()->SetTitleSize(0.040);
+    frame_extrap->GetYaxis()->SetTitleOffset(0.8);
+    frame_extrap->Draw();
+
+    gPad->SetGridy(true);
+    gStyle->SetGridStyle(2);
+    gStyle->SetGridWidth(1);
+
+    // Draw asymmetry elements on the left-axis pad
+    gA_inelastic->Draw("P SAME");
+    gA_elastic->Draw("P SAME");
+    //gA_extrapolated->Draw("P SAME");
+
+    // Extend and draw the fit line across the full X-range
+    fLinear->SetRange(xMin, xMax);
+    fLinear->Draw("SAME");
+
+    //fPL->SetRange(xMin, xMax);
+    //fPL->Draw("SAME");
+
+    // Shaded W^2 bands and vertical edges
+    TBox* box_elastic = new TBox(xMin, ylo, c_.W2_H, yhi);
+    box_elastic->SetFillColorAlpha(kBlue, 0.08);
+    box_elastic->SetLineStyle(0);
+    box_elastic->Draw("SAME");
+
+    TBox* box_inelastic = new TBox(2.0, ylo, xMax, yhi);
+    box_inelastic->SetFillColorAlpha(kRed, 0.08);
+    box_inelastic->SetLineStyle(0);
+    box_inelastic->Draw("SAME");
+
+    TLine* L_edge1 = new TLine(c_.W2_H, ylo, c_.W2_H, yhi);
+    L_edge1->SetLineStyle(3);
+    L_edge1->SetLineColor(kGray+2);
+    L_edge1->Draw("SAME");
+
+    TLine* L_edge2 = new TLine(2.0, ylo, 2.0, yhi);
+    L_edge2->SetLineStyle(3);
+    L_edge2->SetLineColor(kGray+2);
+    L_edge2->Draw("SAME");
+
+    // switch back to bottom pad to draw legend/annotations
+    padBot->cd();
+
+    auto legExtrap = new TLegend(0.55, 0.58, 0.88, 0.88);
+    legExtrap->SetBorderSize(0);
+    legExtrap->SetFillStyle(0);
+    legExtrap->SetTextSize(0.032);
+    legExtrap->AddEntry(gA_inelastic, "Measured (W^{2} > 2)", "p");
+    legExtrap->AddEntry(gA_elastic,   "Measured (W^{2} < 1.6)", "p");
+    legExtrap->AddEntry(gA_extrapolated, "Extrapolated from fit", "p");
+    legExtrap->AddEntry(fLinear, Form("Linear fit: A = %.4f + %.4f#timesW^{2}", a0, a1), "l");
+    legExtrap->AddEntry(hW2_draw, "W^{2} distribution", "f");
+    legExtrap->Draw();
+
+    TPaveText* pave = new TPaveText(0.12, 0.12, 0.55, 0.42, "NDC");
+    pave->SetBorderSize(1);
+    pave->SetFillColor(kWhite);
+    pave->SetTextAlign(12);
+    pave->SetTextSize(0.032);
+    pave->AddText("Linear fit parameters:");
+    pave->AddText(Form("a_{0} = %.6f #pm %.6f", a0, ea0));
+    pave->AddText(Form("a_{1} = %.6f #pm %.6f", a1, ea1));
+    pave->AddText(" ");
+    pave->AddText(Form("Inelastic region: %d points (W^{2} > 2)", nInelastic));
+    pave->AddText(Form("Elastic region: %d points (W^{2} < 1.6)", nElastic));
+    //pave->Draw();
+
+    // Compute average asymmetry and error in elastic region based on extrapolation
+    if (gA_extrapolated->GetN() > 0) {
+        double sum_A = 0.0, sum_sigma2 = 0.0;
+        int n_elastic = gA_extrapolated->GetN();
+        
+        for (int i = 0; i < n_elastic; ++i) {
+            double W2, A_extrap;
+            gA_extrapolated->GetPoint(i, W2, A_extrap);
+            double sigma_extrap = gA_extrapolated->GetErrorY(i);
+            
+            // Accumulate weighted by inverse variance (1/sigma^2)
+            if (sigma_extrap > 0) {
+                double weight = 1.0 / (sigma_extrap * sigma_extrap);
+                sum_A += A_extrap * weight;
+                sum_sigma2 += weight;
+            }
+        }
+        
+        double avg_A = sum_A / sum_sigma2;
+        double avg_sigma = 1.0 / std::sqrt(sum_sigma2);
+        
+        std::cout << std::fixed << std::setprecision(6)
+                  << "\n[InelasticCorrection] Average Asymmetry in QE Region (Extrapolated):\n"
+                  << "  Average A = " << avg_A << " % ± " << avg_sigma << " %\n"
+                  << "  Average A (fraction) = " << avg_A/100.0 << " ± " << avg_sigma/100.0 << "\n"
+                  << "  Computed from " << n_elastic << " elastic points (extrapolated using inelastics) using inverse-variance weighting\n";
+
+        // Write averaged value to the main corrections txt file (same file opened earlier)
+        // Check that the output file stream 'txt' is open before writing.
+        if (txt.good()) {
+            txt << "avg_extrap_A_percent = " << std::fixed << std::setprecision(6) << avg_A << "\n";
+            txt << "err_avg_extrap_A_percent = " << std::fixed << std::setprecision(6) << avg_sigma << "\n";
+            txt << "A_in = " << std::fixed << std::setprecision(8) << (avg_A/100.0) << "\n";
+            txt << "err_A_in = " << std::fixed << std::setprecision(8) << (avg_sigma/100.0) << "\n";
+            txt << "num_elastic_points_used = " << n_elastic << "\n";
+            txt.flush();
+            txt.close();
+        } else {
+            std::cerr << "[InelasticCorrection] Warning: output file not open, cannot write averaged extrapolated asymmetry.\n";
+        }
+    }
+
+    // Save
+    CW2_extrap->Print(Form("images/%s/W2_Asymmetry_Extrapolation_%s.png", kin_, kin_));
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    TCanvas* Chcal = new TCanvas("Chcal","secondary clusters",2400,1500);
 
     Chcal->Divide(2,2);
     Chcal->cd(1);
@@ -3036,7 +3381,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     Chcal->cd(4);
     h_tdiff.Draw();
 
-    TCanvas* Chcal1 = new TCanvas("Chcal1","secondary clusters",1800,1200);
+    TCanvas* Chcal1 = new TCanvas("Chcal1","secondary clusters",2400,1500);
     Chcal1->Divide(2,2);
     Chcal1->cd(1);
     hdist.Draw();
@@ -3052,13 +3397,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     C->Print(Form("images/%s/InelasticCorrection_%s.png",kin_,kin_));
     C1->Print(Form("images/%s/InelasticCorrection_W2_%s.png",kin_,kin_));
-    C2->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_%s.png",kin_,kin_));
+    C2->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_comparison_%s.png",kin_,kin_));
     C3->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_legend%s.png",kin_,kin_));
     C4->Print(Form("images/%s/InelasticDxDy%s.png",kin_,kin_));
+    C5->Print(Form("images/%s/InelasticCorrection_W2_Neutrons_%s.png",kin_,kin_));
     Casym->Print(Form("images/%s/Asymmetry_vs_W2_%s.png", kin_, kin_));
     Casym1->Print(Form("images/%s/Asymmetry_vs_Dx_%s.png", kin_, kin_));
     Chcal->Print(Form("images/%s/Secondary_cluster_%s.png",kin_,kin_));
     Chcal1->Print(Form("images/%s/Secondary_cluster_1_%s.png",kin_,kin_));
 
 }
-

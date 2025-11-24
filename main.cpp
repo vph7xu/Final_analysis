@@ -113,8 +113,8 @@ int main(int argc, char** argv)
     // AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
     // AccidentalCorrection.process(ch,v);
 
-    PionCorrection PionCorrection(icuts, rqPtr,kin);
-    PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
+    // PionCorrection PionCorrection(icuts, rqPtr,kin);
+    // PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
 
     // NitrogenCorrection NitrogenCorrection(icuts,kin);
     // NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
@@ -125,11 +125,11 @@ int main(int argc, char** argv)
     // PhysicsAsymmetryCalc phys(kin,1);
     // phys.run();
 
-    // AvgKinematics avgkin(icuts,rqPtr,kin);
-    // avgkin.process(ch,v);
+    AvgKinematics avgkin(icuts,rqPtr,kin);
+    avgkin.process(ch,v);
 
-    // GenExtraction gen(kin,1);
-    // gen.process();
+    GenExtraction gen(kin,1);
+    gen.process();
 
     return 0;
 }
