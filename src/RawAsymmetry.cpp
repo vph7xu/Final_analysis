@@ -1,6 +1,8 @@
 #include "RawAsymmetry.h"
 
 #include <TFile.h>
+#include <TH1D.h> 
+#include <TCanvas.h>
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -87,24 +89,77 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     double count_neutrons_plus =0.0; 
     double count_neutrons_minus =0.0;
 
+    double total_good_events =0.0;
+
+    std::cout<<"eHCAL cut : "<<c_.eHCAL_L <<std::endl;
+    std::cout<<"coin time cut : "<<c_.coin_L <<" to "<<c_.coin_H <<std::endl;
+    std::cout<<"W2 cut : "<<c_.W2_L <<" to "<<c_.W2_H <<std::endl;
+    std::cout<<"dx cut : "<<c_.dx_L <<" to "<<c_.dx_H <<std::endl;
+    std::cout<<"dy cut : "<<c_.dy_L <<" to "<<c_.dy_H <<std::endl;
+    std::cout<<"dx_P cut : "<<c_.dx_P_L <<" to "<<c_.dx_P_H <<std::endl;
+    std::cout<<"dy_P cut : "<<c_.dy_P_L <<" to "<<c_.dy_P_H <<std::endl;
+    std::cout<<"helicity cut : "<<c_.helicity <<std::endl;
+    std::cout<<"dx cut center : "<<c_.dx_c <<" +/- "<<c_.dx_r <<std::endl;
+    std::cout<<"dy cut center : "<<c_.dy_c <<" +/- "<<c_.dy_r <<std::endl;
+    std::cout<<"dx_P cut center : "<<c_.dx_P_c <<" +/- "<<c_.dx_P_r <<std::endl;
+    std::cout<<"dy_P cut center : "<<c_.dy_P_c <<" +/- "<<c_.dy_P_r <<std::endl;
+
+
+    // --- histograms for basic cut checks ---
+    TH1D h_ePS     ("h_ePS",      "ePS after basic cuts; ePS (GeV); events",           100, 0.0, 2.0);
+    TH1D h_vz      ("h_vz",       "vz after basic cuts; vz (m); events",               120,-0.30,0.30);
+    TH1D h_eHCAL   ("h_eHCAL",    "eHCAL after basic cuts; eHCAL (GeV); events",       100, 0.0, 5.0);
+    TH1D h_EoverP  ("h_EoverP",   "(ePS+eSH)/p after basic cuts; E/p; events",         100, 0.0, 2.0);
+    TH1D h_hel     ("h_hel",      "helicity after basic cuts; helicity; events",        5, -2.5,2.5);
+    TH1D h_W2      ("h_W2",       "W^{2} after basic cuts; W^{2} (GeV^{2}); events",   100, 0.0,10.0);
+    TH1D h_coin    ("h_coin",     "coin time after basic cuts; coin time (ns); events",100,100.0,200.0);
+
+    TH1D h_dx_n    ("h_dx_n",     "dx (neutron window); dx (m); events",               100,-5.0,5.0);
+    TH1D h_dy_n    ("h_dy_n",     "dy (neutron window); dy (m); events",               100,-5.0,5.0);
+    TH1D h_dx_p    ("h_dx_p",     "dx (proton window); dx (m); events",                100,-5.0,5.0);
+    TH1D h_dy_p    ("h_dy_p",     "dy (proton window); dy (m); events",                100,-5.0,5.0);
+    // -------------------------------------------------------------------
 
     for(Long64_t i=0;i<n;++i){ ch.GetEntry(i);
         //if(!cuts_.passAll(v)) continue;
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
 
-        if (v.ntrack>0 && v.ePS>0.2 && std::abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L && abs(((v.ePS+v.eSH)/v.trP)-1.0)<0.2){
+        double EoverP = (v.ePS + v.eSH) / v.trP;
+
+        double EoverPmone = EoverP -1.0;
+
+        if (v.ntrack>0 && v.ePS>0.2 && abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L && EoverPmone<0.2 && EoverPmone>-0.2 && abs(v.helicity)==1){
+            // I don't know what's wrong with the E/p cut above, so I replaced it with this, absolute value did not work for some reason.
+            // Probably its better to add E/p as a global cut anyway, just to be safe 
+            //++total_good_events;
+
+            // ---------- fill "before W2/coin/dx/dy" distributions ----------
+            double EoverP = (v.ePS + v.eSH) / v.trP;
+            h_ePS.Fill(v.ePS);
+            h_vz.Fill(v.vz);
+            h_eHCAL.Fill(v.eHCAL);
+            h_EoverP.Fill(EoverP);
+            h_hel.Fill(v.helicity);
+
+
 
             if((c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
-                && (c_.dx_P_L<v.dx && v.dx<c_.dx_P_H) && (c_.dy_P_L<v.dy && v.dy<c_.dy_P_H)){
+                && (c_.dx_P_L<v.dx && v.dx<c_.dx_P_H) && (c_.dy_P_L<v.dy && v.dy<c_.dy_P_H)&& 
+                ((pow((v.dy-c_.dy_P_c)/c_.dy_P_r,2)+pow((v.dx-c_.dx_P_c)/c_.dx_P_r,2))<1)){
 
                 int helCorr_p = -1*v.helicity*v.IHWP*c_.Pkin_L;
                 if(helCorr_p==1) ++count_protons_plus; else if(helCorr_p==-1) ++count_protons_minus;
+                // dx,dy in proton window
+                h_dx_p.Fill(v.dx);
+                h_dy_p.Fill(v.dy);
 
             }
 
-            if( (c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
-                && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (c_.dy_L<v.dy && v.dy<c_.dy_H)){
+            else if( (c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
+                && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (c_.dy_L<v.dy && v.dy<c_.dy_H) 
+                && ((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))<1)){
 
+                ++total_good_events;
                 auto& cnt = counts_[v.runnum];
                 int helCorr = -1*v.helicity*v.IHWP*c_.Pkin_L;
                 if(helCorr==1) ++cnt.Np; else if(helCorr==-1) ++cnt.Nm;
@@ -112,6 +167,13 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
                 // NOTE: Axis title says A but you're filling dx; keep if intentional.
                 h_.Fill(v.dx);
+
+                h_W2.Fill(v.W2);
+                h_coin.Fill(v.coin_time);
+
+                // dx,dy in neutron window
+                h_dx_n.Fill(v.dx);
+                h_dy_n.Fill(v.dy);
 
                 // --- Treat polarization errors as SYSTEMATIC (no 1/sigma^2 event weights) ---
                 auto& pa = pols_[v.runnum];
@@ -311,6 +373,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
     // Raw asymmetry summary
     std::ofstream rawAsym(Form("txt/%s/raw_asym_%s.txt",kin_,kin_));
+    rawAsym<<"total_good_events = "<<total_good_events<<"\n";
     rawAsym<<"Np = "<<total_Np<<"\n";
     rawAsym<<"Nm = "<<total_Nm<<"\n";
     rawAsym<<"A_raw = "<<A_raw<<"\n";
@@ -324,4 +387,43 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     rawAsym<<"A_raw_verify = "<<A_raw_verify<<"\n";
     rawAsym<<"err_A_raw_verify = "<<std::sqrt(1/A_raw_verify_denominator)<<"\n";
     rawAsym.close();
+
+    std::string pdfName = Form("plots/cuts_test_raw_asymmetry_%s.pdf", kin_);
+
+    TCanvas c("c_rawasym", "RawAsymmetry QA", 1600, 1200);
+    c.Divide(2,2);
+
+    // ---------------- Page 1: basic spectrometer quantities --------------
+    c.cd(1); h_ePS.Draw();
+    c.cd(2); h_vz.Draw();
+    c.cd(3); h_eHCAL.Draw();
+    c.cd(4); h_EoverP.Draw();
+
+    // First page: open the PDF with "("
+    c.Print((pdfName + "(").c_str());
+
+    // ---------------- Page 2: helicity / W2 / coin / (optional) dx_n ----
+    c.Clear(); 
+    c.Divide(2,2);
+
+    c.cd(1); h_hel.Draw();
+    c.cd(2); h_W2.Draw();
+    c.cd(3); h_coin.Draw();
+    c.cd(4); h_dx_n.Draw();   // neutron dx distribution
+
+    // Middle page: normal print
+    c.Print(pdfName.c_str());
+
+    // ---------------- Page 3: remaining dx/dy distributions --------------
+    c.Clear();
+    c.Divide(2,2);
+
+    c.cd(1); h_dy_n.Draw();   // neutron dy
+    c.cd(2); h_dx_p.Draw();   // proton dx
+    c.cd(3); h_dy_p.Draw();   // proton dy
+    c.cd(4); h_.Draw();       // your original h_ (dx filled in neutron window)
+
+    // Last page: close the PDF with ")"
+    c.Print((pdfName + ")").c_str());
+
 }

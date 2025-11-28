@@ -80,7 +80,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
                 hW2_.Fill(v.W2);
             }
 
-            if((c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (c_.dy_L<v.dy && v.dy<c_.dy_H) ){
+            if((c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (c_.dy_L<v.dy && v.dy<c_.dy_H) && ((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))<1)){
                 hcointime_.Fill(v.coin_time);
             }
 
@@ -142,6 +142,7 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
     TCanvas *c3 = new TCanvas("c3","c3",2400,1500); 
 
     gStyle->SetPalette(kRainBow);
+    gStyle->SetOptStat(0);
 
     c->Divide(2,2);
     c->cd(1);

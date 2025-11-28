@@ -48,7 +48,7 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
         	h_dx_He3_neutrons->Fill(vHe3.dx,vHe3.weight);
         	N_He3_sim++;
             // elliptical selection in (dy,dx) plane centered at 0 with radii 0.4
-            if ((pow((vHe3.dy-0.0)/0.4,2) + pow((vHe3.dx-0.0)/0.4,2)) < 1.0) {
+            if ((pow((vHe3.dy-c_.dy_c)/c_.dy_r,2) + pow((vHe3.dx-c_.dx_c)/c_.dx_r,2)) < 1.0) {
                 N_He3_sim_integral_ellipse += vHe3.weight;
                 N_He3_sim_integral_ellipse_var += vHe3.weight * vHe3.weight;
             }
@@ -86,7 +86,7 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
         	h_dx_N2_neutrons->Fill(vN2.dx,vN2.weight);
         	N_N2_sim++;
             // elliptical selection in (dy,dx) plane centered at 0 with radii 0.4
-            if ((pow((vN2.dy-0.0)/0.4,2) + pow((vN2.dx-0.0)/0.4,2)) < 1.0) {
+            if ((pow((vN2.dy-c_.dy_c)/c_.dy_r,2) + pow((vN2.dx-c_.dx_c)/c_.dx_r,2)) < 1.0) {
                 N_N2_sim_integral_ellipse += vN2.weight;
                 N_N2_sim_integral_ellipse_var += vN2.weight * vN2.weight;
             }

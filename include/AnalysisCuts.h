@@ -28,6 +28,10 @@ struct AnalysisCuts
     int    Pkin_L    = 0, Pkin_H    = 0;
     double pion_L    = 0, pion_H    = 0;
     int    helicity  = 999;                 // 999 ⇒ accept ±1
+    double dx_c =0 , dx_r=0.0;
+    double dy_c =0 , dy_r=0.0;
+    double dx_P_c =0 , dx_P_r=0.0;
+    double dy_P_c =0 , dy_P_r=0.0;
 
     /* ---- ctor: load once from the master JSON ---- */
     explicit AnalysisCuts(const std::string& file)
@@ -58,6 +62,10 @@ struct AnalysisCuts
         fetch(runnum_L,  "runnum_L");  fetch(runnum_H,  "runnum_H");
         fetch(Pkin_L,	  "Pkin_L");    fetch(Pkin_H,    "Pkin_H");
         fetch(pion_L,    "pion_L");    fetch(pion_H,    "pion_H");
+        fetch(dx_c,      "dx_c");      fetch(dx_r,      "dx_r");
+        fetch(dy_c,      "dy_c");      fetch(dy_r,      "dy_r");
+        fetch(dx_P_c,      "dx_P_c");      fetch(dx_P_r,      "dx_P_r");
+        fetch(dy_P_c,      "dy_P_c");      fetch(dy_P_r,      "dy_P_r");    
              
         if (j.contains("helicity"))
             helicity = j["helicity"].get<int>();

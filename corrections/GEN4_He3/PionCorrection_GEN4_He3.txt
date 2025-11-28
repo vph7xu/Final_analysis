@@ -12,5 +12,5 @@ pi_events_all = 8.05417e-09
 QE_events_all = 2037
 A_pi = -0.00305756
 err_A_pi = 0.00665673
-f_pi = 3.57688e-12
-err_f_pi = 3.9856e-08
+f_pi = 3.72017e-12
+err_f_pi = 4.14526e-08

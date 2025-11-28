@@ -92,13 +92,13 @@ bool PhysicsAsymmetryCalc::run()
     double Api  = V(pionMap,"A_pi");
     double Ain  = V(inelMap,"A_in");
     double Ap   = V(inelMap,"A_p");
-    double Afsi = 0.0;            // not provided yet
+    double Afsi = 0.0003;            // not provided yet
 
     double facc = V(accMap ,"f_acc");
     double fpi  = V(pionMap,"f_pi");
     double fin  = V(inelMap,"f_in");
     double fp   = V(inelMap,"f_p");
-    double ffsi = 0.0;
+    double ffsi = 0.0287;          // not provided yet
     double fN2  = V(nitMap ,"f_N2");
 
     // errors
@@ -106,13 +106,13 @@ bool PhysicsAsymmetryCalc::run()
     double errApi  = V(pionMap,"err_A_pi");
     double errAin  = V(inelMap,"err_A_in");
     double errAp   = V(inelMap,"err_A_p");
-    double errAfsi = 0.0;
+    double errAfsi = 0.0005;
 
     double errfacc = V(accMap ,"err_f_acc");
     double errfpi  = V(pionMap,"err_f_pi");
     double errfin  = V(inelMap,"err_f_in");
     double errfp   = V(inelMap,"err_f_p");
-    double errffsi = 0.0;
+    double errffsi = 0.0026;
     double errfN2  = V(nitMap ,"err_f_N2");
 
     const double fnDil = 1 - facc - fN2 - fpi - fin - fp - ffsi;

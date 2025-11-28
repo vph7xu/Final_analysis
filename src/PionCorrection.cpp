@@ -176,7 +176,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         ///////////////////////tight cuts for fraction calculation///////////////
         if (v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 ||
-            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1) || 
+            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || ((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))>1) || 
             abs(v.helicity)!=1) continue; //no ePS since we are looking at pions
 
         h_PSe_data->Fill(v.ePS);
@@ -224,7 +224,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         ///////////////tight cuts for fraction calculation/////////////////
         if (abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 ||
-           (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || ((pow((vQE.dy-0.0)/0.4,2)+pow((vQE.dx-0.0)/0.4,2))>1)) continue;
+           (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || ((pow((vQE.dy-c_.dy_c)/c_.dy_r,2)+pow((vQE.dx-c_.dx_c)/c_.dx_r,2))>1)) continue;
 
         h_PSe_QE->Fill(vQE.ePS,vQE.weight);
 
@@ -256,7 +256,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         ///////////////tight cuts for fraction calculation//////////////////
         if (abs(vPim.vz)>0.27 || /*vPim.eHCAL<c_.eHCAL_L ||*/ abs((vPim.ePS+vPim.eSH)/(vPim.trP)-1)>0.2 ||
-           (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) /*|| ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1)*/) continue;
+           (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) /*|| ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1)*/) continue; //pim simulation does not have hadron arm  
 
         h_PSe_pion->Fill(vPim.ePS,vPim.weight);
 

@@ -22,5 +22,13 @@
   "pion_L"    :  0.2,
   "pion_H"    :  2.8,
   "runnum_L"  :  3500,
-  "runnum_H"  :  4600
+  "runnum_H"  :  4600,
+  "dx_c"      :  0.0,
+  "dy_c"      :  0.0,
+  "dx_r"      :  0.4,
+  "dy_r"      :  0.4,
+  "dx_P_c"    :  -1.1,
+  "dy_P_c"    :  0.0,
+  "dx_P_r"    :  0.4,
+  "dy_P_r"    :  0.4
 }

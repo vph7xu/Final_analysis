@@ -144,10 +144,12 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
         if (rq_ && (!rq_->helicityOK(v.runnum) || !rq_->mollerOK(v.runnum))) continue;
 
         if (v.ntrack<1 || v.ePS<0.2 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2||
-            (c_.W2_L>v.W2 || v.W2>c_.W2_H) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1) || 
+            (c_.W2_L>v.W2 || v.W2>c_.W2_H) || ((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))>1) || 
             abs(v.helicity)!=1) continue;
 
-        if ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1) continue;
+        if ((v.ePS+v.eSH)/v.trP<0.8 || (v.ePS+v.eSH)/v.trP>1.2) continue; //just in case if the E/P abs issue still there
+
+        if ((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))>1) continue;
 
         if ((c_.coin_ac_L<v.coin_time && v.coin_time<c_.coin_L-20) || (c_.coin_H+20<v.coin_time && v.coin_time<c_.coin_ac_H)){
             if (-1*v.helicity*v.IHWP*c_.Pkin_L == 1) N_plus_acc++;

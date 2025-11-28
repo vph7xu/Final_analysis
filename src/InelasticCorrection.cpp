@@ -533,7 +533,7 @@ TH1D* InelasticCorrection::performFitW2_1(
         }, xmin, xmax, 1);
 
     f->SetParameter(0, 0.5);     // alpha start
-    f->SetParLimits(0, 0.0, 33);
+    f->SetParLimits(0, 0.0, 40.0); // tune to your expected alpha range
     //f->SetParameter(1, 0.0);     // delta start (GeV^2)
     //f->SetParLimits(1,-0.4, 0.4); // tune to your expected shift range
 
@@ -714,7 +714,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     // central values
     double Aacc = V(accMap ,"A_acc");
-    double Api  = V(pionMap,"A_pi");           // not provided yet
+    double Api  = V(pionMap,"A_pi");
 
     double facc = V(accMap ,"f_acc");
     double fpi  = V(pionMap,"f_pi");
@@ -738,8 +738,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        100, -4.0, 3.0);
     TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
 
-    double W2_hist_upper_limit = c_.W2_H;//0.0;
-    double W2_hist_lower_limit = c_.W2_L;//0.0;
+    double W2_hist_upper_limit = -0.05;//c_.W2_H;//0.0;
+    double W2_hist_lower_limit = 1.3;//c_.W2_L;//0.0;
 
     // if(std::strcmp(kin_, "GEN3_He3") == 0){
     //     W2_hist_upper_limit = 1.45;
@@ -956,8 +956,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
    
         if( v.runnum<c_.runnum_L || v.runnum>c_.runnum_H ||
-            v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 || v.ePS<0.2 ||
+            v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs(((v.ePS+v.eSH)/v.trP)-1)>0.2 || v.ePS<0.2 ||
             (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || abs(v.helicity)!=1 /*|| (v.ntrack_sbs>0) || abs(v.vz_sbs)<0.27*/) continue; //change here to remove sbs track cut
+
+        if(((v.ePS+v.eSH)/v.trP)<0.8 || ((v.ePS+v.eSH)/v.trP)>1.2) continue; //if abs for E/P malfunctions
 
         // filling W2 for asymmetry calculation
         if(v.W2>-1 && v.W2<6){    
@@ -1009,7 +1011,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         }
 
         if((c_.dy_L<v.dy && v.dy<c_.dy_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (W2_hist_lower_limit<W2_new && W2_new<W2_hist_upper_limit) 
-        &&((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))<=1)) {
+        &&((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))<=1)) {
             if(std::strcmp(kin_, "GEN4_He3") == 0){
                 hData_W2_Neutrons.Fill(W2_new);
             }
@@ -1018,7 +1020,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             }
         }
 
-        if(((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))<=1) || ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)
+        if(((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))<=1) || ((pow((v.dy-c_.dy_P_c)/c_.dy_P_r,2)+pow((v.dx-c_.dx_P_c)/c_.dx_P_r,2))<=1)
             &&(W2_hist_lower_limit<W2_new && W2_new<W2_hist_upper_limit)){
             
             if(std::strcmp(kin_, "GEN4_He3") == 0){
@@ -2054,13 +2056,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         }
 
         if ((c_.dy_L<dyq && dyq<c_.dy_H) && (c_.dx_L<dxq && dxq<c_.dx_H) && (W2_hist_lower_limit<vQE.W2 && vQE.W2<W2_hist_upper_limit)
-         && ((pow((dyq-0.0)/0.4,2)+pow((dxq-0.0)/0.4,2))<=1)) {
+         && ((pow((dyq-c_.dy_c)/c_.dy_r,2)+pow((dxq-c_.dx_c)/c_.dx_r,2))<=1)) {
             hQE_W2_Neutrons.Fill(vQE.W2, vQE.weight);
             if (vQE.fnucl == 0) hQE_neutron_W2_Neutrons.Fill(vQE.W2, vQE.weight);  // see #3
             if (vQE.fnucl == 1) hQE_proton_W2_Neutrons.Fill(vQE.W2, vQE.weight);
         }
 
-        if (((pow((dyq-0.0)/0.4,2)+pow((dxq-0.0)/0.3,2))<=1) || ((pow((dyq-0.0)/0.4,2)+pow((dxq-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1)
+        if (((pow((dyq-c_.dy_c)/c_.dy_r,2)+pow((dxq-c_.dx_c)/c_.dx_r,2))<=1) || ((pow((dyq-c_.dy_P_c)/c_.dy_P_r,2)+pow((dxq-c_.dx_P_r)/c_.dx_P_r,2))<=1)
             && (W2_hist_lower_limit<vQE.W2 && vQE.W2<W2_hist_upper_limit)) {
             hQE_W2.Fill(vQE.W2, vQE.weight);
             if (vQE.fnucl == 0) hQE_neutron_W2.Fill(vQE.W2, vQE.weight);  // see #3
@@ -2096,7 +2098,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         double dyii = vInel.dy - dyi;
 
         if ( (c_.dy_L<dyii && dyii<c_.dy_H) && (c_.dx_L<dxii && dxii<c_.dx_H) && (W2_hist_lower_limit<vInel.W2 && vInel.W2<W2_hist_upper_limit) 
-        && ((pow((dyii-0.0)/0.4,2)+pow((dxii-0.0)/0.4,2))<=1)) {
+        && ((pow((dyii-c_.dy_c)/c_.dy_r,2)+pow((dxii-c_.dx_c)/c_.dx_r,2))<=1)) {
         
             hInelastic_W2_Neutrons.Fill(vInel.W2, vInel.weight);
             hInelastic_W2_2_Neutrons.Fill(vInel.W2, vInel.weight);                    // see #3
@@ -2118,7 +2120,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         }
 
-        if (((pow((dyii-0.0)/0.4,2)+pow((dxii-0.0)/0.3,2))<=1) || ((pow((vInel.dy-0)/0.4,2)+pow((dxii-(c_.dx_P_L+c_.dx_P_H)/2)/0.3,2))<=1) 
+        if (((pow((dyii-c_.dy_c)/c_.dy_r,2)+pow((dxii-c_.dx_c)/c_.dx_r,2))<=1) || ((pow((vInel.dy-c_.dy_P_c)/c_.dy_P_r,2)+pow((dxii-c_.dx_P_c)/c_.dx_P_r,2))<=1) 
             && (W2_hist_lower_limit<vInel.W2 && vInel.W2<W2_hist_upper_limit) ) {
             hInelastic_W2.Fill(vInel.W2, vInel.weight);
             hInelastic_W2_2.Fill(vInel.W2, vInel.weight);                    // see #3
