@@ -73,7 +73,7 @@ private:
                      double& par0, double& par1, double Rnop);
                      
     TH1D* performFitW2_1(TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
-		      double& alpha, double& delta , double Rnop);
+		      double& alpha, double& delta , double Rnop, double& delta_qe);
 		      
     TH1D* performFitW2_2(TH1D* hD, TH1D* hInel, TH1D* hQE, 
     		      double& par0, double& par1, double& delta);

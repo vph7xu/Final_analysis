@@ -11,7 +11,7 @@
   "dy_P_H"    :  0.5,
   "dy_ac_L"   :  -1.5,
   "dy_ac_H"   :  1.2,
-  "eHCAL_L"   :  0.125,
+  "eHCAL_L"   :  0.175,
   "eHCAL_H"   :  100.0,
   "coin_L"    :  118,
   "coin_H"    :  124,

@@ -116,8 +116,8 @@ bool GenExtraction::process()
 
     const double g  = (C/(A*std::sqrt(disc)) + lambda/A)*(eps/tau);
     const double h  = 1.0/disc;
-    const double dLamStat = std::sqrt(g*g + h) * dAst;
-    const double dLamSys  = std::sqrt(g*g + h) * dAsy;
+    const double dLamStat = std::sqrt(pow(g + std::sqrt(h),2)) * dAst;
+    const double dLamSys  = std::sqrt(pow(g + std::sqrt(h),2)) * dAsy;
     const double dLamTot  = std::hypot(dLamStat,dLamSys);
 
     // write
