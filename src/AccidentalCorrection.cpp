@@ -227,7 +227,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     double f_acc = acc_events / QE_events;
     double A_acc = (N_plus_acc - N_minus_acc) / (N_plus_acc + N_minus_acc);
 
-    double err_f_acc = std::sqrt(f_acc*(1-f_acc)/QE_events);//std::sqrt(acc_events) / QE_events; // Poisson approx
+    double err_f_acc = std::sqrt(f_acc*(1+f_acc)/QE_events);//std::sqrt(acc_events) / QE_events; // Poisson approx
     double err_A_acc = std::sqrt((1-A_acc*A_acc)/(N_plus_acc+N_minus_acc));//std::sqrt( (4.0 * N_plus_acc * N_minus_acc)
                                  // / std::pow(N_plus_acc + N_minus_acc,3) );
 
