@@ -103,7 +103,7 @@ int main(int argc, char** argv)
 
     AnalysisCuts icuts(cutsFile);   // load once
 
-    /* ---------- 5. Run RawAsymmetry module ---------- */
+    // /* ---------- 5. Run RawAsymmetry module ---------- */
     RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
     mod.process(ch, v);
 

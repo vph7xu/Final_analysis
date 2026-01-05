@@ -18,6 +18,8 @@
 #include <TLine.h>
 #include <TPaveText.h>
 #include <TGaxis.h>
+#include <TFitResult.h>
+#include <TMatrixDSym.h>
 
 using std::string; using std::vector; using std::unordered_map;
 
@@ -533,7 +535,7 @@ TH1D* InelasticCorrection::performFitW2_1(
         }, xmin, xmax, 1);
 
     f->SetParameter(0, 0.5);     // alpha start
-    f->SetParLimits(0, 0.0, 30.0); // tune to your expected alpha range
+    f->SetParLimits(0, 0.0, 30.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 30.0 //for gen2 this should be much lower like 1.0
     //f->SetParameter(1, 0.0);     // delta start (GeV^2)
     //f->SetParLimits(1,-0.4, 0.4); // tune to your expected shift range
 
@@ -1239,7 +1241,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                 hQE_proton.Fill(vQE.dx/*+0.05*/,vQE.weight);
             }
             else if(std::strcmp(kin_, "GEN2_He3") == 0){
-                hQE_proton.Fill(vQE.dx+0.1,vQE.weight);
+                hQE_proton.Fill(vQE.dx+0.2,vQE.weight);
             }
             else{
                 hQE_proton.Fill(vQE.dx,vQE.weight);
@@ -1442,6 +1444,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"par2 = "<< par2 <<"\n";
     txt<<"data events = "<<QE_events<<"\n";
     txt<<"background events = "<<inelastic_events<<"\n";
+    txt<<"proton events = "<<proton_events<<"\n";
     txt<<"background_fraction = "<<background_frac<<"\n";
     txt<<"err_background_fraction = "<<err_background_frac<<"\n";
     //txt<<"err_inelastic_fraction = "<<errinelastic_frac<<"\n";
@@ -1450,8 +1453,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     
     txt<<"f_in_dx = "<<inelastic_frac<<"\n";
     txt<<"err_f_in_dx = "<<errinelastic_frac<<"\n";
-    txt<<"f_p = "<<proton_frac<<"\n";
-    txt<<"err_f_p = "<<errproton_frac<<"\n";
+    txt<<"f_p_dx = "<<proton_frac<<"\n";
+    txt<<"err_f_p_dx = "<<errproton_frac<<"\n";
     //below values should be calculated separately, for now they are set to zero
     txt<<"inelastic_events_pos = "<<inelastic_events_pos<<"\n";
     txt<<"inelastic_events_neg = "<<inelastic_events_neg<<"\n";
@@ -2298,6 +2301,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double W2_inelastic_frac = W2_bkg_events * (1 - facc - fN2 - fpi)/W2_data_events;    
     double W2_errinelastic_frac =  dFin_W2;
     
+    txt<<"f_p = "<<Rprot<<"\n";
+    txt<<"err_f_p = "<<eRprot<<"\n";
+
     txt<<"W2_data_events = "<<W2_data_events<<"\n";
     txt<<"W2_fit_events = "<<W2_fit_events<<"\n";
     txt<<"W2_neutron_events = "<<W2_neutron_events<<"\n";
@@ -3131,8 +3137,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // Fit a linear model to the inelastic region: A(W2) = a0 + a1*W2
     TF1* fLinear = new TF1("fLinear", "[0] + [1]*x", 2.0, 6.0);
     fLinear->SetParameters(0.0, 0.01);
+    TFitResultPtr fitres;
     if (nInelastic > 1) {
-        gA_inelastic->Fit(fLinear, "RQ");
+        // Use "S" to retrieve the fit result (covariance matrix)
+        fitres = gA_inelastic->Fit(fLinear, "SRQ");
     }
 
     // TF1* fPL = new TF1("fPL", "[0] + [1]*pow(x,[2])", 2.0, 6.0);
@@ -3161,7 +3169,15 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         gA_elastic->GetPoint(i, W2, A_meas);
         double A_extrap = a0 + a1 * W2;
         // Error propagation: σ_extrap = sqrt((σa0)^2 + (W2*σa1)^2)
-        double sigma_extrap = std::sqrt(ea0*ea0 + (W2*ea1)*(W2*ea1));
+        // Propagate errors including covariance term if available:
+        double cov01 = 0.0;
+        if (fitres.Get()) {
+            // GetCovarianceMatrix() returns a TMatrixDSym (by value) in newer ROOT versions,
+            // so receive it as a value and use its methods directly.
+            TMatrixDSym cov = fitres->GetCovarianceMatrix();
+            if (cov.GetNrows() >= 2) cov01 = cov(0,1);
+        }
+        double sigma_extrap = std::sqrt(std::max(0.0, ea0*ea0 + 2.0*W2*cov01 + (W2*ea1)*(W2*ea1)));
 
         gA_extrapolated->SetPoint(i, W2, A_extrap);
         gA_extrapolated->SetPointError(i, 0.0, sigma_extrap);
@@ -3284,6 +3300,34 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     fLinear->SetRange(xMin, xMax);
     fLinear->Draw("SAME");
 
+    // --- Draw 1-sigma error band for the linear fit across the plotted X range ---
+    // We'll compute the propagated uncertainty of y=a0+a1*x using the fit covariance.
+    double cov01_band = 0.0;
+    if (fitres.Get()) {
+        // GetCovarianceMatrix() returns a TMatrixDSym (by value) in newer ROOT versions.
+        TMatrixDSym cov = fitres->GetCovarianceMatrix();
+        if (cov.GetNrows() >= 2) cov01_band = cov(0,1); std::cout << "Covariance a0-a1: " << cov01_band << "\n";
+    }
+
+    const int NBAND = 200;
+    std::vector<double> xb(2*NBAND), yb(2*NBAND);
+    for (int ip = 0; ip < NBAND; ++ip) {
+        double xi = xMin + (xMax - xMin) * double(ip) / double(NBAND - 1);
+        double yi = a0 + a1 * xi;
+        double var = ea0*ea0 + 2.0*xi*cov01_band + (xi*ea1)*(xi*ea1);
+        if (var < 0) var = 0.0;
+        double si = std::sqrt(var);
+        xb[ip] = xi;
+        yb[ip] = yi + si; // upper edge (increasing x)
+        xb[NBAND + ip] = xMin + (xMax - xMin) * double(NBAND - 1 - ip) / double(NBAND - 1);
+        yb[NBAND + ip] = (a0 + a1 * xb[NBAND + ip]) - std::sqrt(std::max(0.0, ea0*ea0 + 2.0*xb[NBAND + ip]*cov01_band + (xb[NBAND + ip]*ea1)*(xb[NBAND + ip]*ea1)));
+    }
+
+    TGraph* gBand = new TGraph(2*NBAND, xb.data(), yb.data());
+    gBand->SetFillColorAlpha(kGreen+2, 0.25);
+    gBand->SetLineStyle(0);
+    gBand->Draw("F SAME");
+
     //fPL->SetRange(xMin, xMax);
     //fPL->Draw("SAME");
 
@@ -3318,9 +3362,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     legExtrap->AddEntry(gA_inelastic, "Measured (W^{2} > 2)", "p");
     legExtrap->AddEntry(gA_elastic,   "Measured (W^{2} < 1.6)", "p");
     legExtrap->AddEntry(gA_extrapolated, "Extrapolated from fit", "p");
+    // if present, add the shaded fit-band entry
+    legExtrap->AddEntry(gBand, "Fit 1#sigma band", "f");
     legExtrap->AddEntry(fLinear, Form("Linear fit: A = %.4f + %.4f#timesW^{2}", a0, a1), "l");
     legExtrap->AddEntry(hW2_draw, "W^{2} distribution", "f");
-    legExtrap->Draw();
+    //legExtrap->Draw();
 
     TPaveText* pave = new TPaveText(0.12, 0.12, 0.55, 0.42, "NDC");
     pave->SetBorderSize(1);
@@ -3336,25 +3382,67 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //pave->Draw();
 
     // Compute average asymmetry and error in elastic region based on extrapolation
-    if (gA_extrapolated->GetN() > 0) {
-        double sum_A = 0.0, sum_sigma2 = 0.0;
-        int n_elastic = gA_extrapolated->GetN();
+    // if (gA_extrapolated->GetN() > 0) {
+    //     double sum_A = 0.0, sum_sigma2 = 0.0;
+    //     int n_elastic = gA_extrapolated->GetN();
         
+    //     for (int i = 0; i < n_elastic; ++i) {
+    //         double W2, A_extrap;
+    //         gA_extrapolated->GetPoint(i, W2, A_extrap);
+    //         double sigma_extrap = gA_extrapolated->GetErrorY(i);
+            
+    //         // Accumulate weighted by inverse variance (1/sigma^2)
+    //         if (sigma_extrap > 0) {
+    //             double weight = 1.0 / (sigma_extrap * sigma_extrap);
+    //             sum_A += A_extrap * weight;
+    //             sum_sigma2 += weight;
+    //         }
+    //     }
+        // double avg_A = sum_A / sum_sigma2;
+        // double avg_sigma = 1.0 / std::sqrt(sum_sigma2);
+
+    if (gA_extrapolated->GetN() > 0) {
+
+        double sum_w  = 0.0;
+        double sum_wW = 0.0;   // weighted sum of W2
+        double sum_wA = 0.0;   // (optional) weighted sum of A
+
+        int n_elastic = gA_extrapolated->GetN();
+
         for (int i = 0; i < n_elastic; ++i) {
             double W2, A_extrap;
             gA_extrapolated->GetPoint(i, W2, A_extrap);
             double sigma_extrap = gA_extrapolated->GetErrorY(i);
-            
-            // Accumulate weighted by inverse variance (1/sigma^2)
+
             if (sigma_extrap > 0) {
-                double weight = 1.0 / (sigma_extrap * sigma_extrap);
-                sum_A += A_extrap * weight;
-                sum_sigma2 += weight;
+            double w = 1.0 / (sigma_extrap * sigma_extrap); // your existing choice
+            sum_w  += w;
+            sum_wW += w * W2;
+            sum_wA += w * A_extrap;
             }
         }
-        
-        double avg_A = sum_A / sum_sigma2;
-        double avg_sigma = 1.0 / std::sqrt(sum_sigma2);
+
+        // Weighted mean W2 and (equivalently) weighted mean A:
+        double W2bar = (sum_w > 0 ? sum_wW / sum_w : 0.0);
+        double avg_A = (sum_w > 0 ? sum_wA / sum_w : 0.0);  // == a0 + a1*W2bar
+
+        // --- Use fit covariance to get the averaged uncertainty correctly ---
+        double v00 = ea0*ea0;
+        double v11 = ea1*ea1;
+        double v01 = 0.0;
+
+        if (fitres.Get()) {
+            TMatrixDSym cov = fitres->GetCovarianceMatrix();
+            if (cov.GetNrows() >= 2) {
+            v00 = cov(0,0);
+            v01 = cov(0,1);
+            v11 = cov(1,1);
+            }
+        }
+
+        double var_avg = v00 + (W2bar*W2bar)*v11 + 2.0*W2bar*v01;
+        if (var_avg < 0) var_avg = 0.0;
+        double avg_sigma = std::sqrt(var_avg);
         
         std::cout << std::fixed << std::setprecision(6)
                   << "\n[InelasticCorrection] Average Asymmetry in QE Region (Extrapolated):\n"

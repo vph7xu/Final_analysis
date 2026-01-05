@@ -5,4 +5,4 @@ err_A_acc       = 0.00897792
 accidental_events = 1093
 QE_events       = 103565
 f_acc           = 0.0105538
-err_f_acc       = 0.000317536
+err_f_acc       = 0.000320905
