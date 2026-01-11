@@ -1,4 +1,4 @@
-lambda = -0.262745
-sigma_lambda_stat = 0.186302
-sigma_lambda_sys  = 0.0338724
-sigma_lambda      = 0.189356
+lambda = -0.226705
+sigma_lambda_stat = 0.22307
+sigma_lambda_sys  = 0.044593
+sigma_lambda      = 0.227484

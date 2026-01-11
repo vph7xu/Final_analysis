@@ -32,6 +32,7 @@ struct AnalysisCuts
     double dy_c =0 , dy_r=0.0;
     double dx_P_c =0 , dx_P_r=0.0;
     double dy_P_c =0 , dy_P_r=0.0;
+    double EoverP_L = 0.0, EoverP_H = 0.0;
 
     /* ---- ctor: load once from the master JSON ---- */
     explicit AnalysisCuts(const std::string& file)
@@ -66,6 +67,7 @@ struct AnalysisCuts
         fetch(dy_c,      "dy_c");      fetch(dy_r,      "dy_r");
         fetch(dx_P_c,      "dx_P_c");      fetch(dx_P_r,      "dx_P_r");
         fetch(dy_P_c,      "dy_P_c");      fetch(dy_P_r,      "dy_P_r");    
+        fetch(EoverP_L,    "EoverP_L");  fetch(EoverP_H,    "EoverP_H");
              
         if (j.contains("helicity"))
             helicity = j["helicity"].get<int>();

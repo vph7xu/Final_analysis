@@ -72,7 +72,7 @@ bool CutManager::passAll(const BranchVars& v) const
     if (v.eHCAL<0.025) return false; //hcal energy cut
     if (v.ePS<0.2) return false; //preshower energy cut
 
-    if (abs(((v.ePS+v.eSH)/v.trP)-1.0)>0.2) return false; //eoverp cut
+    if (((v.ePS+v.eSH)/v.trP)<cfg_["EoverP_L"] || ((v.ePS+v.eSH)/v.trP)>cfg_["EoverP_H"]) return false; //eoverp cut
 
     for (const auto& ce : cutTable) {
         // pick pointer map depending on variable type

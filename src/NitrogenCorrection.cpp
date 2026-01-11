@@ -39,7 +39,7 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
     for (Long64_t i=0;i<nentries_He3;++i){
         ch_He3_sim.GetEntry(i);
 
-        if(/*vHe3.ntrack<1 ||*/ abs(vHe3.vz)>0.27 || vHe3.eHCAL<c_.eHCAL_L || abs((vHe3.ePS+vHe3.eSH)/(vHe3.trP)-1)>0.2 || vHe3.ePS<0.2 ||
+        if(/*vHe3.ntrack<1 ||*/ abs(vHe3.vz)>0.27 || vHe3.eHCAL<c_.eHCAL_L || (vHe3.ePS+vHe3.eSH)/(vHe3.trP)<c_.EoverP_L || (vHe3.ePS+vHe3.eSH)/(vHe3.trP)>c_.EoverP_H || vHe3.ePS<0.2 ||
             (c_.W2_L>vHe3.W2 || vHe3.W2>c_.W2_H) || (c_.dy_L>vHe3.dy || vHe3.dy>c_.dy_H)) continue;
 
         h_dx_He3->Fill(vHe3.dx,vHe3.weight);
@@ -77,7 +77,7 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
     for (Long64_t i=0;i<nentries_N2;++i){
         ch_N2_sim.GetEntry(i);
 
-        if(/*vHe3.ntrack<1 ||*/ abs(vN2.vz)>0.27 || vN2.eHCAL<c_.eHCAL_L || abs((vN2.ePS+vN2.eSH)/(vN2.trP)-1)>0.2 || vN2.ePS<0.2 ||
+        if(/*vHe3.ntrack<1 ||*/ abs(vN2.vz)>0.27 || vN2.eHCAL<c_.eHCAL_L || (vN2.ePS+vN2.eSH)/(vN2.trP)<c_.EoverP_L || (vN2.ePS+vN2.eSH)/(vN2.trP)>c_.EoverP_H || vN2.ePS<0.2 ||
             (c_.W2_L>vN2.W2 || vN2.W2>c_.W2_H) || (c_.dy_L>vN2.dy || vN2.dy>c_.dy_H)) continue;
 
         h_dx_N2->Fill(vN2.dx,vN2.weight);

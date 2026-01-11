@@ -59,7 +59,8 @@ bool AvgKinematics::good(const BranchVars& v) const
     if (abs(v.vz)>=0.27) return false;
     if (v.ePS<=0.2) return false;
     if (v.eHCAL<=cuts_.eHCAL_L) return false;
-    if (abs((v.ePS+v.eSH)/v.trP -1)>=0.2) return false;
+    double eoverp = (v.ePS + v.eSH) / v.trP;
+    if (eoverp < cuts_.EoverP_L || eoverp > cuts_.EoverP_H) return false;
 
     if(cuts_.coin_L >= v.coin_time || v.coin_time >=cuts_.coin_H) return false;
     if(cuts_.W2_L  >= v.W2       || v.W2      >=cuts_.W2_H  )  return false;
@@ -111,8 +112,10 @@ bool AvgKinematics::process(TChain& ch, BranchVars& v)
 
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
 
+        //if ((v.ntrack_sbs>0) && abs(v.vz_sbs)<0.27) continue; //sbs veto
 
-        if (v.ntrack>0 && v.ePS>0.2 && abs(v.vz)<0.27 && v.eHCAL>cuts_.eHCAL_L && abs(((v.ePS+v.eSH)/v.trP)-1.0)<0.2 && abs(v.helicity)==1){
+        double eoverp = (v.ePS + v.eSH) / v.trP;
+        if (v.ntrack>0 && v.ePS>0.2 && abs(v.vz)<0.27 && v.eHCAL>cuts_.eHCAL_L && eoverp>cuts_.EoverP_L && eoverp<cuts_.EoverP_H && abs(v.helicity)==1){
             
         if( (cuts_.W2_L<v.W2 && v.W2<cuts_.W2_H) && (cuts_.coin_L<v.coin_time && v.coin_time<cuts_.coin_H) 
                 && (cuts_.dx_L<v.dx && v.dx<cuts_.dx_H) && (cuts_.dy_L<v.dy && v.dy<cuts_.dy_H) 

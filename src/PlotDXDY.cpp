@@ -62,6 +62,8 @@ void PlotDXDY::process(TChain& ch, BranchVars& v)
 
         if (rq_ && (!rq_->helicityOK(v.runnum) || !rq_->mollerOK(v.runnum))) continue;
 
+        //if ((v.ntrack_sbs>0) && abs(v.vz_sbs)<0.27) continue; //sbs veto
+
         if (v.ntrack>0 && v.ePS>0.2 && v.eHCAL>0.025){
             hvz_.Fill(v.vz);
         }

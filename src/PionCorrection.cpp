@@ -151,6 +151,8 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
         ////////////////////////run quality checks//////////////////////
         if (rq_ && (!rq_->helicityOK(v.runnum) || !rq_->mollerOK(v.runnum))) continue;
 
+        //if ((v.ntrack_sbs>0) && abs(v.vz_sbs)<0.27) continue; //sbs veto
+
         ////////////////////////loose cuts for asymmetry calculation/////////////
         if (v.ntrack<1 || abs(v.vz)>0.27 ||/* v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 ||
             */(c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || /*(c_.dx_L>v.dx || v.dx>c_.dx_H) || (c_.dy_L>v.dy || v.dy>c_.dy_H) ||*/ 
@@ -158,24 +160,24 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         h_PSe_data_loose_cuts->Fill(v.ePS);
 
-        if(v.helicity==1) h_PSe_data_pos->Fill(v.ePS);
+        if(-1*v.helicity*v.IHWP*c_.Pkin_L==1) h_PSe_data_pos->Fill(v.ePS);
             
-        if(v.helicity==-1) h_PSe_data_neg->Fill(v.ePS);
+        if(-1*v.helicity*v.IHWP*c_.Pkin_L==-1) h_PSe_data_neg->Fill(v.ePS);
 
 
         //grinch for verification
         if(v.grinch_track!=0 || v.grinch_clus_size<2){ // this could be an or 
             h_PSe_data_grinch_loose_cuts->Fill(v.ePS);
 
-            if(v.helicity==1) Ngrinch_pos++;
-            if(v.helicity==-1) Ngrinch_neg++;
+            if(-1*v.helicity*v.IHWP*c_.Pkin_L==1) Ngrinch_pos++;
+            if(-1*v.helicity*v.IHWP*c_.Pkin_L==-1) Ngrinch_neg++;
         
         }else{
             h_PSe_data_antigrinch_loose_cuts->Fill(v.ePS);
         }
 
         ///////////////////////tight cuts for fraction calculation///////////////
-        if (v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 ||
+        if (v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || (v.ePS+v.eSH)/(v.trP)<c_.EoverP_L || (v.ePS+v.eSH)/(v.trP)>c_.EoverP_H ||
             (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || ((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))>1) || 
             abs(v.helicity)!=1) continue; //no ePS since we are looking at pions
 
@@ -192,8 +194,8 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
 
         if (v.ePS<c_.pion_L){ 
-            if (v.helicity > 0) ++Np_;
-            else if (v.helicity < 0) ++Nm_;
+            if (-1*v.helicity*v.IHWP*c_.Pkin_L > 0) ++Np_;
+            else if (-1*v.helicity*v.IHWP*c_.Pkin_L < 0) ++Nm_;
         }
         // progress bar
         if (i % step == 0 || i == nentries - 1) {
@@ -223,7 +225,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
         h_PSe_QE_loose_cuts->Fill(vQE.ePS,vQE.weight);
 
         ///////////////tight cuts for fraction calculation/////////////////
-        if (abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 ||
+        if (abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || ((vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H) ||
            (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || ((pow((vQE.dy-c_.dy_c)/c_.dy_r,2)+pow((vQE.dx-c_.dx_c)/c_.dx_r,2))>1)) continue;
 
         h_PSe_QE->Fill(vQE.ePS,vQE.weight);
@@ -255,7 +257,7 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
         h_PSe_pion_loose_cuts->Fill(vPim.ePS,vPim.weight);
 
         ///////////////tight cuts for fraction calculation//////////////////
-        if (abs(vPim.vz)>0.27 || /*vPim.eHCAL<c_.eHCAL_L ||*/ abs((vPim.ePS+vPim.eSH)/(vPim.trP)-1)>0.2 ||
+        if (abs(vPim.vz)>0.27 || /*vPim.eHCAL<c_.eHCAL_L ||*/ ((vPim.ePS+vPim.eSH)/(vPim.trP)<c_.EoverP_L || (vPim.ePS+vPim.eSH)/(vPim.trP)>c_.EoverP_H) ||
            (c_.W2_L>vPim.W2 || vPim.W2>c_.W2_H) /*|| ((pow((v.dy-0.0)/0.4,2)+pow((v.dx-0.0)/0.4,2))>1)*/) continue; //pim simulation does not have hadron arm  
 
         h_PSe_pion->Fill(vPim.ePS,vPim.weight);

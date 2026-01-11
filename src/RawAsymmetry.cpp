@@ -128,7 +128,11 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
         double EoverPmone = EoverP -1.0;
 
-        if (v.ntrack>0 && v.ePS>0.2 && abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L && EoverPmone<0.2 && EoverPmone>-0.2 && abs(v.helicity)==1){
+        // if ( (v.ntrack_sbs>0) && abs(v.vz_sbs)<0.27 ){ //sbs veto
+        //     continue;
+        // }
+
+        if (v.ntrack>0 && v.ePS>0.2 && abs(v.vz)<0.27 && v.eHCAL>c_.eHCAL_L && EoverPmone<c_.EoverP_H-1 && EoverPmone>c_.EoverP_L-1 && abs(v.helicity)==1){
             // I don't know what's wrong with the E/p cut above, so I replaced it with this, absolute value did not work for some reason.
             // Probably its better to add E/p as a global cut anyway, just to be safe 
             //++total_good_events;
@@ -139,7 +143,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             h_vz.Fill(v.vz);
             h_eHCAL.Fill(v.eHCAL);
             h_EoverP.Fill(EoverP);
-            h_hel.Fill(v.helicity);
+            h_hel.Fill(-1*v.helicity*v.IHWP*c_.Pkin_L);
 
 
 

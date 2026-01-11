@@ -487,10 +487,10 @@ TH1D* InelasticCorrection::performFitW2(TH1D* hD, TH1D* hInel, TH1D* hQE_proton,
 
 }
 
-// α = N_inel / (N_QE_p + N_QE_n), Δ = W2 shift of inelastic (GeV^2)
+// α = N_inel / (N_QE_p + N_QE_n), Δ_inel = W2 shift of inelastic (GeV^2), Δ_qe = W2 shift of QE (GeV^2)
 TH1D* InelasticCorrection::performFitW2_1(
     TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
-    double& alpha, double& delta, double Rnop, double& delta_qe)
+    double& alpha, double& delta_inel, double Rnop, double& delta_qe, bool fit_shifts)
 {
     auto unit = [&](TH1D* h, const char* tag)->bool{
         double s=h->Integral(); if(s<=0){ std::cerr<<"[W2_1] Empty "<<tag<<"\n"; return false; }
@@ -516,45 +516,40 @@ TH1D* InelasticCorrection::performFitW2_1(
     TF1* f = new TF1(Form("fW2mix_%p", d),
         [&](double* x, double* par){
             const double a  = par[0];             // alpha
-            //const double dL = par[1];             // delta (GeV^2)
+            const double dI = fit_shifts ? par[1] : 0.0;  // delta_inel (GeV^2)
+            const double dQ = fit_shifts ? par[2] : 0.0;  // delta_qe (GeV^2)
             
-            const double qep = pi->Interpolate(x[0]);      // was FindBin/GetBinContent
-            const double qen = ni->Interpolate(x[0]);      // was FindBin/GetBinContent
-            const double ine = ii->Interpolate(x[0]); //- dL); // your inel_shift does this too
+            const double qep = pi->Interpolate(x[0] - dQ);      // QE proton with QE shift
+            const double qen = ni->Interpolate(x[0] - dQ);      // QE neutron with QE shift
+            const double ine = ii->Interpolate(x[0] - dI);      // Inelastic with inelastic shift
 
-            //const int bp = pi->FindBin(x[0]);
-            //const int bn = ni->FindBin(x[0]);
-            //const double qep = pi->GetBinContent(bp);
-            //const double qen = ni->GetBinContent(bn);
-            //const double ine = ii->GetBinContent(ii->FindBin(x[0]));//inel_shift(x[0], dL);
-            //const double ine = inel_shift(x[0], dL);
             // simple normalized mixture (good if Δ is small or range wide)
-            
-
             return (qep + Rnop*qen + a*ine)/(1.0 + Rnop + a);
-        }, xmin, xmax, 1);
+        }, xmin, xmax, fit_shifts ? 3 : 1);
 
     f->SetParameter(0, 0.5);     // alpha start
-    f->SetParLimits(0, 0.0, 30.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 30.0 //for gen2 this should be much lower like 1.0
-    //f->SetParameter(1, 0.0);     // delta start (GeV^2)
-    //f->SetParLimits(1,-0.4, 0.4); // tune to your expected shift range
+    f->SetParLimits(0, 0.0, 40.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 30.0 //for gen2 this should be much lower like 1.0
+    
+    if (fit_shifts) {
+        f->SetParameter(1, 0.0);     // delta_inel start (GeV^2)
+        f->SetParLimits(1,-0.4, 0.4); // tune to your expected shift range
+        f->SetParameter(2, 0.0);     // delta_qe start (GeV^2)
+        f->SetParLimits(2,-0.4, 0.4); // tune to your expected shift range
+    }
 
     d->Fit(f, "RQ");
 
     alpha = f->GetParameter(0);
-    //delta = f->GetParameter(1);
+    delta_inel = fit_shifts ? f->GetParameter(1) : 0.0;
+    delta_qe = fit_shifts ? f->GetParameter(2) : 0.0;
 
-    // Build combined unit-area PDF using fitted Δ
+    // Build combined unit-area PDF using fitted shifts (or zero if disabled)
     TH1D* comb=(TH1D*)ii->Clone("hCombW2"); comb->Reset();
     for (int i=1;i<=comb->GetNbinsX();++i){
         const double x = comb->GetXaxis()->GetBinCenter(i);
-        //const double qep = pi->GetBinContent(pi->FindBin(x));
-        //const double qen = ni->GetBinContent(ni->FindBin(x));
-        //const double ine = ii->GetBinContent(ii->FindBin(x));//inel_shift(x, delta);
-        //const double ine = inel_shift(x, delta);
-        double qep = pi->Interpolate(x-delta_qe);           // was GetBinContent(FindBin(x))
-        double qen = ni->Interpolate(x-delta_qe);
-        double ine = ii->Interpolate(x); //- delta);   // or inel_shift(x, delta)
+        double qep = pi->Interpolate(x - delta_qe);           // QE proton with shift
+        double qen = ni->Interpolate(x - delta_qe);           // QE neutron with shift
+        double ine = ii->Interpolate(x - delta_inel);         // Inelastic with shift
         comb->SetBinContent(i, (qep + Rnop*qen + alpha*ine)/(1.0 + Rnop + alpha));
     }
     return comb;
@@ -740,25 +735,25 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        100, -4.0, 3.0);
     TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
 
-    double W2_hist_upper_limit = 1.4;//c_.W2_H;//0.0;
-    double W2_hist_lower_limit = -1.0;//c_.W2_L;//0.0;
+    double W2_hist_upper_limit = c_.W2_H;//0.0;
+    double W2_hist_lower_limit = c_.W2_L;//0.0;
 
-    if(std::strcmp(kin_, "GEN3_He3") == 0){
-        W2_hist_upper_limit = 1.4;
-        W2_hist_lower_limit = -1; 
-    }
-    else if( std::strcmp(kin_, "GEN4_He3") == 0){
-        W2_hist_upper_limit = 1.4;
-        W2_hist_lower_limit = -1; 
-    }
-    else if(std::strcmp(kin_, "GEN4b_He3") == 0 ){
-        W2_hist_upper_limit = 1.4;
-        W2_hist_lower_limit = -1; 
-    }
-    else{
-        W2_hist_upper_limit = c_.W2_H;
-        W2_hist_lower_limit = c_.W2_L; 
-    }
+    // if(std::strcmp(kin_, "GEN3_He3") == 0){
+    //     W2_hist_upper_limit = 1.4;
+    //     W2_hist_lower_limit = -1; 
+    // }
+    // else if( std::strcmp(kin_, "GEN4_He3") == 0){
+    //     W2_hist_upper_limit = 1.4;
+    //     W2_hist_lower_limit = -1; 
+    // }
+    // else if(std::strcmp(kin_, "GEN4b_He3") == 0 ){
+    //     W2_hist_upper_limit = 1.4;
+    //     W2_hist_lower_limit = -1; 
+    // }
+    // else{
+    //     W2_hist_upper_limit = c_.W2_H;
+    //     W2_hist_lower_limit = c_.W2_L; 
+    // }
 
     const int NBW2 = 100; // match your other W² binning
 
@@ -958,10 +953,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(rq_ && (!rq_->helicityOK(v.runnum)||!rq_->mollerOK(v.runnum))) continue;
    
         if( v.runnum<c_.runnum_L || v.runnum>c_.runnum_H ||
-            v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs(((v.ePS+v.eSH)/v.trP)-1)>0.2 || v.ePS<0.2 ||
-            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || abs(v.helicity)!=1 /*|| (v.ntrack_sbs>0) || abs(v.vz_sbs)<0.27*/) continue; //change here to remove sbs track cut
+            v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || (v.ePS+v.eSH)/v.trP<c_.EoverP_L || (v.ePS+v.eSH)/v.trP>c_.EoverP_H || v.ePS<0.2 ||
+            (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || abs(v.helicity)!=1 /*|| ((v.ntrack_sbs>0) && abs(v.vz_sbs)<0.27)*/) continue; //change here to remove sbs track cut
 
-        if(((v.ePS+v.eSH)/v.trP)<0.8 || ((v.ePS+v.eSH)/v.trP)>1.2) continue; //if abs for E/P malfunctions
+        if(((v.ePS+v.eSH)/v.trP)<c_.EoverP_L || ((v.ePS+v.eSH)/v.trP)>c_.EoverP_H) continue; //E/P cut from configuration
 
         // filling W2 for asymmetry calculation
         if(v.W2>-1 && v.W2<6){    
@@ -1109,7 +1104,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
 
         if( v.runnum<c_.runnum_L || v.runnum>c_.runnum_H ||
-            v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || abs((v.ePS+v.eSH)/(v.trP)-1)>0.2 || v.ePS<0.2 ||
+            v.ntrack<1 || abs(v.vz)>0.27 || v.eHCAL<c_.eHCAL_L || (v.ePS+v.eSH)/v.trP<c_.EoverP_L || (v.ePS+v.eSH)/v.trP>c_.EoverP_H || v.ePS<0.2 ||
             (c_.coin_L>v.coin_time || v.coin_time>c_.coin_H) || (c_.W2_L>v.W2 || v.W2>c_.W2_H) || (c_.dy_L>v.dy || v.dy>c_.dy_H) || 
             abs(v.helicity)!=1) continue; // no dx cut since we are fitting it
         
@@ -1192,11 +1187,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         ch_QE.GetEntry(i);
 
-        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2) continue;
+        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2) continue;
 
         double dxq = vQE.dx;//-0.02;//dx_shifted_QE(vQE);
 
-        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2 ||
+        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
             (c_.W2_L-0.05>vQE.W2 || vQE.W2>c_.W2_H+0.05) || (c_.dy_L-0.1>vQE.dy || vQE.dy>c_.dy_H+0.1))continue;
 
         if (c_.dx_L-0.1<dxq && dxq<c_.dx_H+0.1){
@@ -1204,14 +1199,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             if (vQE.fnucl==0) hN3.Fill(vQE.dy, dxq, vQE.W2, vQE.weight);
         }
 
-        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2 ||
-            (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dy_L-0.1>vQE.dy || vQE.dy>c_.dy_H+0.1))continue;
+        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
+            (c_.W2_L-0.05>vQE.W2 || vQE.W2>c_.W2_H+0.05) || (c_.dy_L-0.1>vQE.dy || vQE.dy>c_.dy_H+0.1)) continue;
 
         // after the "continue" filters and inside the kept region for the dx fit:
-        if (vQE.fnucl == 1) hQE_dxdy_p.Fill(vQE.dy, dxq, vQE.weight);
+        if (vQE.fnucl == 1) {
+            if(std::strcmp(kin_, "GEN2_He3") == 0){
+                hQE_dxdy_p.Fill(vQE.dy-0.1, dxq+0.15, vQE.weight);
+            }
+            else{
+                hQE_dxdy_p.Fill(vQE.dy, dxq, vQE.weight);
+            }
+        
+        }
+
         if (vQE.fnucl == 0) hQE_dxdy_n.Fill(vQE.dy, dxq, vQE.weight);
 
-        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2 ||
+        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
             (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)) continue;
 
         if(vQE.fnucl == 0) {
@@ -1271,25 +1275,25 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     for(Long64_t i=0;i<ch_inel.GetEntries();++i){ 
         ch_inel.GetEntry(i);
     
-        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2) continue;
+        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2) continue;
 
         double dxi = vInel.dx; /*-0.02*/ //dx_shifted_Inel(vInel);
 
-        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
+        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
             (c_.W2_L-0.05>vInel.W2 || vInel.W2>c_.W2_H+0.05) || (c_.dy_L-0.1>vInel.dy || vInel.dy>c_.dy_H+0.1)) continue; 
 
         if(c_.dx_L-0.1<dxi && dxi<c_.dx_H+0.1){
             hI3.Fill(vInel.dy,dxi,vInel.W2,vInel.weight);
         }   
 
-        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
+        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
             (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L-0.1>vInel.dy || vInel.dy>c_.dy_H+0.1)) continue; 
 
         // after the "continue" filters and inside the kept region for the dx fit:
         hInel_dxdy.Fill(vInel.dy, dxi, vInel.weight);
 
 
-        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2 ||
+        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
             (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L>vInel.dy || vInel.dy>c_.dy_H)) continue;    
 
         if(std::strcmp(kin_, "GEN3_He3") == 0){
@@ -1460,15 +1464,35 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"inelastic_events_neg = "<<inelastic_events_neg<<"\n";
     txt<<"A_in_dx_method = "<<A_in<<"\n";
     txt<<"err_A_in_dx_method = "<<err_A_in<<"\n";
-    txt<<"A_p = "<<0.0<<"\n";
-    txt<<"err_A_p = "<<0.0<<"\n";
+
+
+    //for now hard coding proton asymmetry values from world data
+    if(std::strcmp(kin_, "GEN2_He3") == 0){
+        txt<<"A_p = "<<0.0011<<"\n";
+        txt<<"err_A_p = "<<0.0001<<"\n";
+    }
+    else if( std::strcmp(kin_, "GEN3_He3") == 0){
+        txt<<"A_p = "<<0.0004<<"\n";
+        txt<<"err_A_p = "<<0.0001<<"\n";
+    }
+    else if(std::strcmp(kin_, "GEN4_He3") == 0){
+        txt<<"A_p = "<<0.0000<<"\n";
+        txt<<"err_A_p = "<<0.0002<<"\n";
+    }
+    else if(std::strcmp(kin_, "GEN4b_He3") == 0){
+        txt<<"A_p = "<<0.0000<<"\n";
+        txt<<"err_A_p = "<<0.0002<<"\n";
+    }
+    else{
+        txt<<"A_p = "<<0.0<<"\n";
+        txt<<"err_A_p = "<<0.0<<"\n";
+    }
 
 
     //txt.close();
 
     std::cout << "[InelasticCorrection] par0 = "<< par0 << std::endl;
     //     << " saved to "<< outFile_ <<"\n";
-
 
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2047,7 +2071,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         ch_QE.GetEntry(i);
 
-        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || abs((vQE.ePS+vQE.eSH)/(vQE.trP)-1)>0.2 || vQE.ePS<0.2) continue;
+        if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2) continue;
 
         double dxq = vQE.dx;//-0.02;//dx_shifted_QE(vQE);
         double dyq = vQE.dy;
@@ -2098,7 +2122,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     for(Long64_t i=0;i<ch_inel.GetEntries();++i){ 
         ch_inel.GetEntry(i);
     
-        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || abs((vInel.ePS+vInel.eSH)/(vInel.trP)-1)>0.2 || vInel.ePS<0.2) continue;
+        if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2) continue;
 
         double dxii = vInel.dx - dxi;//dx_inel_out;
         double dyii = vInel.dy - dyi;
@@ -2173,7 +2197,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     std::cout<<"Rnop 2D : "<< Rnop <<std::endl;
 
-    TH1D * h_combined_W2 =  performFitW2_1(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,alpha, delta_1 ,Rnop,delta_1_qe);
+    TH1D * h_combined_W2 =  performFitW2_1(&hData_W2,&hInelastic_W2,&hQE_proton_W2,&hQE_neutron_W2,alpha, delta_1 ,Rnop,delta_1_qe,1);
 
     double par0_2 = 0.5; double par1_2 = 0.5;
 
@@ -2219,10 +2243,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double alpha_Neutrons = 0.0;
     double delta_1_Neutrons = 0.00;//0.1;
     double delta_2_Neutrons = 0.00;//0.1;
-    double delta_1_Neutrons_qe = 0.1;
+    double delta_1_Neutrons_qe = 0.00;//0.1;
 
     TH1D * h_combined_W2_Neutrons =  performFitW2_1(&hData_W2_Neutrons,&hInelastic_W2_Neutrons,
-        &hQE_proton_W2_Neutrons,&hQE_neutron_W2_Neutrons,alpha_Neutrons,delta_1_Neutrons,Rnop,delta_1_Neutrons_qe);
+        &hQE_proton_W2_Neutrons,&hQE_neutron_W2_Neutrons,alpha_Neutrons,delta_1_Neutrons,Rnop,delta_1_Neutrons_qe,1);
 
     double par0_2_Neutrons = 0.5; double par1_2_Neutrons = 0.5;
 
@@ -2320,18 +2344,19 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //txt.close();
 
 
-    std::cout<<"single paramater method (neutrons)"<<std::endl;
-    std::cout<<"alpha_Neutrons : "<<alpha_Neutrons<<std::endl;
-    std::cout<<"denom_Neutrons : "<<denom_Neutrons<<std::endl;
-    std::cout<<"N_Neutrons : "<<N_Neutrons<<std::endl;
+    txt<<"single paramater method (neutrons)"<<"\n";
+    txt<<"alpha_Neutrons : "<<alpha_Neutrons<<"\n";
+    txt<<"denom_Neutrons : "<<denom_Neutrons<<"\n";
+    txt<<"N_Neutrons : "<<N_Neutrons<<"\n";
 
-    std::cout<<"double paramater method (neutrons)"<<std::endl;
-    std::cout<<"par0_2_Neutrons : "<<par0_2_Neutrons<<std::endl;
-    std::cout<<"par1_2_Neutrons : "<<par1_2_Neutrons<<std::endl;
+    txt<<"double paramater method (neutrons)"<<"\n";
+    txt<<"par0_2_Neutrons : "<<par0_2_Neutrons<<"\n";
+    txt<<"par1_2_Neutrons : "<<par1_2_Neutrons<<"\n";
 
-    std::cout<<"delta shifts for W^{2} (neutrons) (not used anymore)"<<std::endl;
-    std::cout<<"delta_1_Neutrons : "<<delta_1_Neutrons<<std::endl;
-    std::cout<<"delta_2_Neutrons : "<<delta_2_Neutrons<<std::endl;
+    txt<<"delta shifts for W^{2} (neutrons)"<<"\n";
+    txt<<"delta_1_Neutrons : "<<delta_1_Neutrons<<"\n";
+    txt<<"delta_1_Neutrons_qe : "<<delta_1_Neutrons_qe<<"\n";
+    txt<<"delta_2_Neutrons : "<<delta_2_Neutrons<<"\n";
 
 
     TH1D *h_QE_W2_split_N  =(TH1D*)hQE_W2_Neutrons.Clone("h_QE_W2_split_N"); 
