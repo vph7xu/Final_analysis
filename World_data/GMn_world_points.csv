@@ -1,0 +1,20 @@
+Paper,Year,Method,Q2,R,R_stat,R_sys,GMn,GMn_stat,GMn_sys,Notes
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.125,1.02014,0.0180747,0.0151828,-1.411,0.025,0.021,HEPData record/data/19641/18123/1 (Table 1)
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.255,1.07572,0.0193127,0.0135189,-1.114,0.02,0.014,HEPData record/data/19641/18123/1 (Table 1)
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.417,1.13531,0.0329266,0.0171218,-0.862,0.025,0.013,HEPData record/data/19641/18123/1 (Table 1)
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.605,1.10456,0.014345,0.0322762,-0.616,0.008,0.018,HEPData record/data/19641/18123/1 (Table 1)
+Anklin et al.,1994,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.09475936395478782,0.945,0.02,0.0,,,,kinematics I; HEPData table 3
+Anklin et al.,1994,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.12615891650785363,0.967,0.018,0.0,,,,kinematics II; HEPData table 4
+Gao et al.,1994,inclusive quasielastic scattering of polarized e- from polarized 3He,0.19,0.9989994994993742,0.0585585878965064,0.033127705772956255,,,,Paper reports (R^2)=0.998 ±0.117 ±0.059 ±0.030; errors propagated to R
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.071,0.99,0.013,0.0,,,,nucl-ex/0107016 Table 2 (error quoted as total)
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.125,0.967,0.013,0.0,,,,nucl-ex/0107016 Table 2 (error quoted as total)
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.359,0.989,0.014,0.0,,,,nucl-ex/0107016 Table 2 (error quoted as total)
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.894,1.062,0.017,0.0,,,,nucl-ex/0107016 Table 2 (error quoted as total)
+Markowitz et al.,1993,"exclusive D(e,e'n)p cross section",,,,,,,,Values not in this preprint; likely available via HEPData or original PRC48(1993) R5-R9
+Anklin et al.,1998,"ratio d(e,e'n)/d(e,e'p) on deuterium",,,,,,,,Fill from Phys.Lett.B 428 (1998) 248-253
+Xu et al.,2000,polarized 3He transverse asymmetry A_T',,,,,,,,Fill from Phys.Rev.Lett. 85 (2000) 2900-2904
+Xu et al.,2003,"PWIA extraction from polarized 3He(e,e'n)",,,,,,,,Fill from Phys.Rev.C 67 (2003) 012201
+Anderson et al.,2007,"quasi-elastic polarized 3He(e,e'n)",,,,,,,,Fill from Phys.Rev.C 75 (2007) 034003
+Lung et al.,1993,"ratio d(e,e'n)/d(e,e'p) on deuterium",,,,,,,,Fill from Phys.Rev.Lett. 70 (1993) 718-721
+Rock et al.,1992,elastic e-n and inelastic e-D scattering,,,,,,,,Fill from Phys.Rev.D 46 (1992) 24-44
+Lachniet et al.,2009,"ratio d(e,e'n)/d(e,e'p) on deuterium (CLAS)",,,,,,,,PRL points reported in CLAS physics database; not tabulated in paper text

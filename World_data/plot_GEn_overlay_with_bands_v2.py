@@ -179,16 +179,10 @@ def plot(points_csv: Path, lookup_path: Path, out_prefix: Path, clip_to_data: bo
         (model["GEn_model"] + model["dGEn_total"]).values,
         alpha=0.20, label="Model ± total (stat⊕par)"
     )
-    band_stat = ax.fill_between(
-        model["Q2"].values,
-        (model["GEn_model"] - model["dGEn_stat"]).values,
-        (model["GEn_model"] + model["dGEn_stat"]).values,
-        alpha=0.35, label="Model ± d(GEn/GD)×GD"
-    )
-    (line_model,) = ax.plot(model["Q2"].values, model["GEn_model"].values, linewidth=2, label="Model × $G_D$")
+    (line_model,) = ax.plot(model["Q2"].values, model["GEn_model"].values, linewidth=2, color='black', label="Model × $G_D$")
 
-    ax.xlabel = plt.xlabel(r"$Q^2\ \mathrm{(GeV^2)}$")
-    ax.ylabel = plt.ylabel(r"$G_E^n$")
+    ax.set_xlabel(r"$Q^2\ \mathrm{(GeV/c)^2}$", fontsize=18)
+    ax.set_ylabel(r"$G_E^n$", fontsize=18)
     # Optional title
     # ax.set_title(r"$G_E^n$ vs $Q^2$ with model line and uncertainty bands")
     ax.grid(True, alpha=0.35)
@@ -200,15 +194,17 @@ def plot(points_csv: Path, lookup_path: Path, out_prefix: Path, clip_to_data: bo
         Line2D([0],[0], marker='o', color='red',   linestyle='None', label='polH2 / ND3'),
         Line2D([0],[0], marker='o', color='black', linestyle='None', label='recoil'),
         line_model,  # the model line you plotted above
-        band_stat,   # stat-only band
         band_total   # total band
     ]
     leg1 = ax.legend(handles=method_handles, title="Legend",
                      loc='upper right', bbox_to_anchor=(1, 1),
-                     fontsize=9, title_fontsize=10)
+                     fontsize=9, title_fontsize=12)
 
     # 2) Paper legend (marker shapes) – colored by each paper's method, with YEAR
     shape_handles = []
+    # Add fit line and band first
+    shape_handles.append(line_model)
+    shape_handles.append(band_total)
     for p in unique_papers:
         meth = pts.loc[pts['Paper'] == p, 'method_cat'].mode().iloc[0]  # paper’s method
         col = color_map.get(meth, 'gray')
@@ -229,7 +225,7 @@ def plot(points_csv: Path, lookup_path: Path, out_prefix: Path, clip_to_data: bo
 
     leg2 = ax.legend(handles=shape_handles, title="",
                      loc='upper right', bbox_to_anchor=(1, 1),
-                     fontsize=10, title_fontsize=9, ncol=2,
+                     fontsize=15, title_fontsize=12, ncol=2,
                      handletextpad=0.6, borderpad=0.4, labelspacing=0.4)
 
     # Keep both legends

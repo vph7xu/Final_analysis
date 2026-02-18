@@ -2960,10 +2960,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // frame sets the x-range to MATCH the top pad
     TH2F* frame_dx = new TH2F("frame_dx",";dx (m);Asymmetry (%)",
                               100, xMin_dx, xMax_dx, 100, yMin_A, yMax_A);
-    frame_dx->GetXaxis()->SetTitleSize(0.06);
-    frame_dx->GetXaxis()->SetLabelSize(0.05);
-    frame_dx->GetYaxis()->SetTitleSize(0.06);
-    frame_dx->GetYaxis()->SetLabelSize(0.05);
+    frame_dx->GetXaxis()->SetTitleSize(0.08);
+    frame_dx->GetXaxis()->SetLabelSize(0.08);
+    frame_dx->GetYaxis()->SetTitleSize(0.08);
+    frame_dx->GetYaxis()->SetLabelSize(0.08);
     frame_dx->Draw();
 
     // your asymmetry graph (built earlier) goes on the frame
@@ -3033,10 +3033,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // frame sets the x-range to MATCH the top pad
     TH2F* frame_dy = new TH2F("frame_dy",";dy (m);Asymmetry (%)",
                               100, xMin_dy, xMax_dy, 100, yMin_A, yMax_A);
-    frame_dy->GetXaxis()->SetTitleSize(0.06);
-    frame_dy->GetXaxis()->SetLabelSize(0.05);
-    frame_dy->GetYaxis()->SetTitleSize(0.06);
-    frame_dy->GetYaxis()->SetLabelSize(0.05);
+    frame_dy->GetXaxis()->SetTitleSize(0.08);
+    frame_dy->GetXaxis()->SetLabelSize(0.08);
+    frame_dy->GetYaxis()->SetTitleSize(0.08);
+    frame_dy->GetYaxis()->SetLabelSize(0.08);
     frame_dy->Draw();
 
     // your asymmetry graph (built earlier) goes on the frame
@@ -3103,10 +3103,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // frame sets the x-range to MATCH the top pad
     TH2F* frame_W2 = new TH2F("frame_W2",";W^{2} (GeV^{2});Asymmetry (%)",
                               100, xMin_W2, xMax_W2, 100, yMin_A, yMax_A);
-    frame_W2->GetXaxis()->SetTitleSize(0.06);
-    frame_W2->GetXaxis()->SetLabelSize(0.05);
-    frame_W2->GetYaxis()->SetTitleSize(0.06);
-    frame_W2->GetYaxis()->SetLabelSize(0.05);
+    frame_W2->GetXaxis()->SetTitleSize(0.08);
+    frame_W2->GetXaxis()->SetLabelSize(0.08);
+    frame_W2->GetYaxis()->SetTitleSize(0.08);
+    frame_W2->GetYaxis()->SetLabelSize(0.08);
     frame_W2->Draw();
 
     // your asymmetry graph (built earlier) goes on the frame

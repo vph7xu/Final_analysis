@@ -1,0 +1,64 @@
+Paper,year,method,Q2,R,R_stat,R_sys,R_tot,y_kind
+Bruins et al. (1995),1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.125,1.02014,0.0180747,0.0151828,0.023605342529393634,R
+Bruins et al. (1995),1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.255,1.07572,0.0193127,0.0135189,0.023574160398622895,R
+Bruins et al. (1995),1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.417,1.13531,0.0329266,0.0171218,0.037112222013778694,R
+Bruins et al. (1995),1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.605,1.10456,0.014345,0.0322762,0.03532042060111969,R
+Anklin et al. (1994+1998),1994,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.0947593639547878,0.945,0.02,0.0,0.02,R
+Anklin et al. (1994+1998),1994,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.1261589165078536,0.967,0.018,0.0,0.018,R
+Anklin et al. (1994+1998),1998,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.235,0.962,0.0,0.009,R
+Anklin et al. (1994+1998),1998,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.504,1.032,0.0,0.012,R
+Anklin et al. (1994+1998),1998,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.652,1.037,0.0,0.012,R
+Anklin et al. (1994+1998),1998,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.784,1.043,0.0,0.012,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.9848,0.9953,0.0080,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",1.1364,1.0073,0.0079,0.025,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",1.2879,1.0319,0.0072,0.022,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",1.4394,1.0228,0.0067,0.02 ,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",1.5909,1.0127,0.0065,0.019,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",1.7424,1.0136,0.0066,0.019,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",1.8939,1.0167,0.0064,0.019,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.0455,1     ,0.0065,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.197 ,0.9919,0.0071,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.3485,1.0016,0.0084,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.5   ,1.0212,0.0099,0.023,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.6515,1.0344,0.0108,0.022,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.803 ,1.0012,0.0113,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",2.9546,0.9954,0.0123,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",3.1061,1.0019,0.0142,0.021,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",3.2576,0.9779,0.0154,0.02 ,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",3.4091,0.9967,0.0172,0.02 ,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",3.5606,0.9918,0.0184,0.018,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",3.7121,0.9742,0.0203,0.018,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",3.8636,0.9791,0.023 ,0.018,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",4.0152,1.0285,0.0252,0.018,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",4.1667,0.9193,0.0265,0.017,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",4.3182,0.9079,0.0294,0.017,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",4.4697,0.9903,0.0386,0.017,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",4.6212,1.1074,0.0989,0.014,R
+Lachniet et al. (2009),2009,"ratio d(e,e'n)/d(e,e'p) on deuterium",4.7727,1.0921,0.1302,0.014,R
+Kubon et al. (2002),2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.071,0.99,0.013,0.0,0.013,R
+Kubon et al. (2002),2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.125,0.967,0.013,0.0,0.013,R
+Kubon et al. (2002),2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.359,0.989,0.014,0.0,0.014,R
+Kubon et al. (2002),2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.894,1.062,0.017,0.0,0.017,R
+Gao et al. (1994),1994,"inclusive quasielastic scattering of polarized e- from polarized 3He",0.19,0.9989994994993742,0.0585585878965064,0.0331277057729562,0.06727966339253208,R
+Xu et al. (2000+2003),2000,"3He",0.1,0.962,0.014,0.010,R
+Xu et al. (2000+2003),2000,"3He",0.2,0.959,0.013,0.010,R
+Xu et al. (2000+2003),2003,"3He",0.3,0.972,0.014,0.016,R
+Xu et al. (2000+2003),2003,"3He",0.4,0.984,0.011,0.028,R
+Xu et al. (2000+2003),2003,"3He",0.5,0.984,0.009,0.024,R
+Xu et al. (2000+2003),2003,"3He",0.6,1.010,0.013,0.027,R
+Anderson et al. (2007),2007,"3He",0.1,0.9481,0.0136,0.0108,R
+Anderson et al. (2007),2007,"3He",0.193,0.9511,0.0135,0.0126,R
+Anderson et al. (2007),2007,"3He",0.3,0.9577,0.0135,0.0186,R
+Anderson et al. (2007),2007,"3He",0.4,0.9694,0.0145,0.0128,R
+Anderson et al. (2007),2007,"3He",0.5,0.9689,0.0135,0.0125,R
+Anderson et al. (2007),2007,"3He",0.6,0.9939,0.0155,0.0138,R
+Lung et at. (1993),1993,"lt separation",1.75,1.052,0.026,0.045,R
+Lung et at. (1993),1993,"lt separation",2.50,1.014,0.017,0.041,R
+Lung et at. (1993),1993,"lt separation",3.25,0.967,0.031,0.052,R
+Lung et at. (1993),1993,"lt separation",4.00,0.923,0.065,0.065,R
+Markowitz et al. (1993),1993,"lt separation",0.109,1.136,0.022,0.025,R
+Markowitz et al. (1993),1993,"lt separation",0.176,1.039,0.010,0.026,R
+Markowitz et al. (1993),1993,"lt separation",0.255,1.028,0.025,0.021,R
+Rock et al. (1982+1992),1982+1992,"lt separation",6.0,0.8880,0.0240,0.0600,R
+Rock et al. (1982+1992),1982+1992,"lt separation",8.0,0.7152,0.0596,0.0869,R
+Rock et al. (1982+1992),1982+1992,"lt separation",10.0,0.6529,0.0816,0.1395,R

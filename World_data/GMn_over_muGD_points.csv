@@ -1,0 +1,12 @@
+Paper,year,method,Q2,R,R_stat,R_sys,R_tot,y_kind
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.125,1.02014,0.0180747,0.0151828,0.023605342529393634,R
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.255,1.07572,0.0193127,0.0135189,0.023574160398622895,R
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.417,1.13531,0.0329266,0.0171218,0.037112222013778694,R
+Bruins et al.,1995,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.605,1.10456,0.014345,0.0322762,0.03532042060111969,R
+Anklin et al.,1994,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.0947593639547878,0.945,0.02,0.0,0.02,R
+Anklin et al.,1994,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.1261589165078536,0.967,0.018,0.0,0.018,R
+Gao et al.,1994,inclusive quasielastic scattering of polarized e- from polarized 3He,0.19,0.9989994994993742,0.0585585878965064,0.0331277057729562,0.06727966339253208,R
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.071,0.99,0.013,0.0,0.013,R
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.125,0.967,0.013,0.0,0.013,R
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.359,0.989,0.014,0.0,0.014,R
+Kubon et al.,2002,"ratio d(e,e'n)/d(e,e'p) on deuterium",0.894,1.062,0.017,0.0,0.017,R
