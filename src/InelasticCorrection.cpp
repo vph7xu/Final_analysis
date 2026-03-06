@@ -20,6 +20,8 @@
 #include <TGaxis.h>
 #include <TFitResult.h>
 #include <TMatrixDSym.h>
+#include <TError.h>
+#include <TEllipse.h>  // ellipse overlay support
 
 using std::string; using std::vector; using std::unordered_map;
 
@@ -176,13 +178,17 @@ TH1D* InelasticCorrection::performFit(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, T
     f->SetParLimits(0, 0.0, 10.0); // amplitude
     f->SetParLimits(1, 0.0, 5.0);  // N/P ratio
     f->SetParLimits(2, 0.0, 5.0);  // Inel/P ratio
-    const double maxShift = 0.05;  // units = your dx units; e.g., 0.02 m or 2 cm (adjust!)
+    const double maxShift = 0.10;  // units = your dx units; e.g., 0.02 m or 2 cm (adjust!)
     f->SetParLimits(3, -maxShift, +maxShift);
     f->SetParLimits(4, -maxShift, +maxShift);
     f->SetParLimits(5, -maxShift, +maxShift);
 
     // Fit quietly over the histogram range
+    // Suppress ROOT interpolation error messages
+    Int_t oldErrorLevel = gErrorIgnoreLevel;
+    gErrorIgnoreLevel = kSysError; // Suppress all messages
     d->Fit(f, "RQ0"); // R: use range, Q: quiet, 0: don't draw
+    gErrorIgnoreLevel = oldErrorLevel;
 
     const int kDxP = 3, kDxN = 4, kDxI = 5;
 
@@ -285,11 +291,15 @@ TH2D* InelasticCorrection::performFitDxDy(
     f2->SetParLimits(4, -maxShiftY, +maxShiftY); // dy_p
     f2->SetParLimits(5, -maxShiftX, +maxShiftX); // dx_n
     f2->SetParLimits(6, -maxShiftY, +maxShiftY); // dy_n
-    f2->SetParLimits(7, -maxShiftX, +maxShiftX); // dx_i
+    f2->SetParLimits(7, -maxShiftY, +maxShiftY); // dx_i
     f2->SetParLimits(8, -maxShiftY, +maxShiftY); // dy_i
 
     // Fit quietly (least-squares over 2D bins)
+    // Suppress ROOT interpolation error messages
+    Int_t oldErrorLevel = gErrorIgnoreLevel;
+    gErrorIgnoreLevel = kSysError; // Suppress all messages
     d->Fit(f2, "RQ0");
+    gErrorIgnoreLevel = oldErrorLevel;
 
     // Extract
     A    = f2->GetParameter(0);
@@ -412,7 +422,11 @@ TH3D* InelasticCorrection::performFitDxDyW2(
     f3->SetParLimits(11, -maxShiftW, +maxShiftW);
 
     // Quiet least-squares fit over 3D bins
+    // Suppress ROOT interpolation error messages
+    Int_t oldErrorLevel = gErrorIgnoreLevel;
+    gErrorIgnoreLevel = kSysError; // Suppress all messages
     d->Fit(f3,"RQ0");
+    gErrorIgnoreLevel = oldErrorLevel;
 
     // output
     A    = f3->GetParameter(0);
@@ -528,16 +542,20 @@ TH1D* InelasticCorrection::performFitW2_1(
         }, xmin, xmax, fit_shifts ? 3 : 1);
 
     f->SetParameter(0, 0.5);     // alpha start
-    f->SetParLimits(0, 0.0, 40.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 30.0 //for gen2 this should be much lower like 1.0
+    f->SetParLimits(0, 0.0, 12.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 15.0 //for gen2 this should be much lower like 1.0
     
     if (fit_shifts) {
         f->SetParameter(1, 0.0);     // delta_inel start (GeV^2)
-        f->SetParLimits(1,-0.4, 0.4); // tune to your expected shift range
+        f->SetParLimits(1,-0.1, 0.1); // tune to your expected shift range
         f->SetParameter(2, 0.0);     // delta_qe start (GeV^2)
-        f->SetParLimits(2,-0.4, 0.4); // tune to your expected shift range
+        f->SetParLimits(2,-0.1, 0.1); // tune to your expected shift range
     }
 
+    // Suppress ROOT interpolation error messages
+    Int_t oldErrorLevel = gErrorIgnoreLevel;
+    gErrorIgnoreLevel = kSysError; // Suppress all messages
     d->Fit(f, "RQ");
+    gErrorIgnoreLevel = oldErrorLevel;
 
     alpha = f->GetParameter(0);
     delta_inel = fit_shifts ? f->GetParameter(1) : 0.0;
@@ -552,6 +570,10 @@ TH1D* InelasticCorrection::performFitW2_1(
         double ine = ii->Interpolate(x - delta_inel);         // Inelastic with shift
         comb->SetBinContent(i, (qep + Rnop*qen + alpha*ine)/(1.0 + Rnop + alpha));
     }
+    std::cout<<std::fixed<<std::setprecision(4)
+         <<"[W2Fit_1] shift_qe=("<<delta_qe<<")\n"
+         <<"[W2Fit_1] shift_inel=("<<delta_inel<<")\n";
+
     return comb;
 }
 
@@ -629,6 +651,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //    std::cerr << "[InelCorrection] inel_W2_L/H not set\n"; return; }
 
     //trying to readsome files
+
+    gErrorIgnoreLevel = kFatal;
 
     Utility utility;
 
@@ -735,8 +759,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        100, -4.0, 3.0);
     TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
 
-    double W2_hist_upper_limit = c_.W2_H;//0.0;
-    double W2_hist_lower_limit = c_.W2_L;//0.0;
+    // For W2 histograms used in performFitW2_1: store a slightly larger
+    // range (±0.3) around the config cuts so fits/shift operations have
+    // a small padding while plots remain restricted to the cuts.
+    double W2_hist_upper_limit = c_.W2_H + 0.3;
+    double W2_hist_lower_limit = c_.W2_L - 0.3;
 
     // if(std::strcmp(kin_, "GEN3_He3") == 0){
     //     W2_hist_upper_limit = 1.4;
@@ -776,8 +803,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_W2_2("hInelastic_W2_2",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hInelastic_W2_2_Neutrons("hInelastic_W2_2_Neutrons",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
 
-    TH2D hDxdy("hDxdy", "dxdy distribution ; dx(m)",100, c_.dy_L-0.3, c_.dy_H+0.3,100,-4,3);
-    TH2D hDxdy_cut("hDxdy_cut", "dxdy distribution ; dx(m)",100,-4,3,100,-4,3);
+    TH2D hDxdy("hDxdy", "dx-dy distribution; dy (m); dx (m)",100, c_.dy_L-0.3, c_.dy_H+0.3,100,-4,3);
+    TH2D hDxdy_cut("hDxdy_cut", "dx-dy distribution ; dy (m); dx (m)",100,-4,3,100,-4,3);
 
     TH2D hDxdy_inelastic("hDxdy_inelastic", "dxdy distribution ; dy(m); dx(m)",100,-4,3,100,-4,3);
 
@@ -1663,7 +1690,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     auto leg_dx = new TLegend(0.62,0.62,0.88,0.88);
     leg_dx->SetBorderSize(0); leg_dx->SetFillStyle(0);
     leg_dx->AddEntry(data_dx,   "Data", "lep");
-    leg_dx->AddEntry(model_dx,  "Model (P+N+Inel)", "l");
+    leg_dx->AddEntry(model_dx,  "Model p[0] * ( P + p[1]*N + p[2]*I )", "l");
     leg_dx->AddEntry(p_dx,      "QE p (model comp.)", "f");
     leg_dx->AddEntry(n_dx,      "QE n (model comp.)", "f");
     leg_dx->AddEntry(i_dx,      "Inelastic (model comp.)", "f");
@@ -1706,8 +1733,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     ensure_sumw2(hI2);
 
     // Elliptical neutron ROI centered at (0,0):
-    struct ROI { double a_dx=0.30; double b_dy=0.40; }; // semi-axes in dx and dy
-    ROI roi; // adjust if needed
+    struct ROI {
+    double a_dx;
+    double b_dy;
+    ROI(double a, double b) : a_dx(a), b_dy(b) {}
+    };
+
+    ROI roi(c_.dx_r, c_.dy_r); // semi-axes in dx and dy
+    //ROI roi; // adjust if needed
 
     // Integrate inside (dx/a)^2 + (dy/b)^2 <= 1.
     // NOTE: X axis = dy, Y axis = dx in your hists.
@@ -2366,6 +2399,337 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     h_QE_W2_split_P->Scale(Rp); 
 
 
+    // ============================================================================
+    // Second-pass DXDY template fit using W2 shifts from performFitW2_1 (neutrons)
+    // Build shifted-QE and shifted-Inel dxdy templates, refit dxdy -> f_in_dxdy_2
+    // ============================================================================
+
+    // Choose which W2-shifts to use:
+    //  - For your "neutrons-only" correction workflow, use the neutrons-only deltas:
+    const double dW2_QE_used   = delta_1_Neutrons_qe;  // QE shift from W2_1 (neutrons)
+    const double dW2_Inel_used = delta_1_Neutrons;     // Inel shift from W2_1 (neutrons)
+
+    // Data histogram to refit in dxdy.
+    // Pick the one that matches your intended region:
+    //   - hDxdy       : W2 cut + dy loose window (no ellipse)
+    //   - hDxdy_cut   : your ellipse OR proton-ellipse region + W2 cut
+    TH2D* hData_dxdy_for_fit = &hDxdy;   // <-- change to &hDxdy if you want the looser region
+
+    // Fresh templates with same binning as your originals:
+    TH2D hQE_dxdy_p_2("hQE_dxdy_p_2", "QE p (W2-shifted sel);dy;dx",
+                    hQE_dxdy_p.GetNbinsX(), hQE_dxdy_p.GetXaxis()->GetXmin(), hQE_dxdy_p.GetXaxis()->GetXmax(),
+                    hQE_dxdy_p.GetNbinsY(), hQE_dxdy_p.GetYaxis()->GetXmin(), hQE_dxdy_p.GetYaxis()->GetXmax());
+
+    TH2D hQE_dxdy_n_2("hQE_dxdy_n_2", "QE n (W2-shifted sel);dy;dx",
+                    hQE_dxdy_n.GetNbinsX(), hQE_dxdy_n.GetXaxis()->GetXmin(), hQE_dxdy_n.GetXaxis()->GetXmax(),
+                    hQE_dxdy_n.GetNbinsY(), hQE_dxdy_n.GetYaxis()->GetXmin(), hQE_dxdy_n.GetYaxis()->GetXmax());
+
+    TH2D hInel_dxdy_2("hInel_dxdy_2", "Inel (W2-shifted sel);dy;dx",
+                    hInel_dxdy.GetNbinsX(), hInel_dxdy.GetXaxis()->GetXmin(), hInel_dxdy.GetXaxis()->GetXmax(),
+                    hInel_dxdy.GetNbinsY(), hInel_dxdy.GetYaxis()->GetXmin(), hInel_dxdy.GetYaxis()->GetXmax());
+
+    // ------------------------------------------------------------
+    // QE loop (2nd pass): apply W2 shift for selection
+    // ------------------------------------------------------------
+    std::cout << "\n[InelasticCorrection] 2nd-pass QE loop (W2-shifted selection) ...\n";
+    const Long64_t nQ2 = ch_QE.GetEntries();
+    for (Long64_t i=0; i<nQ2; ++i) {
+        ch_QE.GetEntry(i);
+
+        if (abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L ||
+            (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L ||
+            (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H ||
+            vQE.ePS<0.2) continue;
+
+        const double dxq = vQE.dx;     // keep your dx shifts separate if you want
+        const double dyq = vQE.dy;
+
+        // Apply the fitted QE W2 shift BEFORE deciding the W2 window
+        const double W2q_sel = vQE.W2 + dW2_QE_used;
+
+        // Make the selection consistent with what you used for the data dxdy hist:
+        // (Here: W2 window + dy loose window, mirroring your earlier template filling style)
+        if ( (c_.W2_L>W2q_sel || W2q_sel>c_.W2_H) ||
+            (c_.dy_L-0.1>dyq  || dyq>c_.dy_H+0.1) ) continue;
+
+        // Optional: if you want to mirror the ellipse region used by hDxdy_cut:
+        // const bool inEllipseN = ( (pow((dyq-c_.dy_c)/c_.dy_r,2)+pow((dxq-c_.dx_c)/c_.dx_r,2)) <= 1 );
+        // const bool inEllipseP = ( (pow((dyq-c_.dy_P_c)/c_.dy_P_r,2)+pow((dxq-c_.dx_P_c)/c_.dx_P_r,2)) <= 1 );
+        // if(!(inEllipseN || inEllipseP)) continue;
+
+        if (vQE.fnucl==1) hQE_dxdy_p_2.Fill(dyq, dxq, vQE.weight);
+        if (vQE.fnucl==0) hQE_dxdy_n_2.Fill(dyq, dxq, vQE.weight);
+    }
+
+        // ------------------------------------------------------------
+        // Inelastic loop (2nd pass): apply W2 shift for selection
+        // ------------------------------------------------------------
+    std::cout << "\n[InelasticCorrection] 2nd-pass Inelastic loop (W2-shifted selection) ...\n";
+    const Long64_t nI2 = ch_inel.GetEntries();
+    for (Long64_t i=0; i<nI2; ++i) {
+    ch_inel.GetEntry(i);
+
+        if (abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L ||
+            (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L ||
+            (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H ||
+            vInel.ePS<0.2) continue;
+
+        const double dxi = vInel.dx;
+        const double dyi = vInel.dy;
+
+        // Apply the fitted inelastic W2 shift BEFORE deciding the W2 window
+        const double W2i_sel = vInel.W2 + dW2_Inel_used;
+
+        if ( (c_.W2_L>W2i_sel || W2i_sel>c_.W2_H) ||
+            (c_.dy_L-0.1>dyi  || dyi>c_.dy_H+0.1) ) continue;
+
+        // Optional ellipse gating (same as above) if desired:
+        // const bool inEllipseN = ( (pow((dyi-c_.dy_c)/c_.dy_r,2)+pow((dxi-c_.dx_c)/c_.dx_r,2)) <= 1 );
+        // const bool inEllipseP = ( (pow((dyi-c_.dy_P_c)/c_.dy_P_r,2)+pow((dxi-c_.dx_P_c)/c_.dx_P_r,2)) <= 1 );
+        // if(!(inEllipseN || inEllipseP)) continue;
+
+        hInel_dxdy_2.Fill(dyi, dxi, vInel.weight);
+    }
+
+    // ------------------------------------------------------------
+    // Refit dxdy using shifted-selection templates
+    // ------------------------------------------------------------
+    double A2_2=1.0, rNP2_2=0.3, rI2_2=0.1;
+    double dxp2=0, dyp2=0, dxn2=0, dyn2=0, dxi2=0, dyi2=0;
+
+    TH2D* hComb_dxdy_2 = performFitDxDy(
+    hData_dxdy_for_fit,
+    &hInel_dxdy_2,
+    &hQE_dxdy_p_2,
+    &hQE_dxdy_n_2,
+    A2_2, rNP2_2, rI2_2,
+    dxp2, dyp2, dxn2, dyn2, dxi2, dyi2
+    );
+
+    // Convert fit ratios -> inelastic fraction in the mixture.
+    // Model is proportional to: P + rNP*N + rI*I  (templates are unit-normalized PDFs)
+    const double denom2_2 = (1.0 + rNP2_2 + rI2_2);
+    const double Ndata2_2 = hData_dxdy_for_fit->Integral();
+
+    // ---- helper: shift a 2D template by (dY,dX) to match your axis convention (x=dy, y=dx)
+    auto Shift2D = [](const TH2D* h, double dY, double dX, const char* name)->TH2D* {
+    if(!h) return nullptr;
+    TH2D* out = (TH2D*)h->Clone(name);
+    out->Reset("ICES");
+    out->SetDirectory(nullptr);
+
+    const int nx = h->GetNbinsX(); // dy axis
+    const int ny = h->GetNbinsY(); // dx axis
+
+    for(int ix=1; ix<=nx; ++ix){
+        const double y = h->GetXaxis()->GetBinCenter(ix); // dy
+        for(int iy=1; iy<=ny; ++iy){
+        const double x = h->GetYaxis()->GetBinCenter(iy); // dx
+        const double v = h->GetBinContent(ix,iy);
+        if(v==0) continue;
+        // Interpolate at shifted coordinate
+        const double v2 = h->Interpolate(y - dY, x - dX);
+        out->SetBinContent(ix,iy,v2);
+        }
+    }
+    // preserve bin errors approximately (optional; you can skip)
+    out->Sumw2();
+    return out;
+    };
+
+    // ---- build shifted component shapes consistent with your fit parameters
+    // NOTE: your templates are in (dy,dx) fill order, so shifts are (dyShift, dxShift).
+    TH2D* hP2_shift = Shift2D(&hQE_dxdy_p_2, dxp2, dyp2, "hP2_shift"); // (dyShift, dxShift)
+    TH2D* hN2_shift = Shift2D(&hQE_dxdy_n_2, dxn2, dyn2, "hN2_shift");
+    TH2D* hI2_shift = Shift2D(&hInel_dxdy_2, dxi2, dyi2, "hI2_shift");
+
+    auto UnitNormalize2D = [](TH2D* h){
+    if(!h) return;
+    const double S = h->Integral(1,h->GetNbinsX(), 1,h->GetNbinsY()); // exclude under/overflow
+    if(S>0) h->Scale(1.0/S);
+    };
+
+    UnitNormalize2D(hP2_shift);
+    UnitNormalize2D(hN2_shift);
+    UnitNormalize2D(hI2_shift);
+
+    // ---- scale components according to your fit model
+    // Model: A * [ P + rNP*N + rI*I ]
+    // (If performFitDxDy already normalizes internal PDFs, this matches your 2D combo.)
+    TH2D* hP2_model = (TH2D*)hP2_shift->Clone("hP2_model"); hP2_model->SetDirectory(nullptr);
+    TH2D* hN2_model = (TH2D*)hN2_shift->Clone("hN2_model"); hN2_model->SetDirectory(nullptr);
+    TH2D* hI2_model = (TH2D*)hI2_shift->Clone("hI2_model"); hI2_model->SetDirectory(nullptr);
+
+        // Each component becomes the **absolute** contribution
+    // hP2->Scale(Ndata2 * (1.0/denom2));      // QE p
+    // hN2->Scale(Ndata2 * (rNP2/denom2));     // QE n
+    // hI2->Scale(Ndata2 * (rI2/denom2));      // Inelastic
+
+    std::cout << "[pass2] integrals before unit-normalization:\n"
+            << "  P: " << hP2_shift->Integral() << "\n"
+            << "  N: " << hN2_shift->Integral() << "\n"
+            << "  I: " << hI2_shift->Integral() << "\n";
+
+    std::cout << "[pass2] Ndata2_2=" << Ndata2_2
+            << " denom=" << denom2_2
+            << " rNP=" << rNP2_2
+            << " rI=" << rI2_2 << "\n";
+
+    hP2_model->Scale(Ndata2_2 * (1.0/denom2_2));      // QE p
+    hN2_model->Scale(Ndata2_2 * (rNP2_2/denom2_2));
+    hI2_model->Scale(Ndata2_2 * (rI2_2/denom2_2));
+
+
+
+    // Compute fractions using the same elliptical ROI as earlier but applied
+    // to the *scaled* model components from this 2nd-pass fit. If the
+    // ellipse integral on data is zero, fall back to the previous ratio
+    // from the fit parameters.
+    double f_in_dxdy_2 = 0.0, f_p_dxdy_2 = 0.0, f_n_dxdy_2 = 0.0;
+    double ef_in_dxdy_2 = 0.0, ef_p_dxdy_2 = 0.0, ef_n_dxdy_2 = 0.0;
+
+    // integrate_ellipse and ROI (roi.a_dx, roi.b_dy) are defined earlier
+    // in the file and describe the elliptical neutron ROI centered at (0,0).
+    auto [Ndata_ell_2, eData_ell_2] = integrate_ellipse(hData_dxdy_for_fit, roi.a_dx, roi.b_dy);
+    auto [Nprot_ell_2, eProt_ell_2] = integrate_ellipse(hP2_model,       roi.a_dx, roi.b_dy);
+    auto [Nneut_ell_2, eNeut_ell_2] = integrate_ellipse(hN2_model,       roi.a_dx, roi.b_dy);
+    auto [Ninel_ell_2, eInel_ell_2] = integrate_ellipse(hI2_model,       roi.a_dx, roi.b_dy);
+
+    auto ratio_err_local = [](double x, double ex, double d, double ed){
+        if (d<=0 || x<0) return std::pair<double,double>(0.0, 0.0);
+        double r = x/d;
+        double dr = r * std::sqrt( (ex>0? (ex*ex)/(x*x) : 0.0) + (ed>0? (ed*ed)/(d*d) : 0.0) );
+        return std::pair<double,double>(r, dr);
+    };
+
+    if (Ndata_ell_2 > 0.0) {
+        std::tie(f_p_dxdy_2, ef_p_dxdy_2) = ratio_err_local(Nprot_ell_2, eProt_ell_2, Ndata_ell_2, eData_ell_2);
+        std::tie(f_n_dxdy_2, ef_n_dxdy_2) = ratio_err_local(Nneut_ell_2, eNeut_ell_2, Ndata_ell_2, eData_ell_2);
+        std::tie(f_in_dxdy_2, ef_in_dxdy_2) = ratio_err_local(Ninel_ell_2, eInel_ell_2, Ndata_ell_2, eData_ell_2);
+    } else {
+        // Fallback: use fit-parameter based fractions (unchanged behavior)
+        f_in_dxdy_2 = (denom2_2>0 ? (rI2_2/denom2_2) : 0.0);
+        f_p_dxdy_2  = (denom2_2>0 ? (1.0/denom2_2) : 0.0);
+        f_n_dxdy_2  = (denom2_2>0 ? (rNP2_2/denom2_2) : 0.0);
+    }
+
+    // Write to the same corrections file stream ("txt") you already opened earlier:
+    txt << "dxdy_refit_with_W2_shifts = 1\n";
+    txt << "W2_shift_used_QE   = " << dW2_QE_used   << "\n";
+    txt << "W2_shift_used_Inel = " << dW2_Inel_used << "\n";
+    txt << "dxdy_fit_A_2   = " << A2_2   << "\n";
+    txt << "dxdy_fit_rNP_2 = " << rNP2_2 << "\n";
+    txt << "dxdy_fit_rI_2  = " << rI2_2  << "\n";
+    txt << "f_in_dxdy_2 = " << f_in_dxdy_2 << "\n";
+    txt << "f_p_dxdy_2  = " << f_p_dxdy_2  << "\n";
+    txt << "f_n_dxdy_2  = " << f_n_dxdy_2  << "\n";
+    txt << "dxdy_fit_shifts_2 = "
+        << "p("<<dxp2<<","<<dyp2<<") "
+        << "n("<<dxn2<<","<<dyn2<<") "
+        << "inel("<<dxi2<<","<<dyi2<<")\n";
+
+    // (Optional) keep hComb_dxdy_2 for plotting/debug if you want
+
+    // ============================================================================
+    // dx,dy projections for second-pass dxdy fit: DATA vs FIT components
+    // Save as PDF(s)
+    // ============================================================================
+
+
+    // ---- total model (for projections); you can also just use hComb_dxdy_2 if it is the total model
+    TH2D* hTot2_model = (TH2D*)hP2_model->Clone("hTot2_model"); hTot2_model->SetDirectory(nullptr);
+    hTot2_model->Add(hN2_model);
+    hTot2_model->Add(hI2_model);
+
+    // ========== projections: dx is Y-axis, dy is X-axis ==========
+    TH1D* hData_dx = hData_dxdy_for_fit->ProjectionY("hData_dx_2");
+    TH1D* hData_dy = hData_dxdy_for_fit->ProjectionX("hData_dy_2");
+
+    TH1D* hP_dx = hP2_model->ProjectionY("hP_dx_2");
+    TH1D* hN_dx = hN2_model->ProjectionY("hN_dx_2");
+    TH1D* hI_dx = hI2_model->ProjectionY("hI_dx_2");
+    TH1D* hT_dx = hTot2_model->ProjectionY("hT_dx_2");
+
+    TH1D* hP_dy = hP2_model->ProjectionX("hP_dy_2");
+    TH1D* hN_dy = hN2_model->ProjectionX("hN_dy_2");
+    TH1D* hI_dy = hI2_model->ProjectionX("hI_dy_2");
+    TH1D* hT_dy = hTot2_model->ProjectionX("hT_dy_2");
+
+    // Make data have proper errors
+    hData_dx->Sumw2();
+    hData_dy->Sumw2();
+
+    // ---- style (no special colors if you prefer; here just different line styles)
+    auto StyleLine = [](TH1* h, int ls, int lw){
+    if(!h) return;
+    h->SetLineStyle(ls);
+    h->SetLineWidth(lw);
+    };
+    StyleLine(hT_dx, 1, 3);
+    StyleLine(hP_dx, 2, 2);
+    StyleLine(hN_dx, 3, 2);
+    StyleLine(hI_dx, 4, 2);
+
+    StyleLine(hT_dy, 1, 3);
+    StyleLine(hP_dy, 2, 2);
+    StyleLine(hN_dy, 3, 2);
+    StyleLine(hI_dy, 4, 2);
+
+    hData_dx->SetMarkerStyle(20);
+    hData_dy->SetMarkerStyle(20);
+
+    // ---- draw dx projection
+    TCanvas c_dx2("c_dx2","dx projection (2nd pass)",900,700);
+    c_dx2.SetGrid();
+    hData_dx->SetTitle("dx projection (2nd pass fit);dx;counts");
+    hData_dx->Draw("E1");
+    hT_dx->Draw("HIST SAME");
+    hP_dx->Draw("HIST SAME");
+    hN_dx->Draw("HIST SAME");
+    hI_dx->Draw("HIST SAME");
+
+    TLegend legdx(0.62,0.62,0.88,0.88);
+    legdx.SetBorderSize(0);
+    legdx.AddEntry(hData_dx,"Data","lep");
+    legdx.AddEntry(hT_dx,"Total fit","l");
+    legdx.AddEntry(hP_dx,"QE p","l");
+    legdx.AddEntry(hN_dx,"QE n","l");
+    legdx.AddEntry(hI_dx,"Inel","l");
+    legdx.Draw();
+
+    c_dx2.SaveAs(Form("images/%s/dx_proj_dxdy_fit_pass2.pdf", kin_));
+    // c_dx2.SaveAs(Form("%s/dx_proj_dxdy_fit_pass2.png", outdir.Data()));
+
+    // ---- draw dy projection
+    TCanvas c_dy2("c_dy2","dy projection (2nd pass)",900,700);
+    c_dy2.Divide(2,2);
+    c_dy2.cd(1);
+    hData_dy->SetTitle("dy projection (2nd pass fit);dy;counts");
+    hData_dy->Draw("E1");
+    hT_dy->Draw("HIST SAME");
+    hP_dy->Draw("HIST SAME");
+    hN_dy->Draw("HIST SAME");
+    hI_dy->Draw("HIST SAME");
+    c_dy2.cd(2);
+    hQE_dxdy_n_2.Draw("COLZ");
+    c_dy2.cd(3);
+    hInel_dxdy_2.Draw("COLZ");
+    c_dy2.cd(4);
+    hQE_dxdy_p_2.Draw("COLZ");
+
+    TLegend legdy(0.62,0.62,0.88,0.88);
+    legdy.SetBorderSize(0);
+    legdy.AddEntry(hData_dy,"Data","lep");
+    legdy.AddEntry(hT_dy,"Total fit","l");
+    legdy.AddEntry(hP_dy,"QE p","l");
+    legdy.AddEntry(hN_dy,"QE n","l");
+    legdy.AddEntry(hI_dy,"Inel","l");
+    legdy.Draw();
+
+    c_dy2.SaveAs(Form("images/%s/dy_proj_dxdy_fit_pass2.pdf", kin_));
+    // c_dy2.SaveAs(Form("%s/dy_proj_dxdy_fit_pass2.png", outdir.Data()));
+
+
     ///////////////////plotting and printing////////////////////////////
 
     TCanvas *C = new TCanvas("c","c",2400,1500);
@@ -2509,6 +2873,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hInelastic_W2_shift1->SetFillColorAlpha(7,0.5);
     hInelastic_W2_shift1->SetFillStyle(3009);
 
+    // display only the configured W2 cut range
+    h_combined_W2->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hQE_proton_W2.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hQE_neutron_W2.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hInelastic_W2_shift1->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hData_W2.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+
     hData_W2.SetMarkerStyle(kFullSquare);
 
     hData_W2.Draw("PE1");
@@ -2538,6 +2909,12 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hInelastic_W2_shift2->SetFillColorAlpha(7,0.5);
     hInelastic_W2_shift2->SetFillStyle(3009);
 
+    // display only the configured W2 cut range
+    h_combined_W2_2->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hQE_W2.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hInelastic_W2_shift2->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hData_W2.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+
     hData_W2.SetMarkerStyle(kFullSquare);
 
     hData_W2.Draw("PE1");
@@ -2547,6 +2924,20 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     C1->cd(3);
     hDxdy.Draw("COLZ");
+
+    // simple ROI ellipse visualization on separate canvas
+    {
+        TCanvas* Croi = new TCanvas("Croi","dx-dy neutron spot",1200,800);
+        hDxdy.Draw("COLZ");
+        // use previously defined roi parameters (semi-axes in dx and dy)
+        TEllipse ell(0.0, 0.0, roi.a_dx, roi.b_dy);
+        ell.SetLineColor(kRed);
+        ell.SetLineWidth(2);
+        ell.SetFillStyle(0);
+        ell.Draw("same");
+        Croi->Print(Form("images/%s/hDxdy_neutron_spot_%s.png", kin_, kin_));
+        Croi->Print(Form("images/%s/hDxdy_neutron_spot_%s.pdf", kin_, kin_));
+    }
 
     C1->cd(4);
     hDxdy_cut.Draw("COLZ");
@@ -2574,6 +2965,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hQE_neutron_W2_shift_Neutrons->SetFillStyle(3005);
     hInelastic_W2_shift1_Neutrons->SetFillColorAlpha(7,0.5);
     hInelastic_W2_shift1_Neutrons->SetFillStyle(3009);
+
+    // restrict display to config W2 cut
+    h_combined_W2_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hQE_proton_W2_shift_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hQE_neutron_W2_shift_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hInelastic_W2_shift1_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hData_W2_Neutrons.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
 
     hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
 
@@ -2612,6 +3010,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     h_QE_W2_split_N->SetFillStyle(3005);
     h_QE_W2_split_P->SetFillColorAlpha(6,0.5);
     h_QE_W2_split_P->SetFillStyle(3005);
+
+    // restrict display to config W2 cut
+    h_combined_W2_2_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hQE_W2_Neutrons.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hInelastic_W2_shift2_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    h_QE_W2_split_N->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    h_QE_W2_split_P->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    hData_W2_Neutrons.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
 
     hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
 

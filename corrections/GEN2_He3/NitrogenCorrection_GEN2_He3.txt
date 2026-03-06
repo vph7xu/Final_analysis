@@ -1,5 +1,5 @@
-N_N2_sim = 138677
-N_He3_sim = 65722
+N_N2_sim = 138403
+N_He3_sim = 65481
 N_N2_sim_integral = 2.67645e-30
 N_He3_sim_integral = 1.13827e-30
 nentries_N2 = 1928620

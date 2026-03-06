@@ -1,4 +1,12 @@
-lambda = -0.226705
-sigma_lambda_stat = 0.22307
-sigma_lambda_sys  = 0.044593
-sigma_lambda      = 0.227484
+lambda = -0.384523
+sigma_lambda_stat = 0.238524
+sigma_lambda_sys  = 0.0539865
+sigma_lambda      = 0.244557
+GD = 0.00453971
+GMn = -0.00634551
+sigma_GMn_param = 0.000700685
+GEn = 0.00244
+sigma_GEn_stat = 0.00151356
+sigma_GEn_sys  = 0.000342572
+sigma_GEn_GMnParam = 0.00026943
+sigma_GEn      = 0.00157506

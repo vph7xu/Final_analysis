@@ -275,23 +275,36 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
                 double sumWP_block  = kvb.second;
                 double mu           = sumWP_block / p.sumWPb;  // contribution fraction
                 double delta_frac   = p.beam_blk_err.at(idx) / b; // fractional sys of that block at Pbar scale
-                S += (delta_frac) * (delta_frac); //removed mu may be should add back
+                S += (mu*delta_frac) * (mu*delta_frac); //removed mu may be should add back
             }
             db = b * std::sqrt(S); // absolute
         }
         if (t > 0.0 && p.sumWPt > 0.0) {
-            double S = 0.0;
-            for (const auto& kvt : p.targ_blk_sumWP) {
-                long long key         = kvt.first;
-                if(p.targ_blk_err.at(key)>0){
+            // double S = 0.0;
+            // for (const auto& kvt : p.targ_blk_sumWP) {
+            //     long long key         = kvt.first;
+            //     if(p.targ_blk_err.at(key)>0){
                     
-                    double    sumWP_block = kvt.second;
-                    double mu           = sumWP_block / p.sumWPt;
-                    double delta_frac   = p.targ_blk_err.at(key) / t; // fractional at Pbar scale
-                    S += (delta_frac ) * (delta_frac ); //mu removed for a check
-                }
+            //         double    sumWP_block = kvt.second;
+            //         double mu           = sumWP_block / p.sumWPt;
+            //         double delta_frac   = p.targ_blk_err.at(key) / t; // fractional at Pbar scale
+            //         S += (delta_frac ) * (delta_frac ); //mu removed for a check
+            //     }
+            // }
+            // dt = t * std::sqrt(S/p.sumWt); // absolute // not sure revisit
+            double Sabs2 = 0.0;
+            int counter1 = 0;
+            for (const auto& kvt : p.targ_blk_sumWP) {
+            long long key = kvt.first;
+            double sumWP_block = kvt.second;
+            double mu = sumWP_block / p.sumWPt;          // weight fraction
+            double dP = p.targ_blk_err.at(key);          // absolute uncertainty for that block
+            //std::cout<<"key = "<<key<<" sumWP_block = "<<sumWP_block<<" mu = "<<mu<<" dP = "<<dP<<std::endl;
+            Sabs2 += (dP) * (dP);
+            counter1++;
             }
-            dt = t * std::sqrt(S/p.sumWt); // absolute // not sure revisit
+            dt = std::sqrt(Sabs2/counter1);  // absolute uncertainty on t
+            std::cout<<"Sabs2 = "<<Sabs2<<" counter1 = "<<counter1<<" dt = "<<dt<<std::endl;
         }
 
         out << run << " " << c.Np << " " << c.Nm << " "
@@ -349,20 +362,37 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             double sumWP_block  = kvb.second;
             double mu           = sumWP_block / SWPb;
             double delta_frac   = beam_blk_err_glob.at(idx) / total_avg_beam_polarization;
-            S += (delta_frac) * (delta_frac);  //removed mu may be should add back
+            S += (mu*delta_frac) * (mu*delta_frac);  //removed mu may be should add back
         }
         err_total_avg_beam_polarization = total_avg_beam_polarization * std::sqrt(S);
     }
+    // if (total_avg_target_polarization > 0.0 && SWPt > 0.0) {
+    //     double S = 0.0;
+    //     for (const auto& kvt : targ_blk_sumWP_glob) {
+    //         long long key        = kvt.first;
+    //         double    sumWP_block= kvt.second;
+    //         double mu           = sumWP_block / SWPt;
+    //         double delta_frac   = targ_blk_err_glob.at(key) / total_avg_target_polarization;
+    //         S += (delta_frac) * (delta_frac ); //removed mu may be should add back
+    //     }
+    //     err_total_avg_target_polarization = total_avg_target_polarization * std::sqrt(S/SWt);// not sure revisit
+    // }
+
     if (total_avg_target_polarization > 0.0 && SWPt > 0.0) {
-        double S = 0.0;
+        double Sabs2 = 0.0; // sum of (mu * dP)^2 in absolute units
+        double counter2 = 0;
         for (const auto& kvt : targ_blk_sumWP_glob) {
-            long long key        = kvt.first;
-            double    sumWP_block= kvt.second;
-            double mu           = sumWP_block / SWPt;
-            double delta_frac   = targ_blk_err_glob.at(key) / total_avg_target_polarization;
-            S += (delta_frac) * (delta_frac ); //removed mu may be should add back
+            long long key         = kvt.first;
+            double    sumWP_block = kvt.second;
+
+            double mu  = sumWP_block / SWPt;              // weight fraction of this block in <P>
+            double dP  = targ_blk_err_glob.at(key);       // ABS systematic uncertainty for that block
+
+            Sabs2 += (dP) * (dP);
+            counter2++;
         }
-        err_total_avg_target_polarization = total_avg_target_polarization * std::sqrt(S/SWt);// not sure revisit
+        err_total_avg_target_polarization = std::sqrt(Sabs2/counter2);  // ABS uncertainty on global <P>
+        std::cout<<"Sabs2 = "<<Sabs2<<" counter2 = "<<counter2<<" err_total_avg_target_polarization = "<<err_total_avg_target_polarization<<std::endl;
     }
 
     // Write global polarization summary (convert to fraction if your downstream expects it)
