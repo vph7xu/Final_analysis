@@ -1,0 +1,16 @@
+Cpi_pos = 0.143632
+Cpi_neg = 0.145566
+pos_integral = 24099.7
+neg_integral = 24459.5
+asymCpi = -0.0066896
+err_asymCpi = 0.00497722
+asymIntegral = -0.00741019
+err_asymIntegral = 0.00453787
+asymGrinch = -0.00279434
+err_asymGrinch = 0.00281352
+pi_events_all = 450.524
+QE_events_all = 19292
+A_pi = -0.00279434
+err_A_pi = 0.00281352
+f_pi = 0.0225772
+err_f_pi = 0.00107622

@@ -1,0 +1,61 @@
+par0 = 0.494245
+par1 = 0.166292
+par2 = 0.833353
+data events = 6387
+background events = 4031.28
+proton events = 211.021
+background_fraction = 0.631169
+err_background_fraction = 0.0126962
+proton_fraction = 0.0330391
+err_proton_fraction = 0.00231166
+f_in_dx = 0.609005
+err_f_in_dx = 0.0122858
+f_p_dx = 0.0330391
+err_f_p_dx = 0.00231166
+inelastic_events_pos = 5820.94
+inelastic_events_neg = 5689.26
+A_in_dx_method = 0.01144
+err_A_in_dx_method = 0.00932031
+A_p = 0
+err_A_p = 0.0002
+f_p = 0.0285575
+err_f_p = 0.0023314
+W2_data_events = 10920
+W2_fit_events = 10677.1
+W2_neutron_events = 5526.99
+W2_bkg_events = 5207.24
+W2_proton_events = 419.705
+background_fraction_W2_fit = 0.476853
+err_background_fraction_W2_fit = 0.00803063
+inelastic_fraction_W2_fit = 0.460108
+err_inelastic_fraction_W2_fit = 0.00778062
+f_in = 0.460108
+err_f_in = 0.00778062
+SSR_W2_single_param = 13626.8
+SSR_W2_two_param    = 2.43221e+06
+single paramater method (neutrons)
+alpha_Neutrons : 15
+denom_Neutrons : 28.9506
+N_Neutrons : 14531
+double paramater method (neutrons)
+par0_2_Neutrons : 0.306219
+par1_2_Neutrons : 0.678014
+delta shifts for W^{2} (neutrons)
+delta_1_Neutrons : 0.0163051
+delta_1_Neutrons_qe : 0.15
+delta_2_Neutrons : 0
+dxdy_refit_with_W2_shifts = 1
+W2_shift_used_QE   = 0.15
+W2_shift_used_Inel = 0.0163051
+dxdy_fit_A_2   = 0.443692
+dxdy_fit_rNP_2 = 0.14681
+dxdy_fit_rI_2  = 0.863094
+f_in_dxdy_2 = 0.568793
+f_p_dxdy_2  = 0.028048
+f_n_dxdy_2  = 0.375218
+dxdy_fit_shifts_2 = p(-0.0138829,-0.0178196) n(0.0188569,-0.0153929) inel(0.00859022,0.0333768)
+avg_extrap_A_percent = -0.109309
+err_avg_extrap_A_percent = 0.417915
+A_in = -0.00109309
+err_A_in = 0.00417915
+num_elastic_points_used = 31

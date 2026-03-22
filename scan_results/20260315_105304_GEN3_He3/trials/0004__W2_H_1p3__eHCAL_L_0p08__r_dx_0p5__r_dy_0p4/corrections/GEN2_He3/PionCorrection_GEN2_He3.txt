@@ -1,0 +1,19 @@
+Cpi_pos = 0.00822033
+Cpi_neg = 0.00901204
+pos_integral = 4128.26
+neg_integral = 4431.23
+asymCpi = -0.0459435
+err_asymCpi = 0.017412
+asymIntegral = -0.0353952
+err_asymIntegral = 0.010802
+asymGrinch = 0.00663835
+err_asymGrinch = 0.00428812
+pi_events_all = 1622.21
+QE_events_all = 155687
+A_pi = 0.00663835
+err_A_pi = 0.00428812
+Npos GRINCH = 27371
+Nneg GRINCH = 27010
+total pions1622.21
+f_pi = 0.00999673
+err_f_pi = 0.000249603

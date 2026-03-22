@@ -542,13 +542,13 @@ TH1D* InelasticCorrection::performFitW2_1(
         }, xmin, xmax, fit_shifts ? 3 : 1);
 
     f->SetParameter(0, 0.5);     // alpha start
-    f->SetParLimits(0, 0.0, 12.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 15.0 //for gen2 this should be much lower like 1.0
+    f->SetParLimits(0, 0.0, 10.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 15.0 //for gen2 this should be much lower like 1.0
     
     if (fit_shifts) {
         f->SetParameter(1, 0.0);     // delta_inel start (GeV^2)
-        f->SetParLimits(1,-0.1, 0.1); // tune to your expected shift range
+        f->SetParLimits(1,-0.15, 0.15); // tune to your expected shift range
         f->SetParameter(2, 0.0);     // delta_qe start (GeV^2)
-        f->SetParLimits(2,-0.1, 0.1); // tune to your expected shift range
+        f->SetParLimits(2,-0.15, 0.15); // tune to your expected shift range
     }
 
     // Suppress ROOT interpolation error messages
@@ -1026,7 +1026,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             hDy_both.Fill(v.dy);
         }
 
-        if(std::strcmp(kin_, "GEN4_He3") == 0){
+        if(std::strcmp(kin_, "GEN4_He3_pass2") == 0){
                 W2_new = W2_new;
         }
         
@@ -1036,7 +1036,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         if((c_.dy_L<v.dy && v.dy<c_.dy_H) && (c_.dx_L<v.dx && v.dx<c_.dx_H) && (W2_hist_lower_limit<W2_new && W2_new<W2_hist_upper_limit) 
         &&((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))<=1)) {
-            if(std::strcmp(kin_, "GEN4_He3") == 0){
+            if(std::strcmp(kin_, "GEN4_He3_pass2") == 0){
                 hData_W2_Neutrons.Fill(W2_new);
             }
             else{
@@ -1047,7 +1047,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(((pow((v.dy-c_.dy_c)/c_.dy_r,2)+pow((v.dx-c_.dx_c)/c_.dx_r,2))<=1) || ((pow((v.dy-c_.dy_P_c)/c_.dy_P_r,2)+pow((v.dx-c_.dx_P_c)/c_.dx_P_r,2))<=1)
             &&(W2_hist_lower_limit<W2_new && W2_new<W2_hist_upper_limit)){
             
-            if(std::strcmp(kin_, "GEN4_He3") == 0){
+            if(std::strcmp(kin_, "GEN4_He3_pass2") == 0){
                 hData_W2.Fill(W2_new);
             }
             else{
@@ -1493,22 +1493,22 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"err_A_in_dx_method = "<<err_A_in<<"\n";
 
 
-    //for now hard coding proton asymmetry values from world data
+    //for now hard coding proton asymmetry values from world data, extraction in the proton_asym directory
     if(std::strcmp(kin_, "GEN2_He3") == 0){
-        txt<<"A_p = "<<0.0011<<"\n";
+        txt<<"A_p = "<<0.0009<<"\n";
         txt<<"err_A_p = "<<0.0001<<"\n";
     }
     else if( std::strcmp(kin_, "GEN3_He3") == 0){
-        txt<<"A_p = "<<0.0004<<"\n";
+        txt<<"A_p = "<<0.0002<<"\n";
         txt<<"err_A_p = "<<0.0001<<"\n";
     }
     else if(std::strcmp(kin_, "GEN4_He3") == 0){
-        txt<<"A_p = "<<0.0000<<"\n";
+        txt<<"A_p = "<<-0.0001<<"\n";
         txt<<"err_A_p = "<<0.0002<<"\n";
     }
     else if(std::strcmp(kin_, "GEN4b_He3") == 0){
-        txt<<"A_p = "<<0.0000<<"\n";
-        txt<<"err_A_p = "<<0.0002<<"\n";
+        txt<<"A_p = "<<-0.0001<<"\n";
+        txt<<"err_A_p = "<<0.0001<<"\n";
     }
     else{
         txt<<"A_p = "<<0.0<<"\n";
@@ -2336,8 +2336,29 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double W2_fit_bkg_fraction = W2_bkg_events/W2_data_events;
     double W2_fit_err_background_frac = (W2_bkg_events/W2_data_events)*sqrt((1/W2_bkg_events)+(1/W2_data_events));
 
+    double W2_proton_fraction = W2_proton_events/W2_data_events;
+
     const double R_W2     = (1 - facc - fN2 - fpi) / W2_data_events;
     const double F_W2     = W2_bkg_events * R_W2;              // inelastic_frac
+
+    const double A_W2 = 1.0 - facc - fN2;
+
+    const double P_W2 = W2_proton_events * A_W2 / W2_data_events;
+
+    const double dSigmaP = std::sqrt(W2_proton_events); // only if true counting stats
+    const double dSigma  = std::sqrt(W2_data_events);
+
+    const double dP_dSigmaP = A_W2 / W2_data_events;
+    const double dP_dSigma  = W2_proton_events * A_W2 / (W2_data_events * W2_data_events);
+    const double dP_dfacc   = W2_proton_events / W2_data_events;
+    const double dP_dfN2    = W2_proton_events / W2_data_events;
+
+    const double dP_W2 = std::sqrt(
+        std::pow(dP_dSigmaP * dSigmaP, 2) +
+        std::pow(dP_dSigma  * dSigma,  2) +
+        std::pow(dP_dfacc   * errfacc, 2) +
+        std::pow(dP_dfN2    * errfN2,  2)
+    );
 
     const double dN_in_W2   = std::sqrt(W2_bkg_events);     // Poisson
     const double dN_QE_W2   = std::sqrt(W2_data_events);            // Poisson
@@ -2358,8 +2379,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double W2_inelastic_frac = W2_bkg_events * (1 - facc - fN2 - fpi)/W2_data_events;    
     double W2_errinelastic_frac =  dFin_W2;
     
-    txt<<"f_p = "<<Rprot<<"\n";
-    txt<<"err_f_p = "<<eRprot<<"\n";
+    txt<<"f_p_dxdy = "<<Rprot<<"\n";
+    txt<<"err_f_p_dxdy = "<<eRprot<<"\n";
+
+    txt<<"f_p = "<<P_W2<<"\n";
+    txt<<"err_f_p = "<<dP_W2<<"\n";
 
     txt<<"W2_data_events = "<<W2_data_events<<"\n";
     txt<<"W2_fit_events = "<<W2_fit_events<<"\n";

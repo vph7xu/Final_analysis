@@ -120,20 +120,20 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     std::cout<< "pion_L" << c_.pion_L<<"\n";
     std::cout<< "pion_H" << c_.pion_H<<"\n";
 
-    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 2.5);
-    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 2.5);
-    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (GeV) ; Energy(GeV)",  200, 0.01, 2.5);
-    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      200, 0.01, 2.5);
-    TH1D *h_PSe_data_loose_cuts = new TH1D("h_PSe_data_loose_cuts",  "Preshower Energy (relaxed cuts) ; Energy (GeV)",    200, 0.01, 2.5);
-    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy (analysis cuts); Energy (GeV)",    200, 0.01, 2.5);
-    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 200,0.01,2.5);
-    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 200,0.01,2.5);
+    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (GeV) ; Energy(GeV)",  100, 0.01, 2.5);
+    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      100, 0.01, 2.5);
+    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (GeV) ; Energy(GeV)",  100, 0.01, 2.5);
+    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      100, 0.01, 2.5);
+    TH1D *h_PSe_data_loose_cuts = new TH1D("h_PSe_data_loose_cuts",  "Preshower Energy (relaxed cuts) ; Energy (GeV)",    100, 0.01, 2.5);
+    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy (analysis cuts); Energy (GeV)",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 100,0.01,2.5);
+    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 100,0.01,2.5);
 
-    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
-    TH1D *h_PSe_data_antigrinch = new TH1D("h_PSe_data_antigrinch",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
+    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_antigrinch = new TH1D("h_PSe_data_antigrinch",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
 
-    TH1D *h_PSe_data_grinch_loose_cuts = new TH1D("h_PSe_data_grinch_loose_cuts",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
-    TH1D *h_PSe_data_antigrinch_loose_cuts = new TH1D("h_PSe_data_antigrinch_loose_cuts",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    200, 0.01, 2.5);
+    TH1D *h_PSe_data_grinch_loose_cuts = new TH1D("h_PSe_data_grinch_loose_cuts",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_antigrinch_loose_cuts = new TH1D("h_PSe_data_antigrinch_loose_cuts",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
 
     double Ngrinch_pos = 0;
     double Ngrinch_neg = 0;
@@ -167,13 +167,15 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
 
         //grinch for verification
         if(v.grinch_track!=0 || v.grinch_clus_size<2){ // this could be an or 
-            h_PSe_data_grinch_loose_cuts->Fill(v.ePS);
+            //h_PSe_data_grinch_loose_cuts->Fill(v.ePS);
+            h_PSe_data_antigrinch_loose_cuts->Fill(v.ePS);
 
             if(-1*v.helicity*v.IHWP*c_.Pkin_L==1) Ngrinch_pos++;
             if(-1*v.helicity*v.IHWP*c_.Pkin_L==-1) Ngrinch_neg++;
         
         }else{
-            h_PSe_data_antigrinch_loose_cuts->Fill(v.ePS);
+            //h_PSe_data_antigrinch_loose_cuts->Fill(v.ePS);
+            h_PSe_data_grinch_loose_cuts->Fill(v.ePS);
         }
 
         ///////////////////////tight cuts for fraction calculation///////////////
@@ -186,10 +188,12 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
         //grinch for verification
 
         if(v.grinch_track!=0 || v.grinch_clus_size<2){ // this could be an or 
-            h_PSe_data_grinch->Fill(v.ePS);
+            //h_PSe_data_grinch->Fill(v.ePS);
+            h_PSe_data_antigrinch->Fill(v.ePS);
         
         }else{
-            h_PSe_data_antigrinch->Fill(v.ePS);
+            //h_PSe_data_antigrinch->Fill(v.ePS);
+            h_PSe_data_grinch->Fill(v.ePS);
         }
 
 
@@ -412,6 +416,9 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     f<< "QE_events_all = "<<QE_events_all<<"\n";
     f<< "A_pi = "<<asymGrinch<<"\n";
     f<< "err_A_pi = "<<err_asymGrinch<<"\n";
+    f<< "Npos GRINCH = "<<Ngrinch_pos<<"\n";
+    f<< "Nneg GRINCH = "<<Ngrinch_neg<<"\n";
+    f<< "total pions"<<pi_events_all<<"\n";
     f<< "f_pi = "<<f_pi<<"\n";
     f<< "err_f_pi = "<<err_f_pi<<"\n";
 

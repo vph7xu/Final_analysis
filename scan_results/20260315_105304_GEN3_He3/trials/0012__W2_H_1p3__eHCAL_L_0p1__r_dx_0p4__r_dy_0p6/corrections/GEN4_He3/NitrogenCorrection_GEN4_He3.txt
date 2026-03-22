@@ -1,0 +1,10 @@
+N_N2_sim = 251686
+N_He3_sim = 137942
+N_N2_sim_integral = 9.91567e-33
+N_He3_sim_integral = 5.13689e-33
+nentries_N2 = 1659646
+nentries_He3 = 1797836
+S = 0.149358
+Nitrogen fraction = 0.026247
+f_N2 = 0.026247
+err_f_N2 = 0.000620428

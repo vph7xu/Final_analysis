@@ -1,0 +1,13 @@
+total_good_events = 155231
+Np = 80921
+Nm = 74310
+A_raw = 0.0425881
+err_A_raw = 0.00253581
+Np_p = 117428
+Np_m = 117170
+A_raw_p = 0.00109975
+err_Araw_p = 0.00206461
+Np_verify = 80921
+Nm_verify = 74310
+A_raw_verify = 0.0426349
+err_A_raw_verify = 0.00253507

@@ -37,7 +37,7 @@ namespace {
         {"dx",        "dx_L",        "dx_H"},
         {"dy",        "dy_L",        "dy_H"},
         {"eHCAL",     "eHCAL_L",     "eHCAL_H"},
-        {"coin_time", "coin_time_L", "coin_time_H"},
+        {"coin_time", "coin_L", "coin_H"},
         {"runnum",    "runnum_L",    "runnum_H"}
         // add helicity cut if desired
     };

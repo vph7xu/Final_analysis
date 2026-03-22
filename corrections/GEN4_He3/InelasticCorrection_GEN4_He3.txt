@@ -1,61 +1,63 @@
-par0 = 0.49959
-par1 = 0.166648
-par2 = 0.807708
-data events = 6010
-background events = 3754.89
-proton events = 196.742
-background_fraction = 0.624774
-err_background_fraction = 0.0129963
-proton_fraction = 0.0327358
-err_proton_fraction = 0.00237175
-f_in_dx = 0.602425
-err_f_in_dx = 0.0125675
-f_p_dx = 0.0327358
-err_f_p_dx = 0.00237175
-inelastic_events_pos = 5444.27
-inelastic_events_neg = 5335.95
-A_in_dx_method = 0.0100478
-err_A_in_dx_method = 0.00963084
-A_p = 0
+par0 = 0.43889
+par1 = 0.113549
+par2 = 1.12822
+data events = 6848
+background events = 4698.26
+proton events = 97.7582
+background_fraction = 0.686078
+err_background_fraction = 0.012997
+proton_fraction = 0.0142754
+err_proton_fraction = 0.00145409
+f_in_dx = 0.647858
+err_f_in_dx = 0.0123715
+f_p_dx = 0.0142754
+err_f_p_dx = 0.00145409
+inelastic_events_pos = 11827.6
+inelastic_events_neg = 11951.8
+A_in_dx_method = -0.00522143
+err_A_in_dx_method = 0.00648476
+A_p = -0.0001
 err_A_p = 0.0002
-f_p = 0.0280771
-err_f_p = 0.00238045
-W2_data_events = 10277
-W2_fit_events = 10202.8
-W2_neutron_events = 6004.47
-W2_bkg_events = 4274.42
-W2_proton_events = 428.29
-background_fraction_W2_fit = 0.415921
-err_background_fraction_W2_fit = 0.00756993
-inelastic_fraction_W2_fit = 0.401043
-err_inelastic_fraction_W2_fit = 0.00732657
-f_in = 0.401043
-err_f_in = 0.00732657
-SSR_W2_single_param = 15159.8
-SSR_W2_two_param    = 1.8873e+06
+f_p_dxdy = 0.0150051
+err_f_p_dxdy = 0.00167446
+f_p = 0.028173
+err_f_p = 0.00224132
+W2_data_events = 5561
+W2_fit_events = 5682.59
+W2_neutron_events = 4312.39
+W2_bkg_events = 1348.9
+W2_proton_events = 162.67
+background_fraction_W2_fit = 0.242564
+err_background_fraction_W2_fit = 0.007362
+inelastic_fraction_W2_fit = 0.229051
+err_inelastic_fraction_W2_fit = 0.00697366
+f_in = 0.229051
+err_f_in = 0.00697366
+SSR_W2_single_param = 10552
+SSR_W2_two_param    = 507066
 single paramater method (neutrons)
-alpha_Neutrons : 12
-denom_Neutrons : 26.6347
-N_Neutrons : 13992
+alpha_Neutrons : 10
+denom_Neutrons : 37.8617
+N_Neutrons : 7232
 double paramater method (neutrons)
-par0_2_Neutrons : 0.32032
-par1_2_Neutrons : 0.665471
+par0_2_Neutrons : 0.584005
+par1_2_Neutrons : 0.392374
 delta shifts for W^{2} (neutrons)
-delta_1_Neutrons : 0.0404598
-delta_1_Neutrons_qe : 0.1
+delta_1_Neutrons : -0.0238507
+delta_1_Neutrons_qe : 0.0732447
 delta_2_Neutrons : 0
 dxdy_refit_with_W2_shifts = 1
-W2_shift_used_QE   = 0.1
-W2_shift_used_Inel = 0.0404598
-dxdy_fit_A_2   = 0.448122
-dxdy_fit_rNP_2 = 0.139363
-dxdy_fit_rI_2  = 0.849875
-f_in_dxdy_2 = 0.574438
-f_p_dxdy_2  = 0.0274318
-f_n_dxdy_2  = 0.363281
-dxdy_fit_shifts_2 = p(-0.0103579,-0.0208682) n(0.0186931,-0.0177685) inel(0.0085105,0.0368058)
-avg_extrap_A_percent = -0.114819
-err_avg_extrap_A_percent = 0.423694
-A_in = -0.00114819
-err_A_in = 0.00423694
+W2_shift_used_QE   = 0.0732447
+W2_shift_used_Inel = -0.0238507
+dxdy_fit_A_2   = 0.429938
+dxdy_fit_rNP_2 = 0.111472
+dxdy_fit_rI_2  = 0.968753
+f_in_dxdy_2 = 0.595179
+f_p_dxdy_2  = 0.0142999
+f_n_dxdy_2  = 0.408742
+dxdy_fit_shifts_2 = p(0.00729198,-0.00502617) n(0.0179706,-0.0452981) inel(-0.00587842,-0.0360384)
+avg_extrap_A_percent = 0.827198
+err_avg_extrap_A_percent = 0.381309
+A_in = 0.00827198
+err_A_in = 0.00381309
 num_elastic_points_used = 30
