@@ -106,12 +106,12 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
 
 
     // --- histograms for basic cut checks ---
-    TH1D h_ePS     ("h_ePS",      "ePS after basic cuts; ePS (GeV); events",           100, 0.0, 2.0);
+    TH1D h_ePS     ("h_ePS",      "ePS after basic cuts; ePS ((GeV/c)); events",           100, 0.0, 2.0);
     TH1D h_vz      ("h_vz",       "vz after basic cuts; vz (m); events",               120,-0.30,0.30);
-    TH1D h_eHCAL   ("h_eHCAL",    "eHCAL after basic cuts; eHCAL (GeV); events",       100, 0.0, 5.0);
+    TH1D h_eHCAL   ("h_eHCAL",    "eHCAL after basic cuts; eHCAL ((GeV/c)); events",       100, 0.0, 5.0);
     TH1D h_EoverP  ("h_EoverP",   "(ePS+eSH)/p after basic cuts; E/p; events",         100, 0.0, 2.0);
     TH1D h_hel     ("h_hel",      "helicity after basic cuts; helicity; events",        5, -2.5,2.5);
-    TH1D h_W2      ("h_W2",       "W^{2} after basic cuts; W^{2} (GeV^{2}); events",   100, 0.0,10.0);
+    TH1D h_W2      ("h_W2",       "W^{2} after basic cuts; W^{2} ((GeV/c)^{2}); events",   100, 0.0,10.0);
     TH1D h_coin    ("h_coin",     "coin time after basic cuts; coin time (ns); events",100,100.0,200.0);
 
     TH1D h_dx_n    ("h_dx_n",     "dx (neutron window); dx (m); events",               100,-5.0,5.0);
@@ -152,7 +152,15 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
                 ((pow((v.dy-c_.dy_P_c)/c_.dy_P_r,2)+pow((v.dx-c_.dx_P_c)/c_.dx_P_r,2))<1)){
 
                 int helCorr_p = -1*v.helicity*v.IHWP*c_.Pkin_L;
-                if(helCorr_p==1) ++count_protons_plus; else if(helCorr_p==-1) ++count_protons_minus;
+                //if(helCorr_p==1) ++count_protons_plus; else if(helCorr_p==-1) ++count_protons_minus;
+                auto& cntp = counts_p_[v.runnum];
+                if (helCorr_p == 1) {
+                    ++cntp.Np;
+                    ++count_protons_plus;
+                } else if (helCorr_p == -1) {
+                    ++cntp.Nm;
+                    ++count_protons_minus;
+                }
                 // dx,dy in proton window
                 h_dx_p.Fill(v.dx);
                 h_dy_p.Fill(v.dy);
@@ -333,6 +341,39 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     out.close();
     std::cout<<"[RawAsym] table → "<<txtF_<<"\n";
 
+    // Proton asymmetry run by run
+    std::ofstream outp(Form("corrections/%s/raw_proton_asymmetry_%s.txt", kin_, kin_));
+    outp << "#run N+ N- A_raw_p dA_raw_p\n";
+
+    std::vector<int> runs_p;
+    runs_p.reserve(counts_p_.size());
+    for (const auto& kv : counts_p_) runs_p.push_back(kv.first);
+    std::sort(runs_p.begin(), runs_p.end());
+
+    for (int run : runs_p) {
+        const auto& c = counts_p_.at(run);
+
+        double Np = static_cast<double>(c.Np);
+        double Nm = static_cast<double>(c.Nm);
+        double N  = Np + Nm;
+
+        double A  = 0.0;
+        double dA = 0.0;
+
+        if (N > 0.0) {
+            A  = (Np - Nm) / N;
+            dA = std::sqrt(std::max(0.0, (1.0 - A*A)/N));
+        }
+
+        outp << run << " "
+            << c.Np << " "
+            << c.Nm << " "
+            << A    << " "
+            << dA   << "\n";
+    }
+    outp.close();
+
+
     // Global raw asymmetry (stat only)
     double A_raw    = (total_events > 0.0) ? (total_difference/total_events) : 0.0;
     double err_Araw = (total_events > 0.0) ? std::sqrt(std::max(0.0, (1.0 - A_raw*A_raw)/total_events)) : 0.0;
@@ -403,6 +444,8 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     outpol<<"err_avg_He3pol = "<<err_total_avg_target_polarization*0.01<<"\n";
     outpol<<"avg_Pn = "<<0.96<<"\n";
     outpol<<"err_avg_Pn = "<<0.005<<"\n";
+    outpol<<"avg_Pp = "<<-0.03<<"\n";
+    outpol<<"err_avg_Pp = "<<0.002<<"\n";
     outpol.close();
 
     // Raw asymmetry summary

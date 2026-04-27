@@ -30,6 +30,7 @@ private:
     const RunQuality* rq_;   // nullable
     TH1D        hvz_;
     TH1D        hePS_;
+    TH1D        heoverP_;
     TH1D        heHCAL_;
     TH1D        hW2_;
     TH1D        hcointime_;

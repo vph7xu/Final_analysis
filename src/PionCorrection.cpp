@@ -120,20 +120,20 @@ void PionCorrection::process(TChain& ch, TChain& ch_QE_sim, TChain& ch_pim_sim, 
     std::cout<< "pion_L" << c_.pion_L<<"\n";
     std::cout<< "pion_H" << c_.pion_H<<"\n";
 
-    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy (GeV) ; Energy(GeV)",  100, 0.01, 2.5);
-    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy(GeV)",      100, 0.01, 2.5);
-    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy (GeV) ; Energy(GeV)",  100, 0.01, 2.5);
-    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy(GeV)",      100, 0.01, 2.5);
-    TH1D *h_PSe_data_loose_cuts = new TH1D("h_PSe_data_loose_cuts",  "Preshower Energy (relaxed cuts) ; Energy (GeV)",    100, 0.01, 2.5);
-    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy (analysis cuts); Energy (GeV)",    100, 0.01, 2.5);
-    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy (GeV)", 100,0.01,2.5);
-    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy (GeV)", 100,0.01,2.5);
+    TH1D *h_PSe_pion = new TH1D("h_PSe_pion",  "Preshower Energy ((GeV/c)) ; Energy((GeV/c))",  100, 0.01, 2.5);
+    TH1D *h_PSe_QE   = new TH1D("h_PSe_QE",    "Preshower Energy (QE sim) ; Energy((GeV/c))",      100, 0.01, 2.5);
+    TH1D *h_PSe_pion_loose_cuts = new TH1D("h_PSe_pion_loose_cuts",  "Preshower Energy ((GeV/c)) ; Energy((GeV/c))",  100, 0.01, 2.5);
+    TH1D *h_PSe_QE_loose_cuts   = new TH1D("h_PSe_QE_loose_cuts",    "Preshower Energy (QE sim) ; Energy((GeV/c))",      100, 0.01, 2.5);
+    TH1D *h_PSe_data_loose_cuts = new TH1D("h_PSe_data_loose_cuts",  "Preshower Energy (relaxed cuts) ; Energy ((GeV/c))",    100, 0.01, 2.5);
+    TH1D *h_PSe_data = new TH1D("h_PSe_data",  "Preshower Energy (analysis cuts); Energy ((GeV/c))",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_pos = new TH1D("h_PSe_data_pos","Preshower Energy (Helicity +1) ; Energy ((GeV/c))", 100,0.01,2.5);
+    TH1D *h_PSe_data_neg = new TH1D("h_PSe_data_neg","Preshower Energy (Helicity -1) ; Energy ((GeV/c))", 100,0.01,2.5);
 
-    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
-    TH1D *h_PSe_data_antigrinch = new TH1D("h_PSe_data_antigrinch",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_grinch = new TH1D("h_PSe_data_grinch",  "Preshower Energy (grinch cuts) ; Energy ((GeV/c))",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_antigrinch = new TH1D("h_PSe_data_antigrinch",  "Preshower Energy (anti-grinch cuts) ; Energy ((GeV/c))",    100, 0.01, 2.5);
 
-    TH1D *h_PSe_data_grinch_loose_cuts = new TH1D("h_PSe_data_grinch_loose_cuts",  "Preshower Energy (grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
-    TH1D *h_PSe_data_antigrinch_loose_cuts = new TH1D("h_PSe_data_antigrinch_loose_cuts",  "Preshower Energy (anti-grinch cuts) ; Energy (GeV)",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_grinch_loose_cuts = new TH1D("h_PSe_data_grinch_loose_cuts",  "Preshower Energy (grinch cuts) ; Energy ((GeV/c))",    100, 0.01, 2.5);
+    TH1D *h_PSe_data_antigrinch_loose_cuts = new TH1D("h_PSe_data_antigrinch_loose_cuts",  "Preshower Energy (anti-grinch cuts) ; Energy ((GeV/c))",    100, 0.01, 2.5);
 
     double Ngrinch_pos = 0;
     double Ngrinch_neg = 0;

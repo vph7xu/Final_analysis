@@ -14,12 +14,12 @@ NitrogenCorrection::NitrogenCorrection(const AnalysisCuts& cuts,
 
 void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVarsSim& vHe3, BranchVarsSim& vN2){
 
-	TH1D *h_dx_He3 = new TH1D("h_dx_He3"," delta-x distribution (He3); dx(m)", 100,-4,3);
-	TH1D *h_dx_He3_protons = new TH1D("h_dx_He3_protons"," delta-x distribution (He3); dx(m)", 100,-4,3);
-	TH1D *h_dx_He3_neutrons = new TH1D("h_dx_He3_neutrons"," delta-x distribution (He3); dx(m)", 100,-4,3);
-	TH1D *h_dx_N2  = new TH1D("h_dx_N2","delta-x distribution (N2); dx(m)", 100,-4,3);
-	TH1D *h_dx_N2_protons  = new TH1D("h_dx_N2_protons","delta-x distribution (N2); dx(m)", 100,-4,3);
-	TH1D *h_dx_N2_neutrons  = new TH1D("h_dx_N2_neutrons","delta-x distribution (N2); dx(m)", 100,-4,3);
+	TH1D *h_dx_He3 = new TH1D("h_dx_He3"," dx distribution (He3); dx(m)", 100,-4,3);
+	TH1D *h_dx_He3_protons = new TH1D("h_dx_He3_protons"," dx distribution (He3); dx(m)", 100,-4,3);
+	TH1D *h_dx_He3_neutrons = new TH1D("h_dx_He3_neutrons"," dx distribution (He3); dx(m)", 100,-4,3);
+	TH1D *h_dx_N2  = new TH1D("h_dx_N2","dx distribution (N2); dx(m)", 100,-4,3);
+	TH1D *h_dx_N2_protons  = new TH1D("h_dx_N2_protons","dx distribution (N2); dx(m)", 100,-4,3);
+	TH1D *h_dx_N2_neutrons  = new TH1D("h_dx_N2_neutrons","dx distribution (N2); dx(m)", 100,-4,3);
 
 	double N_He3_sim = 0.0;
 	double N_N2_sim = 0.0;
@@ -188,9 +188,14 @@ void NitrogenCorrection::process(TChain& ch_He3_sim, TChain& ch_N2_sim, BranchVa
 
     C1->Divide(2,2);
     C1->cd(1);
-    h_dx_He3->Draw();
+    h_dx_He3->SetLineColor(kBlack);
+    h_dx_He3->SetFillColorAlpha(kGray,0.5);
+    h_dx_He3->Draw("hist");
+
     C1->cd(2);
-    h_dx_N2->Draw();
+    h_dx_N2->SetLineColor(kBlack);
+    h_dx_N2->SetFillColorAlpha(kGray,0.5);  
+    h_dx_N2->Draw("hist");
 
     C1->Print(Form("images/%s/NitrogenCorrection_%s.png",kin_,kin_));
 

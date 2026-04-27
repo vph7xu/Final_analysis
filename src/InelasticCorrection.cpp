@@ -22,6 +22,10 @@
 #include <TMatrixDSym.h>
 #include <TError.h>
 #include <TEllipse.h>  // ellipse overlay support
+#include <Math/Factory.h>
+#include <Math/Functor.h>
+#include <Math/Minimizer.h>
+#include <memory>
 
 using std::string; using std::vector; using std::unordered_map;
 
@@ -175,9 +179,9 @@ TH1D* InelasticCorrection::performFit(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, T
     f->SetParameters(1.0, 0.3, 0.1, 0.0, 0.0, 0.0);
 
     // limits: tune as you like; keep shifts small to avoid edge-area loss
-    f->SetParLimits(0, 0.0, 10.0); // amplitude
-    f->SetParLimits(1, 0.0, 5.0);  // N/P ratio
-    f->SetParLimits(2, 0.0, 5.0);  // Inel/P ratio
+    f->SetParLimits(0, 0.0, 100.0); // amplitude
+    f->SetParLimits(1, 0.0, 100.0);  // N/P ratio
+    f->SetParLimits(2, 0.0, 100.0);  // Inel/P ratio
     const double maxShift = 0.10;  // units = your dx units; e.g., 0.02 m or 2 cm (adjust!)
     f->SetParLimits(3, -maxShift, +maxShift);
     f->SetParLimits(4, -maxShift, +maxShift);
@@ -232,9 +236,200 @@ TH1D* InelasticCorrection::performFit(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, T
 }
 
 
+// TH1D* InelasticCorrection::performFit(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, TH1D* hQE_neutron,
+//                                       double& par0, double& par1, double& par2,
+//                                       double& dx_p_out, double& dx_n_out, double& dx_inel_out)
+// {
+//     // --- Helper for templates: Scale to 1.0 to keep ratios meaningful ---
+//     auto clone_template = [](TH1D* src, const char* newname){
+//         TH1D* h = (TH1D*)src->Clone(newname);
+//         double I = h->Integral();
+//         if (I > 0) h->Scale(1.0/I);
+//         return h;
+//     };
+
+//     // IMPORTANT: Clone data WITHOUT normalizing it for Likelihood
+//     TH1D *d    = (TH1D*)hD->Clone(Form("hD_fit_%p", hD));
+    
+//     // Templates stay normalized
+//     TH1D *inel = clone_template(hInel,      Form("hInel_%p",      hInel));
+//     TH1D *qe_p = clone_template(hQE_proton, Form("hQE_proton_%p", hQE_proton));
+//     TH1D *qe_n = clone_template(hQE_neutron,Form("hQE_neutron_%p",hQE_neutron));
+
+//     const double xmin = d->GetXaxis()->GetXmin();
+//     const double xmax = d->GetXaxis()->GetXmax();
+
+//     auto interp = [](TH1D* h, double xx){
+//         const double hxmin = h->GetXaxis()->GetXmin();
+//         const double hxmax = h->GetXaxis()->GetXmax();
+//         if (xx <= hxmin) return h->GetBinContent(1);
+//         if (xx >= hxmax) return h->GetBinContent(h->GetNbinsX());
+//         return h->Interpolate(xx);
+//     };
+
+//     // [0]=A (now represents total counts), [1]=rN/P, [2]=rInel/P, [3]=dx_p, [4]=dx_n, [5]=dx_inel
+//     TF1* f = new TF1("fdx", [&](double* x, double* p){
+//         const double xx = x[0];
+//         const double P  = interp(qe_p, xx - p[3]);
+//         const double N  = interp(qe_n, xx - p[4]);
+//         const double I  = interp(inel, xx - p[5]);
+//         return p[0] * ( P + p[1]*N + p[2]*I );
+//     }, xmin, xmax, 6);
+
+//     f->SetParNames("A", "rN_over_P", "rInel_over_P", "dx_p", "dx_n", "dx_inel");
+
+//     // Initialize A to the data integral since templates are normalized to 1
+//     double initial_A = d->Integral();
+//     f->SetParameters(initial_A, 0.3, 0.1, 0.0, 0.0, 0.0);
+
+//     f->SetParLimits(0, 0.0, initial_A * 10.0); 
+//     f->SetParLimits(1, 0.0, 10.0);
+//     f->SetParLimits(2, 0.0, 10.0);
+    
+//     const double maxShift = 0.05; 
+//     f->SetParLimits(3, -maxShift, +maxShift);
+//     f->SetParLimits(4, -maxShift, +maxShift);
+//     f->SetParLimits(5, -maxShift, +maxShift);
+
+//     // --- Perform Likelihood Fit ---
+//     // "L" = Log-Likelihood (use "WL" if the data histogram hD is weighted)
+//     // "S" = Return TFitResultPtr to check convergence
+//     Int_t oldErrorLevel = gErrorIgnoreLevel;
+//     gErrorIgnoreLevel = kSysError;
+    
+//     TFitResultPtr res = d->Fit(f, "RLQ0S"); 
+    
+//     gErrorIgnoreLevel = oldErrorLevel;
+
+//     // Check if fit converged
+//     if(res.Get() && res->Status() != 0) {
+//         std::cerr << "Warning: Likelihood fit did not converge perfectly. Status: " << res->Status() << std::endl;
+//     }
+
+//     // Set outputs
+//     par0 = f->GetParameter(0);
+//     par1 = f->GetParameter(1);
+//     par2 = f->GetParameter(2);
+//     dx_p_out    = f->GetParameter(3);
+//     dx_n_out    = f->GetParameter(4);
+//     dx_inel_out = f->GetParameter(5);
+
+//     // Build the combined histogram for visualization
+//     TH1D* comb = (TH1D*)d->Clone(Form("hComb_%p", d));
+//     comb->Reset();
+//     for (int i = 1; i <= comb->GetNbinsX(); ++i){
+//         const double x = comb->GetXaxis()->GetBinCenter(i);
+//         const double P = interp(qe_p, x - dx_p_out);
+//         const double N = interp(qe_n, x - dx_n_out);
+//         const double I = interp(inel, x - dx_inel_out);
+//         comb->SetBinContent(i, par0 * ( P + par1*N + par2*I ));
+//     }
+
+//     return comb;
+// }
+
 // --- 2D template shape fit on (dx,dy) ---------------------------------------
 // Model:  A * [  P(x-Δx_p, y-Δy_p) + rNP * N(x-Δx_n, y-Δy_n) + rI * I(x-Δx_i, y-Δy_i)  ]
 // Histos should be unit-normalized PDFs (method does that defensively).
+// TH2D* InelasticCorrection::performFitDxDy(
+//     TH2D* hD2, TH2D* hInel2, TH2D* hQEp2, TH2D* hQEn2,
+//     double& A, double& rNP, double& rI,
+//     double& dx_p, double& dy_p,
+//     double& dx_n, double& dy_n,
+//     double& dx_i, double& dy_i
+// ){
+//     auto clone_norm2D = [](TH2D* src, const char* name){
+//         TH2D* h = (TH2D*)src->Clone(name);
+//         double S = h->Integral();
+//         if (S > 0) h->Scale(1.0/S);
+//         return h;
+//     };
+
+//     TH2D* d    = clone_norm2D(hD2,    Form("hD2_%p",    hD2));
+//     TH2D* inel = clone_norm2D(hInel2, Form("hInel2_%p", hInel2));
+//     TH2D* qep  = clone_norm2D(hQEp2,  Form("hQEp2_%p",  hQEp2));
+//     TH2D* qen  = clone_norm2D(hQEn2,  Form("hQEn2_%p",  hQEn2));
+
+//     const double xmin = d->GetXaxis()->GetXmin();
+//     const double xmax = d->GetXaxis()->GetXmax();
+//     const double ymin = d->GetYaxis()->GetXmin();
+//     const double ymax = d->GetYaxis()->GetXmax();
+
+//     auto interp2D = [&](TH2D* h, double x, double y){
+//         if (x <= xmin) x = xmin + 1e-9;
+//         if (x >= xmax) x = xmax - 1e-9;
+//         if (y <= ymin) y = ymin + 1e-9;
+//         if (y >= ymax) y = ymax - 1e-9;
+//         return h->Interpolate(x,y); // bilinear
+//     };
+
+//     // Params:
+//     // [0]=A, [1]=rNP, [2]=rI, [3..4]=dx,dy for P; [5..6]=dx,dy for N; [7..8]=dx,dy for Inel
+//     TF2* f2 = new TF2(Form("fDXDY_%p", d),
+//         [&](double* xx, double* p){
+//             const double x = xx[0], y = xx[1];
+//             const double P = interp2D(qep,  x - p[3], y - p[4]);
+//             const double N = interp2D(qen,  x - p[5], y - p[6]);
+//             const double I = interp2D(inel, x - p[7], y - p[8]);
+//             return p[0] * ( P + p[1]*N + p[2]*I );
+//         },
+//         xmin, xmax, ymin, ymax, 9);
+
+//     f2->SetParNames("A","rNP","rI","dx_p","dy_p","dx_n","dy_n","dx_i","dy_i");
+//     f2->SetParameters(1.0, 0.3, 0.1, 0,0, 0,0, 0,0);
+
+//     f2->SetParLimits(0, 0.0,  1.0);   // A
+//     f2->SetParLimits(1, 0.0,  1.0);   // rNP
+//     f2->SetParLimits(2, 0.0,  1.0);   // rI //GEN3 0.36 atleast
+//     const double maxShiftX = 0.1;     // tune for your dx units
+//     const double maxShiftY = 0.1;     // tune for your dy units
+//     f2->SetParLimits(3, -maxShiftX, +maxShiftX); // dx_p
+//     f2->SetParLimits(4, -maxShiftY, +maxShiftY); // dy_p
+//     f2->SetParLimits(5, -maxShiftX, +maxShiftX); // dx_n
+//     f2->SetParLimits(6, -maxShiftY, +maxShiftY); // dy_n
+//     f2->SetParLimits(7, -maxShiftX, +maxShiftX); // dx_i
+//     f2->SetParLimits(8, -maxShiftY, +maxShiftY); // dy_i
+
+//     // Fit quietly (least-squares over 2D bins)
+//     // Suppress ROOT interpolation error messages
+//     Int_t oldErrorLevel = gErrorIgnoreLevel;
+//     gErrorIgnoreLevel = kSysError; // Suppress all messages
+//     d->Fit(f2, "RQ0");
+//     gErrorIgnoreLevel = oldErrorLevel;
+
+//     // Extract
+//     A    = f2->GetParameter(0);
+//     rNP  = f2->GetParameter(1);
+//     rI   = f2->GetParameter(2);
+//     dx_p = f2->GetParameter(3); dy_p = f2->GetParameter(4);
+//     dx_n = f2->GetParameter(5); dy_n = f2->GetParameter(6);
+//     dx_i = f2->GetParameter(7); dy_i = f2->GetParameter(8);
+
+//     std::cout << std::fixed << std::setprecision(4)
+//               << "[DxDyFit] A="<<A
+//               << " rNP="<<rNP<<" rI="<<rI
+//               << "  (dx,dy)_p=("<<dx_p<<","<<dy_p<<")"
+//               << " (dx,dy)_n=("<<dx_n<<","<<dy_n<<")"
+//               << " (dx,dy)_inel=("<<dx_i<<","<<dy_i<<")\n";
+
+//     // Build best-fit combined TH2
+//     TH2D* comb = (TH2D*)inel->Clone(Form("hComb2D_%p", d));
+//     comb->Reset();
+
+//     for (int ix=1; ix<=comb->GetNbinsX(); ++ix){
+//         for (int iy=1; iy<=comb->GetNbinsY(); ++iy){
+//             const double x = comb->GetXaxis()->GetBinCenter(ix);
+//             const double y = comb->GetYaxis()->GetBinCenter(iy);
+//             const double P = interp2D(qep,  x - dx_p, y - dy_p);
+//             const double N = interp2D(qen,  x - dx_n, y - dy_n);
+//             const double I = interp2D(inel, x - dx_i, y - dy_i);
+//             comb->SetBinContent(ix, iy, A*(P + rNP*N + rI*I));
+//         }
+//     }
+
+//     return comb;
+// }
+
 TH2D* InelasticCorrection::performFitDxDy(
     TH2D* hD2, TH2D* hInel2, TH2D* hQEp2, TH2D* hQEn2,
     double& A, double& rNP, double& rI,
@@ -244,11 +439,13 @@ TH2D* InelasticCorrection::performFitDxDy(
 ){
     auto clone_norm2D = [](TH2D* src, const char* name){
         TH2D* h = (TH2D*)src->Clone(name);
+        h->SetDirectory(nullptr);
         double S = h->Integral();
         if (S > 0) h->Scale(1.0/S);
         return h;
     };
 
+    // normalized PDFs, like Python
     TH2D* d    = clone_norm2D(hD2,    Form("hD2_%p",    hD2));
     TH2D* inel = clone_norm2D(hInel2, Form("hInel2_%p", hInel2));
     TH2D* qep  = clone_norm2D(hQEp2,  Form("hQEp2_%p",  hQEp2));
@@ -264,75 +461,227 @@ TH2D* InelasticCorrection::performFitDxDy(
         if (x >= xmax) x = xmax - 1e-9;
         if (y <= ymin) y = ymin + 1e-9;
         if (y >= ymax) y = ymax - 1e-9;
-        return h->Interpolate(x,y); // bilinear
+        return h->Interpolate(x, y);
     };
 
-    // Params:
-    // [0]=A, [1]=rNP, [2]=rI, [3..4]=dx,dy for P; [5..6]=dx,dy for N; [7..8]=dx,dy for Inel
-    TF2* f2 = new TF2(Form("fDXDY_%p", d),
-        [&](double* xx, double* p){
-            const double x = xx[0], y = xx[1];
-            const double P = interp2D(qep,  x - p[3], y - p[4]);
-            const double N = interp2D(qen,  x - p[5], y - p[6]);
-            const double I = interp2D(inel, x - p[7], y - p[8]);
-            return p[0] * ( P + p[1]*N + p[2]*I );
-        },
-        xmin, xmax, ymin, ymax, 9);
+    // Build the Python-style mask using the ORIGINAL counts, not normalized PDFs
+    std::vector<std::pair<int,int>> activeBins;
+    activeBins.reserve(hD2->GetNbinsX() * hD2->GetNbinsY());
 
-    f2->SetParNames("A","rNP","rI","dx_p","dy_p","dx_n","dy_n","dx_i","dy_i");
-    f2->SetParameters(1.0, 0.3, 0.1, 0,0, 0,0, 0,0);
+    for (int ix = 1; ix <= hD2->GetNbinsX(); ++ix) {
+        for (int iy = 1; iy <= hD2->GetNbinsY(); ++iy) {
+            const bool keep =
+                (hD2    ->GetBinContent(ix,iy) > 0.0) ||
+                (hQEp2  ->GetBinContent(ix,iy) > 0.0) ||
+                (hQEn2  ->GetBinContent(ix,iy) > 0.0) ||
+                (hInel2 ->GetBinContent(ix,iy) > 0.0);
+            if (keep) activeBins.emplace_back(ix, iy);
+        }
+    }
 
-    f2->SetParLimits(0, 0.0,  50.0);   // A
-    f2->SetParLimits(1, 0.0,   5.0);   // rNP
-    f2->SetParLimits(2, 0.0,   5.0);   // rI
-    const double maxShiftX = 0.1;     // tune for your dx units
-    const double maxShiftY = 0.2;     // tune for your dy units
-    f2->SetParLimits(3, -maxShiftX, +maxShiftX); // dx_p
-    f2->SetParLimits(4, -maxShiftY, +maxShiftY); // dy_p
-    f2->SetParLimits(5, -maxShiftX, +maxShiftX); // dx_n
-    f2->SetParLimits(6, -maxShiftY, +maxShiftY); // dy_n
-    f2->SetParLimits(7, -maxShiftY, +maxShiftY); // dx_i
-    f2->SetParLimits(8, -maxShiftY, +maxShiftY); // dy_i
+    if (activeBins.empty()) {
+        TH2D* z = (TH2D*)hD2->Clone(Form("hComb2D_empty_%p", hD2));
+        z->Reset();
+        A = rNP = rI = dx_p = dy_p = dx_n = dy_n = dx_i = dy_i = std::numeric_limits<double>::quiet_NaN();
+        return z;
+    }
 
-    // Fit quietly (least-squares over 2D bins)
-    // Suppress ROOT interpolation error messages
-    Int_t oldErrorLevel = gErrorIgnoreLevel;
-    gErrorIgnoreLevel = kSysError; // Suppress all messages
-    d->Fit(f2, "RQ0");
-    gErrorIgnoreLevel = oldErrorLevel;
+    // Python objective: sum over masked bins of (model - d_pdf)^2
+    auto objective = [&](const double *p) {
+        const double A_   = p[0];
+        const double rNP_ = p[1];
+        const double rI_  = p[2];
+        const double dxp  = p[3];
+        const double dyp  = p[4];
+        const double dxn  = p[5];
+        const double dyn  = p[6];
+        const double dxi  = p[7];
+        const double dyi  = p[8];
 
-    // Extract
-    A    = f2->GetParameter(0);
-    rNP  = f2->GetParameter(1);
-    rI   = f2->GetParameter(2);
-    dx_p = f2->GetParameter(3); dy_p = f2->GetParameter(4);
-    dx_n = f2->GetParameter(5); dy_n = f2->GetParameter(6);
-    dx_i = f2->GetParameter(7); dy_i = f2->GetParameter(8);
+        double ssr = 0.0;
+
+        for (const auto& bin : activeBins) {
+            const int ix = bin.first;
+            const int iy = bin.second;
+
+            const double x = d->GetXaxis()->GetBinCenter(ix);
+            const double y = d->GetYaxis()->GetBinCenter(iy);
+
+            const double P = interp2D(qep,  x - dxp, y - dyp);
+            const double N = interp2D(qen,  x - dxn, y - dyn);
+            const double I = interp2D(inel, x - dxi, y - dyi);
+
+            const double model = A_ * (P + rNP_*N + rI_*I);
+            const double data  = d->GetBinContent(ix, iy);
+
+            const double r = model - data;
+            ssr += r * r;
+        }
+
+        return ssr;
+    };
+
+    ROOT::Math::Functor fcn(objective, 9);
+    std::unique_ptr<ROOT::Math::Minimizer> minimizer(
+        ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad")
+    );
+
+    minimizer->SetFunction(fcn);
+    minimizer->SetMaxFunctionCalls(100000);
+    minimizer->SetMaxIterations(10000);
+    minimizer->SetTolerance(1e-6);
+    minimizer->SetPrintLevel(0);
+
+    // Match Python setup
+    minimizer->SetLimitedVariable(0, "A",    1.0,  1e-3, 0.0, 1.0);
+    minimizer->SetLimitedVariable(1, "rNP",  0.3,  1e-3, 0.0,  1.0);
+    minimizer->SetLimitedVariable(2, "rI",   0.1,  1e-3, 0.0,  0.74); // GEN3 0.37 atmost GEN4 0.74 GEN4b 0.74
+    minimizer->SetLimitedVariable(3, "dx_p", 0.0,  1e-3, -0.02, 0.02);
+    minimizer->SetLimitedVariable(4, "dy_p", 0.0,  1e-3, -0.01, 0.01);
+    minimizer->SetLimitedVariable(5, "dx_n", 0.0,  1e-3, -0.02, 0.02);
+    minimizer->SetLimitedVariable(6, "dy_n", 0.0,  1e-3, -0.01, 0.01);
+    minimizer->SetLimitedVariable(7, "dx_i", 0.0,  1e-3, -0.02, 0.02);
+    minimizer->SetLimitedVariable(8, "dy_i", 0.0,  1e-3, -0.01, 0.01);
+
+    const bool ok = minimizer->Minimize();
+    const double* xs = minimizer->X();
+
+    A    = xs[0];
+    rNP  = xs[1];
+    rI   = xs[2];
+    dx_p = xs[3];
+    dy_p = xs[4];
+    dx_n = xs[5];
+    dy_n = xs[6];
+    dx_i = xs[7];
+    dy_i = xs[8];
 
     std::cout << std::fixed << std::setprecision(4)
-              << "[DxDyFit] A="<<A
-              << " rNP="<<rNP<<" rI="<<rI
-              << "  (dx,dy)_p=("<<dx_p<<","<<dy_p<<")"
-              << " (dx,dy)_n=("<<dx_n<<","<<dy_n<<")"
-              << " (dx,dy)_inel=("<<dx_i<<","<<dy_i<<")\n";
+              << "[DxDyFit custom] ok=" << ok
+              << " A="   << A
+              << " rNP=" << rNP
+              << " rI="  << rI
+              << " (dx,dy)_p=(" << dx_p << "," << dy_p << ")"
+              << " (dx,dy)_n=(" << dx_n << "," << dy_n << ")"
+              << " (dx,dy)_i=(" << dx_i << "," << dy_i << ")\n";
 
-    // Build best-fit combined TH2
-    TH2D* comb = (TH2D*)inel->Clone(Form("hComb2D_%p", d));
+    // Build best-fit combined TH2 in PDF space, same as Python model_pdf
+    TH2D* comb = (TH2D*)d->Clone(Form("hComb2D_%p", d));
     comb->Reset();
 
-    for (int ix=1; ix<=comb->GetNbinsX(); ++ix){
-        for (int iy=1; iy<=comb->GetNbinsY(); ++iy){
+    for (int ix = 1; ix <= comb->GetNbinsX(); ++ix) {
+        for (int iy = 1; iy <= comb->GetNbinsY(); ++iy) {
             const double x = comb->GetXaxis()->GetBinCenter(ix);
             const double y = comb->GetYaxis()->GetBinCenter(iy);
+
             const double P = interp2D(qep,  x - dx_p, y - dy_p);
             const double N = interp2D(qen,  x - dx_n, y - dy_n);
             const double I = interp2D(inel, x - dx_i, y - dy_i);
-            comb->SetBinContent(ix, iy, A*(P + rNP*N + rI*I));
+
+            comb->SetBinContent(ix, iy, A * (P + rNP*N + rI*I));
         }
     }
 
     return comb;
 }
+
+// TH2D* InelasticCorrection::performFitDxDy(
+//     TH2D* hD2, TH2D* hInel2, TH2D* hQEp2, TH2D* hQEn2,
+//     double& A, double& rNP, double& rI,
+//     double& dx_p, double& dy_p,
+//     double& dx_n, double& dy_n,
+//     double& dx_i, double& dy_i
+// ){
+//     // Helper: Keep templates as normalized PDFs (1.0 area)
+//     auto clone_template2D = [](TH2D* src, const char* name){
+//         TH2D* h = (TH2D*)src->Clone(name);
+//         double S = h->Integral();
+//         if (S > 0) h->Scale(1.0/S);
+//         return h;
+//     };
+
+//     // CRITICAL: Clone data WITHOUT normalizing for Likelihood
+//     TH2D* d    = (TH2D*)hD2->Clone(Form("hD2_fit_%p", hD2));
+    
+//     // Templates remain normalized to 1.0
+//     TH2D* inel = clone_template2D(hInel2, Form("hInel2_%p", hInel2));
+//     TH2D* qep  = clone_template2D(hQEp2,  Form("hQEp2_%p",  hQEp2));
+//     TH2D* qen  = clone_template2D(hQEn2,  Form("hQEn2_%p",  hQEn2));
+
+//     const double xmin = d->GetXaxis()->GetXmin();
+//     const double xmax = d->GetXaxis()->GetXmax();
+//     const double ymin = d->GetYaxis()->GetXmin();
+//     const double ymax = d->GetYaxis()->GetXmax();
+
+//     auto interp2D = [&](TH2D* h, double x, double y){
+//         if (x <= xmin) x = xmin + 1e-9;
+//         if (x >= xmax) x = xmax - 1e-9;
+//         if (y <= ymin) y = ymin + 1e-9;
+//         if (y >= ymax) y = ymax - 1e-9;
+//         return h->Interpolate(x,y); 
+//     };
+
+//     // [0]=A (Amplitude), [1]=rNP, [2]=rI, [3,4]=P shifts, [5,6]=N shifts, [7,8]=Inel shifts
+//     TF2* f2 = new TF2(Form("fDXDY_%p", d),
+//         [&](double* xx, double* p){
+//             const double x = xx[0], y = xx[1];
+//             const double P = interp2D(qep,  x - p[3], y - p[4]);
+//             const double N = interp2D(qen,  x - p[5], y - p[4]);
+//             const double I = interp2D(inel, x - p[6], y - p[7]);
+//             // Model: Scale factor A times the sum of normalized components
+//             return p[0] * ( P + p[1]*N + p[2]*I );
+//         },
+//         xmin, xmax, ymin, ymax, 8);
+
+//     f2->SetParNames("A","rNP","rI","dx_p","dy_qe","dx_n","dx_i","dy_i");
+    
+//     // Start A at the actual data integral
+//     double data_integral = d->Integral();
+//     f2->SetParameters(data_integral, 0.3, 0.3, 0,0, 0,0, 0);
+
+//     f2->SetParLimits(0, 0.0, data_integral * 5.0);
+//     f2->SetParLimits(1, 0.0, 1.0);
+//     f2->SetParLimits(2, 0.0, 1.0); // Inelastic should be subdominant to QE-p in this region, GEN2 very small, GEN3 <0.4, GEN4<0.7 and GEN4b<0.8
+    
+//     const double maxShiftX = 0.1;
+//     const double maxShiftY = 0.1;
+//     f2->SetParLimits(3, -maxShiftX, +maxShiftX); // dx_p
+//     f2->SetParLimits(4, -maxShiftY, +maxShiftY);//dy_p and n, 
+//     f2->SetParLimits(5, -maxShiftX, +maxShiftX);//dx_n 
+//     f2->SetParLimits(6, -maxShiftX, +maxShiftX);//dx_i
+//     f2->SetParLimits(7, -maxShiftY, +maxShiftY);//dy_i 
+//     //f2->SetParLimits(8, -maxShiftY, +maxShiftY);
+//     // ... (rest of limits same as before)
+
+//     // Likelihood Fit: "L" for Poisson, "WL" if data is weighted
+//     Int_t oldErrorLevel = gErrorIgnoreLevel;
+//     gErrorIgnoreLevel = kSysError;
+//     d->Fit(f2, "RLQ0"); 
+//     gErrorIgnoreLevel = oldErrorLevel;
+
+//     // Extract values
+//     A    = f2->GetParameter(0);
+//     rNP  = f2->GetParameter(1);
+//     rI   = f2->GetParameter(2);
+//     dx_p = f2->GetParameter(3); dy_p = f2->GetParameter(4);
+//     dx_n = f2->GetParameter(5); dy_n = f2->GetParameter(4);
+//     dx_i = f2->GetParameter(6); dy_i = f2->GetParameter(7);
+
+//     // Build best-fit combined TH2 using the absolute scale A
+//     TH2D* comb = (TH2D*)d->Clone(Form("hComb2D_%p", d));
+//     comb->Reset();
+//     for (int ix=1; ix<=comb->GetNbinsX(); ++ix){
+//         for (int iy=1; iy<=comb->GetNbinsY(); ++iy){
+//             const double x = comb->GetXaxis()->GetBinCenter(ix);
+//             const double y = comb->GetYaxis()->GetBinCenter(iy);
+//             const double P = interp2D(qep,  x - dx_p, y - dy_p);
+//             const double N = interp2D(qen,  x - dx_n, y - dy_n);
+//             const double I = interp2D(inel, x - dx_i, y - dy_i);
+//             comb->SetBinContent(ix, iy, A*(P + rNP*N + rI*I));
+//         }
+//     }
+//     return comb;
+// }
 
 
 // --- 3D template shape fit on (dx,dy,W2) ------------------------------------
@@ -402,7 +751,7 @@ TH3D* InelasticCorrection::performFitDxDyW2(
     f3->SetParameters(pinits);
 
     // limits (tune to your experiment units)
-    const double maxShiftX = 0.2; // dx (m)
+    const double maxShiftX = 0.05; // dx (m)
     const double maxShiftY = 0.06; // dy (m)
     const double maxShiftW = 0.05; // W2 (GeV^2)
     f3->SetParLimits(0, 0.0,  100.0);   // A
@@ -465,118 +814,327 @@ TH3D* InelasticCorrection::performFitDxDyW2(
 
 
 // --- template shape fit -------------------------------------------------------
-TH1D* InelasticCorrection::performFitW2(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, TH1D* hQE_neutron,
-                                      double& par0, double& par1, double Rnop)
-{
+// TH1D* InelasticCorrection::performFitW2(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, TH1D* hQE_neutron,
+//                                       double& par0, double& par1, double Rnop)
+// {
 
-    TH1D *d=(TH1D*)hD->Clone("hD");    d->Scale(1./d->Integral());
-    TH1D *inel=(TH1D*)hInel->Clone("hInel"); inel->Scale(1./inel->Integral());
-    TH1D *qe_p=(TH1D*)hQE_proton->Clone("hQE_proton");     qe_p->Scale(1./qe_p->Integral());    
-    TH1D *qe_n=(TH1D*)hQE_neutron->Clone("hQE_neutron");     qe_n->Scale(1./qe_n->Integral());
+//     TH1D *d=(TH1D*)hD->Clone("hD");    d->Scale(1./d->Integral());
+//     TH1D *inel=(TH1D*)hInel->Clone("hInel"); inel->Scale(1./inel->Integral());
+//     TH1D *qe_p=(TH1D*)hQE_proton->Clone("hQE_proton");     qe_p->Scale(1./qe_p->Integral());    
+//     TH1D *qe_n=(TH1D*)hQE_neutron->Clone("hQE_neutron");     qe_n->Scale(1./qe_n->Integral());
 
-    TF1* f = new TF1("fW2",[&](double*x,double*par){
-        int bin1 = qe_p->FindBin(x[0]);
-        int bin2 = qe_n->FindBin(x[0]);
-        int bin3 = inel->FindBin(x[0]);
-        return par[0]*(qe_p->GetBinContent(bin1) + Rnop*qe_n->GetBinContent(bin2)) + par[1]*inel->GetBinContent(bin3);
-    }, d->GetXaxis()->GetXmin(), d->GetXaxis()->GetXmax(), 2);
+//     TF1* f = new TF1("fW2",[&](double*x,double*par){
+//         int bin1 = qe_p->FindBin(x[0]);
+//         int bin2 = qe_n->FindBin(x[0]);
+//         int bin3 = inel->FindBin(x[0]);
+//         return par[0]*(qe_p->GetBinContent(bin1) + Rnop*qe_n->GetBinContent(bin2)) + par[1]*inel->GetBinContent(bin3);
+//     }, d->GetXaxis()->GetXmin(), d->GetXaxis()->GetXmax(), 2);
 
-    //f->SetParameters(0.5,0.5); f->SetParLimits(0,0,1); f->SetParLimits(1,0,1);
+//     //f->SetParameters(0.5,0.5); f->SetParLimits(0,0,1); f->SetParLimits(1,0,1);
 
-    f->SetParameters(0.5, 0.5);
-    f->SetParLimits(0, 0, 10000);   
-    f->SetParLimits(1, 0, 10000);   
-    //f->SetParLimits(2, 0, 1);   
+//     f->SetParameters(0.5, 0.5);
+//     f->SetParLimits(0, 0, 10000);   
+//     f->SetParLimits(1, 0, 10000);   
+//     //f->SetParLimits(2, 0, 1);   
 
-    d->Fit(f,"RQ");
+//     d->Fit(f,"RQ");
 
-    par0 = f->GetParameter(0);
-    par1 = f->GetParameter(1);
-    //par2 = f->GetParameter(2);
+//     par0 = f->GetParameter(0);
+//     par1 = f->GetParameter(1);
+//     //par2 = f->GetParameter(2);
 
-    TH1D* comb=(TH1D*)inel->Clone("hComb"); comb->Reset();
-    for(int i=1;i<=comb->GetNbinsX();++i)
-        comb->SetBinContent(i, par0*(qe_p->GetBinContent(i) + Rnop*qe_n->GetBinContent(i)) + par1*inel->GetBinContent(i));
-    return comb;
+//     TH1D* comb=(TH1D*)inel->Clone("hComb"); comb->Reset();
+//     for(int i=1;i<=comb->GetNbinsX();++i)
+//         comb->SetBinContent(i, par0*(qe_p->GetBinContent(i) + Rnop*qe_n->GetBinContent(i)) + par1*inel->GetBinContent(i));
+//     return comb;
 
-}
+// }
 
-// α = N_inel / (N_QE_p + N_QE_n), Δ_inel = W2 shift of inelastic (GeV^2), Δ_qe = W2 shift of QE (GeV^2)
+// // α = N_inel / (N_QE_p + N_QE_n), Δ_inel = W2 shift of inelastic (GeV^2), Δ_qe = W2 shift of QE (GeV^2)
+// TH1D* InelasticCorrection::performFitW2_1(
+//     TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
+//     double& alpha, double& delta_inel, double Rnop, double& delta_qe, bool fit_shifts)
+// {
+//     auto unit = [&](TH1D* h, const char* tag)->bool{
+//         double s=h->Integral(); if(s<=0){ std::cerr<<"[W2_1] Empty "<<tag<<"\n"; return false; }
+//         h->Scale(1.0/s); return true;
+//     };
+
+//     TH1D *d  =(TH1D*)hD->Clone("hDW2");        if(!unit(d,"data"))  return (TH1D*)hInel->Clone("hComb_empty");
+//     TH1D *pi =(TH1D*)hQEp->Clone("qepW2");     if(!unit(pi,"QEp"))  return (TH1D*)hInel->Clone("hComb_empty");
+//     TH1D *ni =(TH1D*)hQEn->Clone("qenW2");     if(!unit(ni,"QEn"))  return (TH1D*)hInel->Clone("hComb_empty");
+//     TH1D *ii =(TH1D*)hInel->Clone("inelW2");   if(!unit(ii,"Inel")) return (TH1D*)hInel->Clone("hComb_empty");
+
+//     const double xmin = d->GetXaxis()->GetXmin();
+//     const double xmax = d->GetXaxis()->GetXmax();
+
+//     auto inel_shift = [&](double x, double del)->double {
+//         const double xq = x; //- del;
+//         //const double xq = x - del;
+//         if (xq<=xmin || xq>=xmax) return 0.0;
+//         const int bi = ii->FindBin(xq);
+//         return ii->GetBinContent(bi);               // smooth shift (better than FindBin)
+//     };
+
+//     TF1* f = new TF1(Form("fW2mix_%p", d),
+//         [&](double* x, double* par){
+//             const double a  = par[0];             // alpha
+//             const double dI = fit_shifts ? par[1] : 0.0;  // delta_inel (GeV^2)
+//             const double dQ = fit_shifts ? par[2] : 0.0;  // delta_qe (GeV^2)
+            
+//             const double qep = pi->Interpolate(x[0] - dQ);      // QE proton with QE shift
+//             const double qen = ni->Interpolate(x[0] - dQ);      // QE neutron with QE shift
+//             const double ine = ii->Interpolate(x[0] - dI);      // Inelastic with inelastic shift
+
+//             // simple normalized mixture (good if Δ is small or range wide)
+//             return (qep + Rnop*qen + a*ine)/(1.0 + Rnop + a);
+//         }, xmin, xmax, fit_shifts ? 3 : 1);
+
+//     f->SetParameter(0, 0.5);     // alpha start
+//     f->SetParLimits(0, 0.0, 30.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 15.0 //for gen2 this should be much lower like 1.0
+    
+//     if (fit_shifts) {
+//         f->SetParameter(1, 0.0);     // delta_inel start (GeV^2)
+//         f->SetParLimits(1,-0.05, 0.05); // tune to your expected shift range
+//         f->SetParameter(2, 0.0);     // delta_qe start (GeV^2)
+//         f->SetParLimits(2,-0.1, 0.1); // tune to your expected shift range
+//     }
+
+//     // Suppress ROOT interpolation error messages
+//     Int_t oldErrorLevel = gErrorIgnoreLevel;
+//     gErrorIgnoreLevel = kSysError; // Suppress all messages
+//     d->Fit(f, "RQ");
+//     gErrorIgnoreLevel = oldErrorLevel;
+
+//     alpha = f->GetParameter(0);
+//     delta_inel = fit_shifts ? f->GetParameter(1) : 0.0;
+//     delta_qe = fit_shifts ? f->GetParameter(2) : 0.0;
+
+//     // Build combined unit-area PDF using fitted shifts (or zero if disabled)
+//     TH1D* comb=(TH1D*)ii->Clone("hCombW2"); comb->Reset();
+//     for (int i=1;i<=comb->GetNbinsX();++i){
+//         const double x = comb->GetXaxis()->GetBinCenter(i);
+//         double qep = pi->Interpolate(x - delta_qe);           // QE proton with shift
+//         double qen = ni->Interpolate(x - delta_qe);           // QE neutron with shift
+//         double ine = ii->Interpolate(x - delta_inel);         // Inelastic with shift
+//         comb->SetBinContent(i, (qep + Rnop*qen + alpha*ine)/(1.0 + Rnop + alpha));
+//     }
+//     std::cout<<std::fixed<<std::setprecision(4)
+//          <<"[W2Fit_1] shift_qe=("<<delta_qe<<")\n"
+//          <<"[W2Fit_1] shift_inel=("<<delta_inel<<")\n";
+
+//     return comb;
+// }
+
 TH1D* InelasticCorrection::performFitW2_1(
     TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
     double& alpha, double& delta_inel, double Rnop, double& delta_qe, bool fit_shifts)
 {
     auto unit = [&](TH1D* h, const char* tag)->bool{
-        double s=h->Integral(); if(s<=0){ std::cerr<<"[W2_1] Empty "<<tag<<"\n"; return false; }
-        h->Scale(1.0/s); return true;
+        double s = h->Integral();
+        if (s <= 0) {
+            std::cerr << "[W2_1] Empty " << tag << "\n";
+            return false;
+        }
+        h->Scale(1.0/s);
+        return true;
     };
 
-    TH1D *d  =(TH1D*)hD->Clone("hDW2");        if(!unit(d,"data"))  return (TH1D*)hInel->Clone("hComb_empty");
-    TH1D *pi =(TH1D*)hQEp->Clone("qepW2");     if(!unit(pi,"QEp"))  return (TH1D*)hInel->Clone("hComb_empty");
-    TH1D *ni =(TH1D*)hQEn->Clone("qenW2");     if(!unit(ni,"QEn"))  return (TH1D*)hInel->Clone("hComb_empty");
-    TH1D *ii =(TH1D*)hInel->Clone("inelW2");   if(!unit(ii,"Inel")) return (TH1D*)hInel->Clone("hComb_empty");
+    TH1D *d  = (TH1D*)hD   ->Clone("hDW2_pdf");
+    TH1D *pi = (TH1D*)hQEp ->Clone("qepW2_pdf");
+    TH1D *ni = (TH1D*)hQEn ->Clone("qenW2_pdf");
+    TH1D *ii = (TH1D*)hInel->Clone("inelW2_pdf");
+
+    d->SetDirectory(nullptr);
+    pi->SetDirectory(nullptr);
+    ni->SetDirectory(nullptr);
+    ii->SetDirectory(nullptr);
+
+    if (!unit(d,  "data")) return (TH1D*)hInel->Clone("hComb_empty");
+    if (!unit(pi, "QEp"))  return (TH1D*)hInel->Clone("hComb_empty");
+    if (!unit(ni, "QEn"))  return (TH1D*)hInel->Clone("hComb_empty");
+    if (!unit(ii, "Inel")) return (TH1D*)hInel->Clone("hComb_empty");
 
     const double xmin = d->GetXaxis()->GetXmin();
     const double xmax = d->GetXaxis()->GetXmax();
 
-    auto inel_shift = [&](double x, double del)->double {
-        const double xq = x; //- del;
-        //const double xq = x - del;
-        if (xq<=xmin || xq>=xmax) return 0.0;
-        const int bi = ii->FindBin(xq);
-        return ii->GetBinContent(bi);               // smooth shift (better than FindBin)
+    auto interp = [&](TH1D* h, double x){
+        if (x <= xmin) x = xmin + 1e-9;
+        if (x >= xmax) x = xmax - 1e-9;
+        return h->Interpolate(x);
     };
 
-    TF1* f = new TF1(Form("fW2mix_%p", d),
-        [&](double* x, double* par){
-            const double a  = par[0];             // alpha
-            const double dI = fit_shifts ? par[1] : 0.0;  // delta_inel (GeV^2)
-            const double dQ = fit_shifts ? par[2] : 0.0;  // delta_qe (GeV^2)
-            
-            const double qep = pi->Interpolate(x[0] - dQ);      // QE proton with QE shift
-            const double qen = ni->Interpolate(x[0] - dQ);      // QE neutron with QE shift
-            const double ine = ii->Interpolate(x[0] - dI);      // Inelastic with inelastic shift
-
-            // simple normalized mixture (good if Δ is small or range wide)
-            return (qep + Rnop*qen + a*ine)/(1.0 + Rnop + a);
-        }, xmin, xmax, fit_shifts ? 3 : 1);
-
-    f->SetParameter(0, 0.5);     // alpha start
-    f->SetParLimits(0, 0.0, 10.0); // tune to your expected alpha range // for gen3 and gen4 I set it up to 15.0 //for gen2 this should be much lower like 1.0
-    
-    if (fit_shifts) {
-        f->SetParameter(1, 0.0);     // delta_inel start (GeV^2)
-        f->SetParLimits(1,-0.15, 0.15); // tune to your expected shift range
-        f->SetParameter(2, 0.0);     // delta_qe start (GeV^2)
-        f->SetParLimits(2,-0.15, 0.15); // tune to your expected shift range
+    // Python-style active-bin mask
+    std::vector<int> activeBins;
+    activeBins.reserve(hD->GetNbinsX());
+    for (int i = 1; i <= hD->GetNbinsX(); ++i) {
+        const bool keep =
+            (hD   ->GetBinContent(i) > 0.0) ||
+            (hQEp ->GetBinContent(i) > 0.0) ||
+            (hQEn ->GetBinContent(i) > 0.0) ||
+            (hInel->GetBinContent(i) > 0.0);
+        if (keep) activeBins.push_back(i);
     }
 
-    // Suppress ROOT interpolation error messages
-    Int_t oldErrorLevel = gErrorIgnoreLevel;
-    gErrorIgnoreLevel = kSysError; // Suppress all messages
-    d->Fit(f, "RQ");
-    gErrorIgnoreLevel = oldErrorLevel;
+    if (activeBins.empty()) {
+        TH1D* z = (TH1D*)hInel->Clone("hComb_empty");
+        z->Reset();
+        alpha = delta_inel = delta_qe = std::numeric_limits<double>::quiet_NaN();
+        return z;
+    }
 
-    alpha = f->GetParameter(0);
-    delta_inel = fit_shifts ? f->GetParameter(1) : 0.0;
-    delta_qe = fit_shifts ? f->GetParameter(2) : 0.0;
+    const int nPar = fit_shifts ? 3 : 1;
 
-    // Build combined unit-area PDF using fitted shifts (or zero if disabled)
-    TH1D* comb=(TH1D*)ii->Clone("hCombW2"); comb->Reset();
-    for (int i=1;i<=comb->GetNbinsX();++i){
+    auto objective = [&](const double* p){
+        const double a  = p[0];
+        const double dI = fit_shifts ? p[1] : 0.0;
+        const double dQ = fit_shifts ? p[2] : 0.0;
+
+        double ssr = 0.0;
+
+        for (int ib : activeBins) {
+            const double x = d->GetXaxis()->GetBinCenter(ib);
+
+            const double qep = interp(pi, x - dQ);
+            const double qen = interp(ni, x - dQ);
+            const double ine = interp(ii, x - dI);
+
+            const double model =
+                (qep + Rnop*qen + a*ine) / (1.0 + Rnop + a);
+
+            const double data = d->GetBinContent(ib);
+            const double r = model - data;
+            ssr += r * r;
+        }
+        return ssr;
+    };
+
+    ROOT::Math::Functor fcn(objective, nPar);
+    std::unique_ptr<ROOT::Math::Minimizer> minimizer(
+        ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad")
+    );
+
+    minimizer->SetFunction(fcn);
+    minimizer->SetMaxFunctionCalls(100000);
+    minimizer->SetMaxIterations(10000);
+    minimizer->SetTolerance(1e-6);
+    minimizer->SetPrintLevel(0);
+
+    minimizer->SetLimitedVariable(0, "alpha", 0.5, 1e-3, 20.0, 25.0);//GEN3 at most 16 GEN4 40 GEN4b 25
+                                                                    //GEN4 at least 35 GEN4b at least 20
+
+    if (fit_shifts) {
+        minimizer->SetLimitedVariable(1, "delta_inel", 0.0, 1e-3, -0.05, 0.05);
+        minimizer->SetLimitedVariable(2, "delta_qe",   0.0, 1e-3, -0.10, 0.10);
+    }
+
+    const bool ok = minimizer->Minimize();
+    const double* xs = minimizer->X();
+
+    alpha = xs[0];
+    delta_inel = fit_shifts ? xs[1] : 0.0;
+    delta_qe   = fit_shifts ? xs[2] : 0.0;
+
+    std::cout << std::fixed << std::setprecision(4)
+              << "[W2Fit_1 custom] ok=" << ok
+              << " alpha=" << alpha
+              << " shift_qe=" << delta_qe
+              << " shift_inel=" << delta_inel << "\n";
+
+    // Return the fitted model in PDF space, same convention as current function
+    TH1D* comb = (TH1D*)ii->Clone("hCombW2");
+    comb->Reset();
+
+    for (int i = 1; i <= comb->GetNbinsX(); ++i) {
         const double x = comb->GetXaxis()->GetBinCenter(i);
-        double qep = pi->Interpolate(x - delta_qe);           // QE proton with shift
-        double qen = ni->Interpolate(x - delta_qe);           // QE neutron with shift
-        double ine = ii->Interpolate(x - delta_inel);         // Inelastic with shift
+        const double qep = interp(pi, x - delta_qe);
+        const double qen = interp(ni, x - delta_qe);
+        const double ine = interp(ii, x - delta_inel);
+
         comb->SetBinContent(i, (qep + Rnop*qen + alpha*ine)/(1.0 + Rnop + alpha));
     }
-    std::cout<<std::fixed<<std::setprecision(4)
-         <<"[W2Fit_1] shift_qe=("<<delta_qe<<")\n"
-         <<"[W2Fit_1] shift_inel=("<<delta_inel<<")\n";
 
     return comb;
 }
 
+// TH1D* InelasticCorrection::performFitW2_1(
+//     TH1D* hD, TH1D* hInel, TH1D* hQEp, TH1D* hQEn,
+//     double& alpha, double& delta_inel, double Rnop, double& delta_qe, bool fit_shifts)
+// {
+//     auto unit = [&](TH1D* h, const char* tag)->bool{
+//         double s=h->Integral(); if(s<=0){ std::cerr<<"[W2_1] Empty "<<tag<<"\n"; return false; }
+//         h->Scale(1.0/s); return true;
+//     };
+
+//     // CRITICAL: Clone data WITHOUT normalizing
+//     TH1D *d  = (TH1D*)hD->Clone("hDW2_likelihood");
+    
+//     // Templates stay as units
+//     TH1D *pi =(TH1D*)hQEp->Clone("qepW2");     unit(pi,"QEp");
+//     TH1D *ni =(TH1D*)hQEn->Clone("qenW2");     unit(ni,"QEn");
+//     TH1D *ii =(TH1D*)hInel->Clone("inelW2");   unit(ii,"Inel");
+
+//     const double xmin = d->GetXaxis()->GetXmin();
+//     const double xmax = d->GetXaxis()->GetXmax();
+
+//     // New Params: [0]=A (Amplitude), [1]=alpha, [2]=delta_inel, [3]=delta_qe
+//     int nPar = fit_shifts ? 4 : 2; 
+
+//     // Updated lambda for performFitW2_1
+//     TF1* f = new TF1(Form("fW2mix_%p", d),
+//         [&](double* x, double* par){
+//             const double A  = par[0];             // Overall Amplitude
+//             const double a  = par[1];             // alpha
+            
+//             // Use the fit_shifts boolean captured from the outer scope
+//             const double dI = fit_shifts ? par[2] : 0.0;
+//             const double dQ = fit_shifts ? par[3] : 0.0;
+            
+//             const double qep = pi->Interpolate(x[0] - dQ);
+//             const double qen = ni->Interpolate(x[0] - dQ);
+//             const double ine = ii->Interpolate(x[0] - dI);
+
+//             // Likelihood model: A * (normalized mixture)
+//             return A * (qep + Rnop*qen + a*ine) / (1.0 + Rnop + a);
+//         }, xmin, xmax, nPar);
+
+//     double data_int = d->Integral();
+//     f->SetParameter(0, data_int);  // Initial Amplitude
+//     f->SetParameter(1, 0.5);       // Initial alpha
+    
+//     if (fit_shifts) {
+//         f->SetParameter(2, 0.0);   // delta_inel
+//         f->SetParameter(3, 0.0);   // delta_qe
+//         f->SetParLimits(2, -0.15, 0.15);
+//         f->SetParLimits(3, -0.15, 0.15);
+//     }
+
+//     f->SetParLimits(0, 0.0, data_int * 5.0); // Amplitude limit
+//     f->SetParLimits(1, 0.0, 50); // alpha < 1 for GEN2, alpha<12 for GEN3 and alpha<100 for GEN4 and GEN4b(tune to your expected range)
+
+//     // "L" for Likelihood
+//     Int_t oldErrorLevel = gErrorIgnoreLevel;
+//     gErrorIgnoreLevel = kSysError;
+//     d->Fit(f, "RLQ");
+//     gErrorIgnoreLevel = oldErrorLevel;
+
+//     double fitted_A = f->GetParameter(0);
+//     alpha = f->GetParameter(1);
+//     delta_inel = fit_shifts ? f->GetParameter(2) : 0.0;
+//     delta_qe = fit_shifts ? f->GetParameter(3) : 0.0;
+
+//     // Build combined count histogram
+//     TH1D* comb=(TH1D*)d->Clone("hCombW2"); comb->Reset();
+//     for (int i=1;i<=comb->GetNbinsX();++i){
+//         const double x = comb->GetXaxis()->GetBinCenter(i);
+//         double qep = pi->Interpolate(x - delta_qe);
+//         double qen = ni->Interpolate(x - delta_qe);
+//         double ine = ii->Interpolate(x - delta_inel);
+//         comb->SetBinContent(i, fitted_A * (qep + Rnop*qen + alpha*ine)/(1.0 + Rnop + alpha));
+//     }
+
+//     return comb;
+// }
 
 
 // par0 = QE scale (fraction or yield proxy), par1 = Inel scale, par2 = Δ shift (GeV^2)
@@ -710,7 +1268,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     auto makeAsymGraph = [&](const TH1D& hpos, const TH1D& hneg,
                              const char* name, int mcolor, int mstyle)->TGraphErrors* {
       auto* g = new TGraphErrors(); g->SetName(name);
-      g->SetTitle("Asymmetry vs W^{2};W^{2} (GeV^{2});Asymmetry (%)");
+      g->SetTitle("Asymmetry vs W^{2};W^{2} ((GeV/c)^{2});Asymmetry (%)");
       int ip=0;
       for (int i=1;i<=hpos.GetNbinsX();++i){
         const double Np = hpos.GetBinContent(i);
@@ -749,21 +1307,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double errfpi  = V(pionMap,"err_f_pi");
     double errfN2  = V(nitMap ,"err_f_N2");
 
+    const int NBins_dx = 80; // match your dx binning
+
     // histograms for fit (tight selection)
-    TH1D hData ("hData",  "dx data; dx (m)", 100, -4.0, 3.0);
-    TH1D hData_pos ("hData_pos",  "dx data (positive helicity); dx (m)", 100, -4.0, 3.0);
-    TH1D hData_neg ("hData_neg",  "dx data (negative helicity); dx (m)", 100, -4.0, 3.0);
-    TH1D hQE_proton("hQE_proton", "dx QE sim protons",          100, -4.0, 3.0);
-    TH1D hQE_neutron("hQE_neutron", "dx QE sim neutrons",          100, -4.0, 3.0);
-    TH1D hInelastic ("hInelastic",  "dx inelastic sim",        100, -4.0, 3.0);
-    TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        100, -4.0, 3.0);
-    TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        100, -4.0, 3.0);
+    TH1D hData ("hData",  "dx data; dx (m)", NBins_dx, -4.0, 3.0);
+    TH1D hData_pos ("hData_pos",  "dx data (positive helicity); dx (m)", NBins_dx, -4.0, 3.0);
+    TH1D hData_neg ("hData_neg",  "dx data (negative helicity); dx (m)", NBins_dx, -4.0, 3.0);
+    TH1D hQE_proton("hQE_proton", "dx QE sim protons",          NBins_dx, -4.0, 3.0);
+    TH1D hQE_neutron("hQE_neutron", "dx QE sim neutrons",          NBins_dx, -4.0, 3.0);
+    TH1D hInelastic ("hInelastic",  "dx inelastic sim",        NBins_dx, -4.0, 3.0);
+    TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        NBins_dx, -4.0, 3.0);
+    TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        NBins_dx, -4.0, 3.0);
 
     // For W2 histograms used in performFitW2_1: store a slightly larger
     // range (±0.3) around the config cuts so fits/shift operations have
     // a small padding while plots remain restricted to the cuts.
-    double W2_hist_upper_limit = c_.W2_H + 0.3;
-    double W2_hist_lower_limit = c_.W2_L - 0.3;
+    double W2_hist_upper_limit = c_.W2_H + 0.2;
+    double W2_hist_lower_limit = c_.W2_L - 0.2;
 
     // if(std::strcmp(kin_, "GEN3_He3") == 0){
     //     W2_hist_upper_limit = 1.4;
@@ -782,10 +1342,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //     W2_hist_lower_limit = c_.W2_L; 
     // }
 
-    const int NBW2 = 100; // match your other W² binning
+    const int NBW2 = 80; // match your other W² binning
+    const int Nbins_dxdy = 80; // match your dx-dy binning
 
-    TH1D hData_W2("hData_W2",  "W2 data; W^{2} (GeV^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
-    TH1D hData_W2_Neutrons("hData_W2_Neutrons",  "W2 data; W^{2} (GeV^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hData_W2("hData_W2",  "W2 data; W^{2} ((GeV/c)^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
+    TH1D hData_W2_Neutrons("hData_W2_Neutrons",  "W2 data; W^{2} ((GeV/c)^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hQE_W2("hQE_W2", "W^{2} QE sim",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hQE_W2_Neutrons("hQE_W2_Neutrons", "W^{2} QE sim",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hQE_proton_W2("hQE_proton_W2", "W^{2} QE sim protons",          NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
@@ -803,23 +1364,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_W2_2("hInelastic_W2_2",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hInelastic_W2_2_Neutrons("hInelastic_W2_2_Neutrons",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
 
-    TH2D hDxdy("hDxdy", "dx-dy distribution; dy (m); dx (m)",100, c_.dy_L-0.3, c_.dy_H+0.3,100,-4,3);
-    TH2D hDxdy_cut("hDxdy_cut", "dx-dy distribution ; dy (m); dx (m)",100,-4,3,100,-4,3);
+    TH2D hDxdy("hDxdy", "dx-dy distribution; dy (m); dx (m)",Nbins_dxdy, c_.dy_L-0.05, c_.dy_H+0.05,Nbins_dxdy,-4,3);
+    TH2D hDxdy_cut("hDxdy_cut", "dx-dy distribution ; dy (m); dx (m)",Nbins_dxdy,-4,3,Nbins_dxdy,-4,3);
 
-    TH2D hDxdy_inelastic("hDxdy_inelastic", "dxdy distribution ; dy(m); dx(m)",100,-4,3,100,-4,3);
+    TH2D hDxdy_inelastic("hDxdy_inelastic", "dxdy distribution ; dy(m); dx(m)",Nbins_dxdy,-4,3,Nbins_dxdy,-4,3);
 
     // 2D templates for QE p/n and inelastic (same binning as hDxdy)
-    TH2D hQE_dxdy_p ("hQE_dxdy_p",  "QE p: dy vs dx;dy (m);dx (m)", 100, c_.dy_L-0.3, c_.dy_H+0.3, 100, -4, 3);
-    TH2D hQE_dxdy_n ("hQE_dxdy_n",  "QE n: dy vs dx;dy (m);dx (m)", 100,  c_.dy_L-0.3, c_.dy_H+0.3, 100, -4, 3);
-    TH2D hInel_dxdy ("hInel_dxdy",  "Inelastic: dy vs dx;dy (m);dx (m)", 100,  c_.dy_L-0.3, c_.dy_H+0.3, 100, -4, 3);
+    TH2D hQE_dxdy_p ("hQE_dxdy_p",  "QE p: dy vs dx;dy (m);dx (m)", Nbins_dxdy, c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, -4, 3);
+    TH2D hQE_dxdy_n ("hQE_dxdy_n",  "QE n: dy vs dx;dy (m);dx (m)", Nbins_dxdy,  c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, -4, 3);
+    TH2D hInel_dxdy ("hInel_dxdy",  "Inelastic: dy vs dx;dy (m);dx (m)", Nbins_dxdy,  c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, -4, 3);
 
     // Bin ranges: reuse your dx, dy, W2 windows
-    const int NBX = 100, NBY = 100, NBZ = 100; // tune rebinning as needed
-    const double dyhist_low3 = c_.dy_L-0.3, dyhist_high3 = c_.dy_H+0.3;
+    const int NBX = 80, NBY = 80, NBZ = 80; // tune rebinning as needed
+    const double dyhist_low3 = c_.dy_L-0.05, dyhist_high3 = c_.dy_H+0.05    ;
     const double dxhist_low3 = -0.7 , dxhist_high3 = 0.7;
     const double W2hist_low3 = c_.W2_L - 0.05 , W2hist_high3 = c_.W2_H + 0.05;  
 
-    TH3D hD3   ("hD3",   "Data;dy (m);dx (m);W^{2} (GeV^{2})", NBX, dyhist_low3, dyhist_high3,
+    TH3D hD3   ("hD3",   "Data;dy (m);dx (m);W^{2} ((GeV/c)^{2})", NBX, dyhist_low3, dyhist_high3,
                                                       NBY, dxhist_low3, dxhist_high3,
                                                       NBZ, W2hist_low3, W2hist_high3);
     TH3D hP3   ("hP3",   "QE p (sim);dy;dx;W^{2}", NBX, dyhist_low3, dyhist_high3,
@@ -839,7 +1400,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hDx_both("hDx_both", "dx distribution ; dx(m)",100,-4,3);
     TH1D hDy_both("hDy_both", "dy distribution ; dy(m)",100,-4,3);
 
-    const int NBW2_low = 100;
+    const int NBW2_low = 80;
 
     double W2hist_low = -2;
     double W2hist_high = 8;
@@ -865,28 +1426,28 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     else if (std::strcmp(kin_, "GEN4_He3") == 0){dyhist_low = -1.5; dyhist_high = 1.5;}
     else if (std::strcmp(kin_, "GEN4b_He3") == 0){dyhist_low = -1.5; dyhist_high = 1.5;}
     
-    TH1D hW2_for_asym   ("hW2_for_asym",       "W^{2};W^{2} (GeV^{2})", NBW2, -2, 6);
-    TH1D hW2_for_asym_pos   ("hW2_for_asym_pos",       "W^{2};W^{2} (GeV^{2})", NBW2, -2, 6);
-    TH1D hW2_for_asym_neg   ("hW2_for_asym_neg",       "W^{2};W^{2} (GeV^{2})", NBW2, -2, 6);
+    TH1D hW2_for_asym   ("hW2_for_asym",       "W^{2};W^{2} ((GeV/c)^{2})", NBW2, -2, 6);
+    TH1D hW2_for_asym_pos   ("hW2_for_asym_pos",       "W^{2};W^{2} ((GeV/c)^{2})", NBW2, -2, 6);
+    TH1D hW2_for_asym_neg   ("hW2_for_asym_neg",       "W^{2};W^{2} ((GeV/c)^{2})", NBW2, -2, 6);
 
     // W² distributions per cut (no helicity split) for the right panel
-    TH1D hW2_dxonly     ("hW2_dxonly",     "W^{2};W^{2} (GeV^{2})", NBW2, W2hist_low, W2hist_high);
-    TH1D hW2_dxdy       ("hW2_dxdy",       "W^{2};W^{2} (GeV^{2})", NBW2, W2hist_low, W2hist_high);
-    TH1D hW2_dxAntiDy   ("hW2_dxAntiDy",   "W^{2};W^{2} (GeV^{2})", NBW2, W2hist_low, W2hist_high);
-    TH1D hW2_dyAntiDx   ("hW2_dyAntiDx",   "W^{2};W^{2} (GeV^{2})", NBW2, W2hist_low, W2hist_high);
+    TH1D hW2_dxonly     ("hW2_dxonly",     "W^{2};W^{2} ((GeV/c)^{2})", NBW2, W2hist_low, W2hist_high);
+    TH1D hW2_dxdy       ("hW2_dxdy",       "W^{2};W^{2} ((GeV/c)^{2})", NBW2, W2hist_low, W2hist_high);
+    TH1D hW2_dxAntiDy   ("hW2_dxAntiDy",   "W^{2};W^{2} ((GeV/c)^{2})", NBW2, W2hist_low, W2hist_high);
+    TH1D hW2_dyAntiDx   ("hW2_dyAntiDx",   "W^{2};W^{2} ((GeV/c)^{2})", NBW2, W2hist_low, W2hist_high);
 
     // W² split by helicity for asymmetry vs W² (left panel)
-    TH1D hW2_dxonly_pos   ("hW2_dxonly_pos",   "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
-    TH1D hW2_dxonly_neg   ("hW2_dxonly_neg",   "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dxonly_pos   ("hW2_dxonly_pos",   "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dxonly_neg   ("hW2_dxonly_neg",   "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
 
-    TH1D hW2_dxdy_pos     ("hW2_dxdy_pos",     "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
-    TH1D hW2_dxdy_neg     ("hW2_dxdy_neg",     "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dxdy_pos     ("hW2_dxdy_pos",     "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dxdy_neg     ("hW2_dxdy_neg",     "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
 
-    TH1D hW2_dxAntiDy_pos ("hW2_dxAntiDy_pos", "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
-    TH1D hW2_dxAntiDy_neg ("hW2_dxAntiDy_neg", "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dxAntiDy_pos ("hW2_dxAntiDy_pos", "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dxAntiDy_neg ("hW2_dxAntiDy_neg", "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
 
-    TH1D hW2_dyAntiDx_pos ("hW2_dyAntiDx_pos", "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
-    TH1D hW2_dyAntiDx_neg ("hW2_dyAntiDx_neg", "W^{2};W^{2} (GeV^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dyAntiDx_pos ("hW2_dyAntiDx_pos", "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
+    TH1D hW2_dyAntiDx_neg ("hW2_dyAntiDx_neg", "W^{2};W^{2} ((GeV/c)^{2})", NBW2_low, W2hist_low, W2hist_high);
 
     // (optional) get ROOT to store per-bin variances
     hW2_dxonly.Sumw2(); hW2_dxdy.Sumw2(); hW2_dxAntiDy.Sumw2(); hW2_dyAntiDx.Sumw2();
@@ -957,7 +1518,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //                                                                                              //
     //                                                                                              //
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    Long64_t n=ch.GetEntries();
+    Long64_t n=1*ch.GetEntries();
 
     double A = 0.287186374;
     double B = 0.798543608;
@@ -991,17 +1552,19 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             if(helCorr==+1) hW2_for_asym_pos.Fill(v.W2);
             else if(helCorr==-1) hW2_for_asym_neg.Fill(v.W2);
         }
-        if(c_.W2_L<v.W2 && v.W2<c_.W2_H && (c_.dy_L-0.1<v.dy && v.dy<c_.dy_H+0.1)){
+        if(c_.W2_L<v.W2 && v.W2<c_.W2_H && (c_.dy_L-0.05<v.dy && v.dy<c_.dy_H+0.05)){
             if(std::strcmp(kin_, "GEN3_He3") == 0){
                 hDxdy.Fill(v.dy,v.dx);
+                hData.Fill(v.dx);
             }
             else{
                 hDxdy.Fill(v.dy,v.dx);
+                hData.Fill(v.dx);
             }
 
         }
 
-        if(c_.W2_L-0.05<v.W2 && v.W2<c_.W2_H+0.05 && (c_.dy_L-0.1<v.dy && v.dy<c_.dy_H+0.1) && (c_.dx_L-0.1<v.dx && v.dx<c_.dx_H+0.1)){
+        if(c_.W2_L-0.05<v.W2 && v.W2<c_.W2_H+0.05 && (c_.dy_L-0.1<v.dy && v.dy<c_.dy_H+0.1) && (-2.5<v.dx && v.dx<1)){
             if(std::strcmp(kin_, "GEN3_He3") == 0){
                 hD3.Fill(v.dy,v.dx,v.W2);
             }
@@ -1157,7 +1720,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         int nstrong6 = 0;
         int nstrong8 = 0;
 
-        hData.Fill(v.dx);
+        //hData.Fill(v.dx);
 
         for (int k = 1; k < v.hcal_nclus; ++k) {                   // start at 1 ⇒ “secondary”
             int    ik   = order[k];                         // kth-highest-E cluster
@@ -1219,20 +1782,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         double dxq = vQE.dx;//-0.02;//dx_shifted_QE(vQE);
 
         if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
-            (c_.W2_L-0.05>vQE.W2 || vQE.W2>c_.W2_H+0.05) || (c_.dy_L-0.1>vQE.dy || vQE.dy>c_.dy_H+0.1))continue;
+            (c_.W2_L-0.05>vQE.W2 || vQE.W2>c_.W2_H+0.05) || (c_.dy_L-0.05>vQE.dy || vQE.dy>c_.dy_H+0.05))continue;
 
-        if (c_.dx_L-0.1<dxq && dxq<c_.dx_H+0.1){
+        if (-2.5<dxq && dxq<1){
             if (vQE.fnucl==1) hP3.Fill(vQE.dy, dxq, vQE.W2, vQE.weight);
             if (vQE.fnucl==0) hN3.Fill(vQE.dy, dxq, vQE.W2, vQE.weight);
         }
 
         if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
-            (c_.W2_L-0.05>vQE.W2 || vQE.W2>c_.W2_H+0.05) || (c_.dy_L-0.1>vQE.dy || vQE.dy>c_.dy_H+0.1)) continue;
+            (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dy_L-0.05>vQE.dy || vQE.dy>c_.dy_H+0.05)) continue;
 
         // after the "continue" filters and inside the kept region for the dx fit:
         if (vQE.fnucl == 1) {
             if(std::strcmp(kin_, "GEN2_He3") == 0){
-                hQE_dxdy_p.Fill(vQE.dy-0.1, dxq+0.15, vQE.weight);
+                hQE_dxdy_p.Fill(vQE.dy-0.05, dxq+0.12, vQE.weight);
+            }
+            else if(std::strcmp(kin_, "GEN3_He3") == 0){
+                hQE_dxdy_p.Fill(vQE.dy, dxq+0.05, vQE.weight);
             }
             else{
                 hQE_dxdy_p.Fill(vQE.dy, dxq, vQE.weight);
@@ -1240,7 +1806,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         
         }
 
-        if (vQE.fnucl == 0) hQE_dxdy_n.Fill(vQE.dy, dxq, vQE.weight);
+        if (vQE.fnucl == 0) {
+            if(std::strcmp(kin_, "GEN2_He3") == 0){
+                hQE_dxdy_n.Fill(vQE.dy, dxq-0.02, vQE.weight);
+            }
+            else if(std::strcmp(kin_, "GEN4_He3") == 0){
+                hQE_dxdy_n.Fill(vQE.dy, dxq-0.02, vQE.weight);
+            }
+            else if(std::strcmp(kin_, "GEN4b_He3") == 0){
+                hQE_dxdy_n.Fill(vQE.dy, dxq-0.01, vQE.weight);
+            }
+            else{
+                hQE_dxdy_n.Fill(vQE.dy, dxq, vQE.weight);
+            }
+        
+        }
+
+        //if (vQE.fnucl == 0) hQE_dxdy_n.Fill(vQE.dy, dxq, vQE.weight);
 
         if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
             (c_.W2_L>vQE.W2 || vQE.W2>c_.W2_H) || (c_.dy_L>vQE.dy || vQE.dy>c_.dy_H)) continue;
@@ -1250,10 +1832,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                 hQE_neutron.Fill(vQE.dx/*-0.1*/,vQE.weight);
             }
             else if(std::strcmp(kin_, "GEN4_He3") == 0){
-                hQE_neutron.Fill(vQE.dx/*-0.07*/,vQE.weight);
+                hQE_neutron.Fill(vQE.dx-0.05,vQE.weight);
             }
             else if(std::strcmp(kin_, "GEN4b_He3") == 0){
-                hQE_neutron.Fill(vQE.dx/*-0.025*/,vQE.weight);
+                hQE_neutron.Fill(vQE.dx-0.02,vQE.weight);
             }
             else{
                 hQE_neutron.Fill(vQE.dx,vQE.weight);
@@ -1297,9 +1879,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-    Long64_t nentries_inel=ch_inel.GetEntries();
+    Long64_t nentries_inel=1*ch_inel.GetEntries();
     std::cout << "\n"<<"[InelasticCorrection] looping over Inelastic sim for dx fit" << nentries_inel << " events\n";
-    for(Long64_t i=0;i<ch_inel.GetEntries();++i){ 
+    for(Long64_t i=0;i<nentries_inel;++i){ 
         ch_inel.GetEntry(i);
     
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2) continue;
@@ -1307,18 +1889,35 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         double dxi = vInel.dx; /*-0.02*/ //dx_shifted_Inel(vInel);
 
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
-            (c_.W2_L-0.05>vInel.W2 || vInel.W2>c_.W2_H+0.05) || (c_.dy_L-0.1>vInel.dy || vInel.dy>c_.dy_H+0.1)) continue; 
+            (c_.W2_L-0.05>vInel.W2 || vInel.W2>c_.W2_H+0.05) || (c_.dy_L-0.05>vInel.dy || vInel.dy>c_.dy_H+0.05)) continue; 
 
-        if(c_.dx_L-0.1<dxi && dxi<c_.dx_H+0.1){
+        if(-2.5<dxi && dxi<1){
             hI3.Fill(vInel.dy,dxi,vInel.W2,vInel.weight);
         }   
 
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
-            (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L-0.1>vInel.dy || vInel.dy>c_.dy_H+0.1)) continue; 
+            (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L-0.05>vInel.dy || vInel.dy>c_.dy_H+0.05)) continue; 
 
         // after the "continue" filters and inside the kept region for the dx fit:
-        hInel_dxdy.Fill(vInel.dy, dxi, vInel.weight);
-
+        if(std::strcmp(kin_, "GEN3_He3") == 0){
+            if(vInel.fnucl == 1) {
+                hInel_dxdy.Fill(vInel.dy, dxi-0.1, vInel.weight);//I had a +1 here not sure why
+            }
+            if (vInel.fnucl == 0) {
+                hInel_dxdy.Fill(vInel.dy, dxi-0.1, vInel.weight);
+            }
+            //hInel_dxdy.Fill(vInel.dy, dxi-0.1, vInel.weight);
+        }
+        else if(std::strcmp(kin_, "GEN4_He3") == 0){
+            hInel_dxdy.Fill(vInel.dy, dxi-0.2, vInel.weight);
+        }
+        else if(std::strcmp(kin_, "GEN4b_He3") == 0){
+            hInel_dxdy.Fill(vInel.dy, dxi-0.2, vInel.weight);
+        }
+        else{
+        
+            hInel_dxdy.Fill(vInel.dy, dxi, vInel.weight);
+        }
 
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
             (c_.W2_L>vInel.W2 || vInel.W2>c_.W2_H) || (c_.dy_L>vInel.dy || vInel.dy>c_.dy_H)) continue;    
@@ -1333,21 +1932,21 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         }
         else if(std::strcmp(kin_, "GEN4_He3") == 0){
             
-            hInelastic.Fill(vInel.dx/*+0.6*/,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+            hInelastic.Fill(vInel.dx-0.1,vInel.weight);//+0.4 is for GEN3 its hard coded for now
 
-            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx/*+0.6*/,vInel.weight);
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx-0.1,vInel.weight);
 
-            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx/*+0.6*/,vInel.weight);
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx-0.1,vInel.weight);
         }
         else if(std::strcmp(kin_, "GEN4b_He3") == 0){
             
             //std::cout<<"debug here"<<'\n';
 
-            hInelastic.Fill(vInel.dx/*+0.25*/,vInel.weight);//+0.4 is for GEN3 its hard coded for now
+            hInelastic.Fill(vInel.dx-0.1,vInel.weight);//+0.4 is for GEN3 its hard coded for now
 
-            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx/*+0.25*/,vInel.weight);
+            if (vInel.fnucl == 0) hInelastic_neutron.Fill(vInel.dx-0.1,vInel.weight);
 
-            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx/*+0.25*/,vInel.weight);
+            if (vInel.fnucl == 1) hInelastic_proton.Fill(vInel.dx-0.1,vInel.weight);
         }
         else{
             //std::cout<<"debug here in else"<<'\n';
@@ -1396,6 +1995,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     h_combined_pos->Scale(hData_pos.Integral());
     h_combined_neg->Scale(hData_neg.Integral());
 
+    // h_combined->Scale();
+    // h_combined_pos->Scale();
+    // h_combined_neg->Scale();
+    
     TH1D* hQE_proton_dx_shifted = make_shifted_unit(&hQE_proton,   "hQE_proton_dx_shifted", dx_p_out);
     TH1D* hQE_neutron_dx_shifted = make_shifted_unit(&hQE_neutron,   "hQE_neutron_dx_shifted", dx_n_out);
     TH1D* hInelastic_dx_shifted = make_shifted_unit(&hInelastic,   "hinelastic_dx_shifted", dx_inel_out);
@@ -1420,6 +2023,18 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hQE_proton_neg->Scale(parN0*hData_neg.Integral()*1/hQE_proton_neg->Integral());
     hQE_neutron_neg->Scale(parN0*parN1*hData_neg.Integral()*1/hQE_neutron_neg->Integral());
     hInelastic_neg->Scale(parN0*parN2*hData_neg.Integral()*1/hInelastic_neg->Integral());
+
+    // hQE_proton_dx_shifted->Scale(par0);
+    // hQE_neutron_dx_shifted->Scale(par0*par1);
+    // hInelastic_dx_shifted->Scale(par0*par2);
+
+    // hQE_proton_pos->Scale(parP0);
+    // hQE_neutron_pos->Scale(parP0*parP1);
+    // hInelastic_pos->Scale(parP0*parP2);
+
+    // hQE_proton_neg->Scale(parN0);
+    // hQE_neutron_neg->Scale(parN0*parN1);
+    // hInelastic_neg->Scale(parN0*parN2);
 
     //frac_  = wI;                 // N_inel / (N_inel+QE)
     //dfrac_ = std::sqrt(wI*wQ/(wI+wQ)/(wI+wQ)/(hD.Integral()));
@@ -1542,6 +2157,16 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     //TH2D* hComb2D_scaled = (TH2D*)hDxdy.Clone("hComb2D_scaled");
 
+    txt<<"2D fit results:\n";
+    txt<<"A2 = "<<A2<<"\n";
+    txt<<"rNP2 = "<<rNP2<<"\n";
+    txt<<"rI2 = "<<rI2<<"\n";
+    txt<<"dxp = "<<dxp<<"\n";
+    txt<<"dyp = "<<dyp<<"\n";
+    txt<<"dxn = "<<dxn<<"\n";
+    txt<<"dyn = "<<dyn<<"\n";
+    txt<<"dxi = "<<dxi<<"\n";
+
     // Make residual and pull maps for QA
     TH2D* hResid2D = (TH2D*)hDxdy.Clone("hResid2D");
     hResid2D->Reset();
@@ -1559,11 +2184,59 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     }
 
     // Quick visual
-    TCanvas* Cdxdy = new TCanvas("Cdxdy","2D dx-dy fit", 2400, 1500);
+    // TCanvas* Cdxdy = new TCanvas("Cdxdy","2D dx-dy fit", 2400, 1000);
+    // Cdxdy->Divide(3,1);
+    // Cdxdy->cd(1); gPad->SetRightMargin(0.13); hDxdy.Draw("COLZ");     hDxdy.SetTitle("Data: dy vs dx");
+    // Cdxdy->cd(2); gPad->SetRightMargin(0.13); hComb2D->Draw("COLZ");  hComb2D->SetTitle("Fit Model: A[P + rNP*N + rI*I]");
+    // Cdxdy->cd(3); gPad->SetRightMargin(0.13); hResid2D->Draw("COLZ"); hResid2D->SetTitle("Residual: Data - Model");
+
+    // your ellipse parameters
+    double x0_visual = c_.dx_c;   // center in dx
+    double y0_visual = c_.dy_c;   // center in dy
+    double rx_visual = c_.dx_r;   // radius in dx
+    double ry_visual = c_.dy_r;   // radius in dy
+
+    // Quick visual
+    TCanvas* Cdxdy = new TCanvas("Cdxdy","2D dx-dy fit", 2400, 1000);
     Cdxdy->Divide(3,1);
-    Cdxdy->cd(1); gPad->SetRightMargin(0.13); hDxdy.Draw("COLZ");     hDxdy.SetTitle("Data: dy vs dx");
-    Cdxdy->cd(2); gPad->SetRightMargin(0.13); hComb2D->Draw("COLZ");  hComb2D->SetTitle("Fit Model: A[P + rNP*N + rI*I]");
-    Cdxdy->cd(3); gPad->SetRightMargin(0.13); hResid2D->Draw("COLZ"); hResid2D->SetTitle("Residual: Data - Model");
+
+    // ---------------- pad 1: data ----------------
+    Cdxdy->cd(1);
+    gPad->SetRightMargin(0.13);
+    hDxdy.Draw("COLZ");
+    hDxdy.SetTitle("Data: dy vs dx");
+
+    TEllipse *e1 = new TEllipse(x0_visual, y0_visual, rx_visual, ry_visual);
+    e1->SetFillStyle(0);      // transparent
+    e1->SetLineColor(kBlack);
+    e1->SetLineWidth(3);
+    e1->Draw("same");
+
+    // ---------------- pad 2: fit model ----------------
+    Cdxdy->cd(2);
+    gPad->SetRightMargin(0.13);
+    hComb2D->Draw("COLZ");
+    hComb2D->SetTitle("Fit Model: A[P + rNP*N + rI*I]");
+
+    TEllipse *e2 = new TEllipse(x0_visual, y0_visual, rx_visual, ry_visual);
+    e2->SetFillStyle(0);
+    e2->SetLineColor(kBlack);
+    e2->SetLineWidth(3);
+    e2->Draw("same");
+
+    // ---------------- pad 3: residual ----------------
+    Cdxdy->cd(3);
+    gPad->SetRightMargin(0.13);
+    hResid2D->Draw("COLZ");
+    hResid2D->SetTitle("Residual: Data - Model");
+
+    TEllipse *e3 = new TEllipse(x0_visual, y0_visual, rx_visual, ry_visual);
+    e3->SetFillStyle(0);
+    e3->SetLineColor(kBlack);
+    e3->SetLineWidth(3);
+    e3->Draw("same");
+
+    Cdxdy->Update();
 
     // Optional: pull map
     TCanvas* CdxdyPull = new TCanvas("CdxdyPull","2D pulls", 2400, 1500);
@@ -1678,8 +2351,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     i_dy->SetFillColorAlpha(7,0.35);
 
     // --- Draw overlays: dx (Y projection) ---
+    double ymax_dx = std::max({data_dx->GetMaximum(), model_dx->GetMaximum(),
+                           p_dx->GetMaximum(), n_dx->GetMaximum(), i_dx->GetMaximum()});
+
     TCanvas* Cproj_dx = new TCanvas("Cproj_dx","dx projection: data vs model",2400,1500);
     Cproj_dx->cd();
+    data_dx->SetMinimum(0.0);
+    data_dx->SetMaximum(1.15 * ymax_dx);
     data_dx->SetTitle("dx projection;dx (m);Counts");
     data_dx->Draw("E1");                // data with errors
     p_dx->Draw("HIST SAME");
@@ -1697,8 +2375,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     leg_dx->Draw();
 
     // --- Draw overlays: dy (X projection) ---
+
+    double ymax_dy = std::max({data_dy->GetMaximum(), model_dy->GetMaximum(),
+                           p_dy->GetMaximum(), n_dy->GetMaximum(), i_dy->GetMaximum()});
+
     TCanvas* Cproj_dy = new TCanvas("Cproj_dy","dy projection: data vs model",2400,1500);
     Cproj_dy->cd();
+    data_dy->SetMinimum(0.0);
+    data_dy->SetMaximum(1.15 * ymax_dy);
     data_dy->SetTitle("dy projection;dy (m);Counts");
     data_dy->Draw("E1");
     p_dy->Draw("HIST SAME");
@@ -2008,7 +2692,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                      "C3D_dx", Form("images/%s/3D_dx_projection_%s.png", kin_, kin_));
 
     draw_proj_canvas(data_w2_3, modl_w2_3, P_w2_3, N_w2_3, I_w2_3,
-                     "3D model: W^{2} projection", "W^{2} (GeV^{2})",
+                     "3D model: W^{2} projection", "W^{2} ((GeV/c)^{2})",
                      "C3D_W2", Form("images/%s/3D_W2_projection_%s.png", kin_, kin_));
 
 
@@ -2116,6 +2800,18 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         else if(vQE.fnucl==0){
             dxq = vQE.dx - dxn;//dx_n_out;
             dyq = vQE.dy - dyn;
+
+            if(std::strcmp(kin_, "GEN4_He3") == 0){ // see #3
+                dxq = vQE.dx - 0.12 - dxn;//dx_n_out;
+                dyq = vQE.dy - dyn;
+
+            }
+
+            else if(std::strcmp(kin_, "GEN4b_He3") == 0){ // see #3
+                dxq = vQE.dx - 0.05 - dxn;//dx_n_out;
+                dyq = vQE.dy - dyn;
+
+            }
         }
 
         if ((c_.dy_L<dyq && dyq<c_.dy_H) && (c_.dx_L<dxq && dxq<c_.dx_H) && (W2_hist_lower_limit<vQE.W2 && vQE.W2<W2_hist_upper_limit)
@@ -2159,6 +2855,19 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         double dxii = vInel.dx - dxi;//dx_inel_out;
         double dyii = vInel.dy - dyi;
+
+        if(std::strcmp(kin_, "GEN4_He3") == 0){
+            dxii = vInel.dx - 0.1 - dxi;
+            dyii = vInel.dy - dyi;
+
+        }
+
+        else if(std::strcmp(kin_, "GEN4b_He3") == 0){
+            dxii = vInel.dx - 0.1 - dxi;
+            dyii = vInel.dy - dyi;
+
+        }
+
 
         if ( (c_.dy_L<dyii && dyii<c_.dy_H) && (c_.dx_L<dxii && dxii<c_.dx_H) && (W2_hist_lower_limit<vInel.W2 && vInel.W2<W2_hist_upper_limit) 
         && ((pow((dyii-c_.dy_c)/c_.dy_r,2)+pow((dxii-c_.dx_c)/c_.dx_r,2))<=1)) {
@@ -2245,7 +2954,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     const double denom = (1.0 + Rnop + alpha);
 
     // branch 1: (QEp + Rnop*QEn + alpha*Inel_shift)/denom
-    h_combined_W2->Scale(N);
+    //h_combined_W2->Scale(N);
     hQE_proton_W2.Scale( N * (1.0/hQE_proton_W2.Integral()) / denom );
     hQE_neutron_W2.Scale( N * Rnop * (1.0/hQE_neutron_W2.Integral()) / denom );
     hInelastic_W2_shift1->Scale( N * alpha * (1.0/hInelastic_W2_shift1->Integral()) / denom );
@@ -2382,8 +3091,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"f_p_dxdy = "<<Rprot<<"\n";
     txt<<"err_f_p_dxdy = "<<eRprot<<"\n";
 
-    txt<<"f_p = "<<P_W2<<"\n";
-    txt<<"err_f_p = "<<dP_W2<<"\n";
+
+
+    //txt<<"f_p = "<<P_W2<<"\n";
+    //txt<<"err_f_p = "<<dP_W2<<"\n";
 
     txt<<"W2_data_events = "<<W2_data_events<<"\n";
     txt<<"W2_fit_events = "<<W2_fit_events<<"\n";
@@ -2394,8 +3105,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     txt<<"err_background_fraction_W2_fit = "<<W2_fit_err_background_frac<<"\n";
     txt<<"inelastic_fraction_W2_fit = "<<W2_inelastic_frac<<"\n";
     txt<<"err_inelastic_fraction_W2_fit = "<<W2_errinelastic_frac<<"\n";
-    txt<<"f_in = "<<W2_inelastic_frac<<"\n";
-    txt<<"err_f_in = "<<W2_errinelastic_frac<<"\n";
+    //txt<<"f_in = "<<W2_inelastic_frac<<"\n";
+    //txt<<"err_f_in = "<<W2_errinelastic_frac<<"\n";
     txt << "SSR_W2_single_param = " << ssr_neutrons_1 << "\n";
     txt << "SSR_W2_two_param    = " << ssr_neutrons_2 << "\n";
     //txt.close();
@@ -2465,16 +3176,66 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H ||
             vQE.ePS<0.2) continue;
 
-        const double dxq = vQE.dx;     // keep your dx shifts separate if you want
-        const double dyq = vQE.dy;
+        double dxq = vQE.dx;     // keep your dx shifts separate if you want
+        double dyq = vQE.dy;
 
         // Apply the fitted QE W2 shift BEFORE deciding the W2 window
         const double W2q_sel = vQE.W2 + dW2_QE_used;
+        
+        if (std::strcmp(kin_, "GEN3_He3") == 0) { // see #3
+            dxq = vQE.dx;  
+            dyq = vQE.dy+0.05;          
+        }
+        else if (std::strcmp(kin_, "GEN4_He3") == 0) { // see #3
+            dxq = vQE.dx;  
+            dyq = vQE.dy+0.05;          
+        }
+
+        else if (std::strcmp(kin_, "GEN4b_He3") == 0) { // see #3
+            dxq = vQE.dx;  
+            dyq = vQE.dy-0.1;          
+        }        
+
+        if (vQE.fnucl == 0){
+            if (std::strcmp(kin_, "GEN2_He3") == 0) { // see #3
+                dxq = vQE.dx-0.02;  
+                dyq = vQE.dy;          
+            }
+            else if (std::strcmp(kin_, "GEN4_He3") == 0) { // see #3
+                dxq = vQE.dx-0.02;  
+                dyq = vQE.dy;          
+            }
+            else if (std::strcmp(kin_, "GEN4b_He3") == 0) { // see #3
+                dxq = vQE.dx - 0.01;  
+                dyq = vQE.dy;          
+            }
+
+        }
+
+        else if (vQE.fnucl == 1){
+            if (std::strcmp(kin_, "GEN2_He3") == 0) { // see #3
+                dxq = vQE.dx+0.12;  
+                dyq = vQE.dy;          
+            }
+
+            else if (std::strcmp(kin_, "GEN3_He3") == 0) { // see #3
+                dxq = vQE.dx+0.05;  
+                dyq = vQE.dy;          
+            }
+            else if (std::strcmp(kin_, "GEN4_He3") == 0) { // see #3
+                dxq = vQE.dx;  
+                dyq = vQE.dy;          
+            }
+            else if (std::strcmp(kin_, "GEN4b_He3") == 0) { // see #3
+                dxq = vQE.dx+0.025;  
+                dyq = vQE.dy;          
+            }
+        }
 
         // Make the selection consistent with what you used for the data dxdy hist:
         // (Here: W2 window + dy loose window, mirroring your earlier template filling style)
         if ( (c_.W2_L>W2q_sel || W2q_sel>c_.W2_H) ||
-            (c_.dy_L-0.1>dyq  || dyq>c_.dy_H+0.1) ) continue;
+            (c_.dy_L-0.05>dyq  || dyq>c_.dy_H+0.05) ) continue;
 
         // Optional: if you want to mirror the ellipse region used by hDxdy_cut:
         // const bool inEllipseN = ( (pow((dyq-c_.dy_c)/c_.dy_r,2)+pow((dxq-c_.dx_c)/c_.dx_r,2)) <= 1 );
@@ -2498,14 +3259,29 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H ||
             vInel.ePS<0.2) continue;
 
-        const double dxi = vInel.dx;
-        const double dyi = vInel.dy;
+        double dxi = vInel.dx;
+        double dyi = vInel.dy;
+
+        if (std::strcmp(kin_, "GEN3_He3") == 0) { // see #3
+            dxi = vInel.dx-0.1;  
+            dyi = vInel.dy;          
+        }
+
+        else if (std::strcmp(kin_, "GEN4_He3") == 0) { // see #3
+            dxi = vInel.dx - 0.3;  
+            dyi = vInel.dy;          
+        }
+
+        else if (std::strcmp(kin_, "GEN4b_He3") == 0) { // see #3
+            dxi = vInel.dx - 0.3;  
+            dyi = vInel.dy;          
+        }        
 
         // Apply the fitted inelastic W2 shift BEFORE deciding the W2 window
         const double W2i_sel = vInel.W2 + dW2_Inel_used;
 
         if ( (c_.W2_L>W2i_sel || W2i_sel>c_.W2_H) ||
-            (c_.dy_L-0.1>dyi  || dyi>c_.dy_H+0.1) ) continue;
+            (c_.dy_L-0.05>dyi  || dyi>c_.dy_H+0.05) ) continue;
 
         // Optional ellipse gating (same as above) if desired:
         // const bool inEllipseN = ( (pow((dyi-c_.dy_c)/c_.dy_r,2)+pow((dxi-c_.dx_c)/c_.dx_r,2)) <= 1 );
@@ -2637,8 +3413,56 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         f_n_dxdy_2  = (denom2_2>0 ? (rNP2_2/denom2_2) : 0.0);
     }
 
+    const double R_refit     = (1 - facc - fN2 - fpi) / Ndata_ell_2;
+    const double F_refit     =  Ninel_ell_2 * R_refit;              // inelastic_frac
+
+    const double A_refit = 1.0 - facc - fN2;
+
+    const double P_refit = Nprot_ell_2 * A_refit / Ndata_ell_2;
+
+    const double dSigmaP_refit = std::sqrt(Nprot_ell_2); // only if true counting stats
+    const double dSigma_refit  = std::sqrt(Ndata_ell_2);
+
+    const double dP_dSigmaP_refit = A_refit / Ndata_ell_2;
+    const double dP_dSigma_refit  = Nprot_ell_2 * A_refit / (Ndata_ell_2 * Ndata_ell_2);
+    const double dP_dfacc_refit   = Nprot_ell_2 / Ndata_ell_2;
+    const double dP_dfN2_refit    = Nprot_ell_2 / Ndata_ell_2;
+
+    const double dP_refit = std::sqrt(
+         std::pow(dP_dSigmaP_refit * dSigmaP_refit, 2) +
+         std::pow(dP_dSigma_refit  * dSigma_refit,  2) +
+         std::pow(dP_dfacc_refit   * errfacc, 2) +
+         std::pow(dP_dfN2_refit    * errfN2,  2)
+    );
+
+    const double dN_in_refit   = std::sqrt(Ninel_ell_2);     // Poisson
+    const double dN_QE_refit   = std::sqrt(Ndata_ell_2);            // Poisson
+    const double dFacc_refit   = errfacc;                       // your TXT value
+    const double dFN2_refit    = errfN2;
+    const double dFpi_refit    = errfpi;
+
+    const double dF2_refit =
+         std::pow(R_refit * dN_in_refit, 2) +
+         std::pow(F_refit / Ndata_ell_2 * dN_QE_refit, 2) +
+         std::pow(Ninel_ell_2 / Ndata_ell_2 * dFacc_refit, 2) +
+         std::pow(Ninel_ell_2 / Ndata_ell_2 * dFN2_refit , 2) +
+         std::pow(Ninel_ell_2 / Ndata_ell_2 * dFpi_refit , 2);
+
+    const double dFin_refit = std::sqrt(dF2_refit);
+
+
+    double refit_inelastic_frac = Ninel_ell_2 * (1 - facc - fN2 - fpi)/Ndata_ell_2;    
+    double refit_errinelastic_frac =  dFin_refit;
+
+
+
     // Write to the same corrections file stream ("txt") you already opened earlier:
-    txt << "dxdy_refit_with_W2_shifts = 1\n";
+    txt << "#####dxdy_refit_with_W2_shifts = 1######\n";
+    txt << "Ndata_ell_2 = " << Ndata_ell_2 << "\n";
+    txt << "Nprot_ell_2 = " << Nprot_ell_2 << "\n";
+    txt << "Nneut_ell_2 = " << Nneut_ell_2 << "\n";
+    txt << "Ninel_ell_2 = " << Ninel_ell_2 << "\n";
+    txt << "Ndata2_2 = " << Ndata2_2 << "\n";
     txt << "W2_shift_used_QE   = " << dW2_QE_used   << "\n";
     txt << "W2_shift_used_Inel = " << dW2_Inel_used << "\n";
     txt << "dxdy_fit_A_2   = " << A2_2   << "\n";
@@ -2651,6 +3475,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         << "p("<<dxp2<<","<<dyp2<<") "
         << "n("<<dxn2<<","<<dyn2<<") "
         << "inel("<<dxi2<<","<<dyi2<<")\n";
+    txt << "refit_inelastic_frac = " << refit_inelastic_frac << "\n";
+    txt << "refit_err_inelastic_frac = " << refit_errinelastic_frac << "\n";
+    txt << "refit_f_p = " << P_refit << "\n";
+    txt << "refit_err_f_p = " << dP_refit << "\n";
+    txt << "f_in = " << refit_inelastic_frac << "\n";
+    txt << "err_f_in = " << refit_errinelastic_frac << "\n";
+    txt << "f_p = " << P_refit << "\n";
+    txt << "err_f_p = " << dP_refit << "\n";
 
     // (Optional) keep hComb_dxdy_2 for plotting/debug if you want
 
@@ -2658,6 +3490,283 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // dx,dy projections for second-pass dxdy fit: DATA vs FIT components
     // Save as PDF(s)
     // ============================================================================
+
+    // =================== projections of the 2D refit ===================
+    // Uses already-existing objects:
+    //   hData_dxdy_for_fit
+    //   hP2_model, hN2_model, hI2_model
+    //   and builds hTot2_model here
+
+    // TH2D* hP2_shift = make_shifted_unit2D(&hQE_dxdy_p, "hP2_shift", dxp, dyp);
+    // TH2D* hN2_shift = make_shifted_unit2D(&hQE_dxdy_n, "hN2_shift", dxn, dyn);
+    // TH2D* hI2_shift = make_shifted_unit2D(&hInel_dxdy, "hI2_shift", dxi, dyi);
+
+    // // Scale components to the fitted absolute normalization.
+    // // Model is: A2 * ( P + rNP2*N + rI2*I )
+    // TH2D* hP2_model = (TH2D*)hP2_shift->Clone("hP2_model");
+    // TH2D* hN2_model = (TH2D*)hN2_shift->Clone("hN2_model");
+    // TH2D* hI2_model = (TH2D*)hI2_shift->Clone("hI2_model");
+    // hP2_model->SetDirectory(nullptr);
+    // hN2_model->SetDirectory(nullptr);
+    // hI2_model->SetDirectory(nullptr);
+
+    // hP2_model->Scale(A2);
+    // hN2_model->Scale(A2 * rNP2);
+    // hI2_model->Scale(A2 * rI2);
+
+    TH2D* hTot2_model_refit = (TH2D*)hP2_model->Clone("hTot2_model_refit");
+    hTot2_model_refit->SetDirectory(nullptr);
+    hTot2_model_refit->Add(hN2_model);
+    hTot2_model_refit->Add(hI2_model);
+
+    // because TH2 is filled as Fill(dy,dx):
+    //   ProjectionX -> dy
+    //   ProjectionY -> dx
+
+    TH1D* hData_dy_proj = hData_dxdy_for_fit->ProjectionX("hData_dy_proj");
+    TH1D* hData_dx_proj = hData_dxdy_for_fit->ProjectionY("hData_dx_proj");
+
+    TH1D* hT_dy_proj = hTot2_model_refit->ProjectionX("hT_dy_proj");
+    TH1D* hP_dy_proj = hP2_model   ->ProjectionX("hP_dy_proj");
+    TH1D* hN_dy_proj = hN2_model   ->ProjectionX("hN_dy_proj");
+    TH1D* hI_dy_proj = hI2_model   ->ProjectionX("hI_dy_proj");
+
+    TH1D* hT_dx_proj = hTot2_model_refit->ProjectionY("hT_dx_proj");
+    TH1D* hP_dx_proj = hP2_model   ->ProjectionY("hP_dx_proj");
+    TH1D* hN_dx_proj = hN2_model   ->ProjectionY("hN_dx_proj");
+    TH1D* hI_dx_proj = hI2_model   ->ProjectionY("hI_dx_proj");
+
+    //residuals
+    TH1D* hRes_dy_proj = (TH1D*)hData_dy_proj->Clone("hRes_dy_proj");
+    TH1D* hRes_dx_proj = (TH1D*)hData_dx_proj->Clone("hRes_dx_proj");
+    hRes_dy_proj->Add(hT_dy_proj, -1.0);
+    hRes_dx_proj->Add(hT_dx_proj, -1.0);
+
+    // TH1D* hPull_dx_proj = (TH1D*)hData_dx_proj->Clone("hPull_dx_proj");
+    // TH1D* hPull_dy_proj = (TH1D*)hData_dy_proj->Clone("hPull_dy_proj");
+    // hPull_dx_proj->SetDirectory(nullptr);
+    // hPull_dy_proj->SetDirectory(nullptr);
+
+    // for (int i = 1; i <= hPull_dx_proj->GetNbinsX(); ++i) {
+    //     const double d  = hData_dx_proj->GetBinContent(i);
+    //     const double m  = hT_dx_proj->GetBinContent(i);
+    //     const double ed = hData_dx_proj->GetBinError(i);
+
+    //     double pull = 0.0;
+    //     if (ed > 0.0) pull = (d - m) / ed;
+
+    //     hPull_dx_proj->SetBinContent(i, pull);
+    //     hPull_dx_proj->SetBinError(i, 0.0);
+    // }
+
+    // for (int i = 1; i <= hPull_dy_proj->GetNbinsX(); ++i) {
+    //     const double d  = hData_dy_proj->GetBinContent(i);
+    //     const double m  = hT_dy_proj->GetBinContent(i);
+    //     const double ed = hData_dy_proj->GetBinError(i);
+
+    //     double pull = 0.0;
+    //     if (ed > 0.0) pull = (d - m) / ed;
+
+    //     hPull_dy_proj->SetBinContent(i, pull);
+    //     hPull_dy_proj->SetBinError(i, 0.0);
+    // }
+
+    // styling
+    auto style_component_proj = [&](TH1* h, Color_t c, Style_t ls, Width_t lw=2){
+        h->SetLineColor(c);
+        h->SetLineStyle(ls);
+        h->SetLineWidth(lw);
+    };
+
+    hData_dy_proj->SetMarkerStyle(20);
+    hData_dy_proj->SetMarkerSize(0.9);
+    hData_dy_proj->SetLineColor(kBlack);
+    hData_dy_proj->SetMarkerColor(kBlack);
+    hData_dy_proj->SetTitle(";dy (m);Counts");
+
+    hData_dx_proj->SetMarkerStyle(20);
+    hData_dx_proj->SetMarkerSize(0.9);
+    hData_dx_proj->SetLineColor(kBlack);
+    hData_dx_proj->SetMarkerColor(kBlack);
+    hData_dx_proj->SetTitle(";dx (m);Counts");
+
+    style_component_proj(hT_dy_proj, 3,   1, 3);
+    style_component_proj(hP_dy_proj, 6,  2, 2);
+    style_component_proj(hN_dy_proj, 9,   2, 2);
+    style_component_proj(hI_dy_proj, 7, 2, 2);
+
+    style_component_proj(hT_dx_proj, 3,   1, 3);
+    style_component_proj(hP_dx_proj, 6,  2, 2);
+    style_component_proj(hN_dx_proj, 9,   2, 2);
+    style_component_proj(hI_dx_proj, 7, 2, 2);
+
+    hT_dy_proj->SetFillColorAlpha(19, 0.1);
+    hT_dy_proj->SetFillStyle(3009);
+    hT_dx_proj->SetFillColorAlpha(19, 0.1);
+    hT_dx_proj->SetFillStyle(3009);
+
+    hP_dy_proj->SetFillColorAlpha(6, 0.5);
+    hP_dy_proj->SetFillStyle(3004);
+    hP_dx_proj->SetFillColorAlpha(6, 0.5);
+    hP_dx_proj->SetFillStyle(3004);
+
+    hN_dy_proj->SetFillColorAlpha(9, 0.5);
+    hN_dy_proj->SetFillStyle(3005);
+    hN_dx_proj->SetFillColorAlpha(9, 0.5);
+    hN_dx_proj->SetFillStyle(3005);
+
+    hI_dy_proj->SetFillColorAlpha(7, 0.5);
+    hI_dy_proj->SetFillStyle(3009);
+    hI_dx_proj->SetFillColorAlpha(7, 0.5);
+    hI_dx_proj->SetFillStyle(3009);
+
+    // ---------------- dy canvas ----------------
+    TCanvas* cProjDy = new TCanvas("cProjDy","2D refit dy projection",1200,900);
+    cProjDy->Divide(1,2);
+
+    cProjDy->cd(1);
+    gPad->SetPad(0.0,0.30,1.0,1.0);
+    gPad->SetBottomMargin(0.02);
+
+    double max_dy_proj = std::max(hData_dy_proj->GetMaximum(), hT_dy_proj->GetMaximum());
+    hData_dy_proj->SetMinimum(0.0);
+    hData_dy_proj->SetMaximum(1.1*max_dy_proj);
+    hData_dy_proj->Draw("PE1");
+    hT_dy_proj->Draw("HIST SAME");
+    hP_dy_proj->Draw("HIST SAME");
+    hN_dy_proj->Draw("HIST SAME");
+    hI_dy_proj->Draw("HIST SAME");
+    hData_dy_proj->Draw("E1 SAME");
+
+    TLegend* legDyProj = new TLegend(0.60,0.60,0.88,0.88);
+    legDyProj->SetBorderSize(0);
+    legDyProj->SetFillStyle(0);
+    legDyProj->AddEntry(hData_dy_proj,"Data","lep");
+    legDyProj->AddEntry(hT_dy_proj,"Total fit","l");
+    legDyProj->AddEntry(hP_dy_proj,"QE p","l");
+    legDyProj->AddEntry(hN_dy_proj,"QE n","l");
+    legDyProj->AddEntry(hI_dy_proj,"Inel","l");
+    legDyProj->Draw();
+
+    cProjDy->cd(2);
+    gPad->SetPad(0.0,0.0,1.0,0.30);
+    gPad->SetTopMargin(0.03);
+    gPad->SetBottomMargin(0.28);
+
+    hRes_dy_proj->SetTitle(";dy (m);Data - Fit");
+    hRes_dy_proj->SetMarkerStyle(20);
+    hRes_dy_proj->SetMarkerSize(0.8);
+    hRes_dy_proj->Draw("E1");
+
+    TLine* l0_dy_proj = new TLine(
+        hRes_dy_proj->GetXaxis()->GetXmin(), 0.0,
+        hRes_dy_proj->GetXaxis()->GetXmax(), 0.0
+    );
+    l0_dy_proj->SetLineStyle(2);
+    l0_dy_proj->Draw("SAME");
+
+    // hPull_dy_proj->SetTitle(";dy (m);Pull");
+    // hPull_dy_proj->SetMarkerStyle(20);
+    // hPull_dy_proj->SetMarkerSize(0.8);
+    // hPull_dy_proj->SetMinimum(-10.0);
+    // hPull_dy_proj->SetMaximum( 10.0);
+    // hPull_dy_proj->Draw("P");
+
+    // TLine* l0_dy_proj = new TLine(
+    //     hPull_dy_proj->GetXaxis()->GetXmin(), 0.0,
+    //     hPull_dy_proj->GetXaxis()->GetXmax(), 0.0
+    // );
+    // l0_dy_proj->SetLineStyle(2);
+    // l0_dy_proj->Draw("SAME");
+
+    // TLine* lpm2_dy_1 = new TLine(
+    //     hPull_dy_proj->GetXaxis()->GetXmin(), 2.0,
+    //     hPull_dy_proj->GetXaxis()->GetXmax(), 2.0
+    // );
+    // TLine* lpm2_dy_2 = new TLine(
+    //     hPull_dy_proj->GetXaxis()->GetXmin(), -2.0,
+    //     hPull_dy_proj->GetXaxis()->GetXmax(), -2.0
+    // );
+    // lpm2_dy_1->SetLineStyle(3);
+    // lpm2_dy_2->SetLineStyle(3);
+    // lpm2_dy_1->Draw("SAME");
+    // lpm2_dy_2->Draw("SAME");
+
+    // ---------------- dx canvas ----------------
+    TCanvas* cProjDx = new TCanvas("cProjDx","2D refit dx projection",1200,900);
+    cProjDx->Divide(1,2);
+
+    cProjDx->cd(1);
+    gPad->SetPad(0.0,0.30,1.0,1.0);
+    gPad->SetBottomMargin(0.02);
+
+    double max_dx_proj = std::max(hData_dx_proj->GetMaximum(), hT_dx_proj->GetMaximum());
+    hData_dx_proj->SetMinimum(0.0);
+    hData_dx_proj->SetMaximum(1.1*max_dx_proj);
+    hData_dx_proj->Draw("PE1");
+    hT_dx_proj->Draw("HIST SAME");
+    hP_dx_proj->Draw("HIST SAME");
+    hN_dx_proj->Draw("HIST SAME");
+    hI_dx_proj->Draw("HIST SAME");
+    hData_dx_proj->Draw("E1 SAME");
+
+    TLegend* legDxProj = new TLegend(0.60,0.60,0.88,0.88);
+    legDxProj->SetBorderSize(0);
+    legDxProj->SetFillStyle(0);
+    legDxProj->AddEntry(hData_dx_proj,"Data","lep");
+    legDxProj->AddEntry(hT_dx_proj,"Total fit","l");
+    legDxProj->AddEntry(hP_dx_proj,"QE p","l");
+    legDxProj->AddEntry(hN_dx_proj,"QE n","l");
+    legDxProj->AddEntry(hI_dx_proj,"Inel","l");
+    legDxProj->Draw();
+
+    cProjDx->cd(2);
+    gPad->SetPad(0.0,0.0,1.0,0.30);
+    gPad->SetTopMargin(0.03);
+    gPad->SetBottomMargin(0.28);
+
+    hRes_dx_proj->SetTitle(";dx (m);Data - Fit");
+    hRes_dx_proj->SetMarkerStyle(20);
+    hRes_dx_proj->SetMarkerSize(0.8);
+    hRes_dx_proj->Draw("E1");
+
+    TLine* l0_dx_proj = new TLine(
+        hRes_dx_proj->GetXaxis()->GetXmin(), 0.0,
+        hRes_dx_proj->GetXaxis()->GetXmax(), 0.0
+    );
+    l0_dx_proj->SetLineStyle(2);
+    l0_dx_proj->Draw("SAME");
+
+    // hPull_dx_proj->SetTitle(";dx (m);Pull");
+    // hPull_dx_proj->SetMarkerStyle(20);
+    // hPull_dx_proj->SetMarkerSize(0.8);
+    // hPull_dx_proj->SetMinimum(-10.0);
+    // hPull_dx_proj->SetMaximum( 10.0);
+    // hPull_dx_proj->Draw("P");
+
+    // TLine* l0_dx_proj = new TLine(
+    //     hPull_dx_proj->GetXaxis()->GetXmin(), 0.0,
+    //     hPull_dx_proj->GetXaxis()->GetXmax(), 0.0
+    // );
+    // l0_dx_proj->SetLineStyle(2);
+    // l0_dx_proj->Draw("SAME");
+
+    // TLine* lpm2_dx_1 = new TLine(
+    //     hPull_dx_proj->GetXaxis()->GetXmin(), 2.0,
+    //     hPull_dx_proj->GetXaxis()->GetXmax(), 2.0
+    // );
+    // TLine* lpm2_dx_2 = new TLine(
+    //     hPull_dx_proj->GetXaxis()->GetXmin(), -2.0,
+    //     hPull_dx_proj->GetXaxis()->GetXmax(), -2.0
+    // );
+    // lpm2_dx_1->SetLineStyle(3);
+    // lpm2_dx_2->SetLineStyle(3);
+    // lpm2_dx_1->Draw("SAME");
+    // lpm2_dx_2->Draw("SAME");
+
+    cProjDx->SaveAs(Form("images/%s/dx_proj_dxdy_fit_pass2_verify.pdf", kin_));
+    cProjDy->SaveAs(Form("images/%s/dy_proj_dxdy_fit_pass2_verify.pdf", kin_));
+
 
 
     // ---- total model (for projections); you can also just use hComb_dxdy_2 if it is the total model
@@ -2991,11 +4100,11 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     hInelastic_W2_shift1_Neutrons->SetFillStyle(3009);
 
     // restrict display to config W2 cut
-    h_combined_W2_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
-    hQE_proton_W2_shift_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
-    hQE_neutron_W2_shift_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
-    hInelastic_W2_shift1_Neutrons->GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
-    hData_W2_Neutrons.GetXaxis()->SetRangeUser(c_.W2_L, c_.W2_H);
+    //h_combined_W2_Neutrons->GetXaxis()->SetRangeUser(W2_hist_lower_limit, W2_hist_upper_limit);
+    //hQE_proton_W2_shift_Neutrons->GetXaxis()->SetRangeUser(W2_hist_lower_limit, W2_hist_upper_limit);
+    //hQE_neutron_W2_shift_Neutrons->GetXaxis()->SetRangeUser(W2_hist_lower_limit, W2_hist_upper_limit);
+    //hInelastic_W2_shift1_Neutrons->GetXaxis()->SetRangeUser(W2_hist_lower_limit, W2_hist_upper_limit);
+    //hData_W2_Neutrons.GetXaxis()->SetRangeUser(W2_hist_lower_limit, W2_hist_upper_limit);
 
     hData_W2_Neutrons.SetMarkerStyle(kFullSquare);
 
@@ -3217,7 +4326,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     gStyle->SetGridWidth(1);   // thin lines; raise to 2-3 for thicker
 
     double yMin=-15, yMax=15; // adjust as you like
-    TH2F* frame = new TH2F("Aframe","Asymmetry vs W^{2};W^{2} (GeV^{2});Asymmetry (%)",
+    TH2F* frame = new TH2F("Aframe","Asymmetry vs W^{2};W^{2} ((GeV/c)^{2});Asymmetry (%)",
                            20, -2, 8, 20, yMin, yMax);
     frame->Draw();
 
@@ -3531,7 +4640,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     padBot_W2->cd();
 
     // frame sets the x-range to MATCH the top pad
-    TH2F* frame_W2 = new TH2F("frame_W2",";W^{2} (GeV^{2});Asymmetry (%)",
+    TH2F* frame_W2 = new TH2F("frame_W2",";W^{2} ((GeV/c)^{2});Asymmetry (%)",
                               100, xMin_W2, xMax_W2, 100, yMin_A, yMax_A);
     frame_W2->GetXaxis()->SetTitleSize(0.08);
     frame_W2->GetXaxis()->SetLabelSize(0.08);
@@ -3583,8 +4692,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     gA_inelastic->SetName("gA_inelastic");
     gA_elastic->SetName("gA_elastic");
-    gA_inelastic->SetTitle("Asymmetry (inelastic region, W2 > 2);W^{2} (GeV^{2});Asymmetry (%)");
-    gA_elastic->SetTitle("Asymmetry (elastic region, W2 < W2_H);W^{2} (GeV^{2});Asymmetry (%)");
+    gA_inelastic->SetTitle("Asymmetry (inelastic region, W2 > 2);W^{2} ((GeV/c)^{2});Asymmetry (%)");
+    gA_elastic->SetTitle("Asymmetry (elastic region, W2 < W2_H);W^{2} ((GeV/c)^{2});Asymmetry (%)");
 
     std::cout << "[InelasticCorrection] Inelastic region (W2 > 2): " << nInelastic << " points\n";
     std::cout << "[InelasticCorrection] Elastic region (W2 < W2_H): " << nElastic << " points\n";
@@ -3616,7 +4725,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // Create extrapolation graph in elastic region using the fit parameters
     TGraphErrors* gA_extrapolated = new TGraphErrors();
     gA_extrapolated->SetName("gA_extrapolated");
-    gA_extrapolated->SetTitle("Asymmetry (extrapolated into elastic region);W^{2} (GeV^{2});Asymmetry (%)");
+    gA_extrapolated->SetTitle("Asymmetry (extrapolated into elastic region);W^{2} ((GeV/c)^{2});Asymmetry (%)");
 
     // Extrapolate at the same W2 points where we have elastic data
     for (int i = 0; i < gA_elastic->GetN(); ++i) {
@@ -3687,7 +4796,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     padTop_asym->Draw();
     padTop_asym->cd();
 
-    TH2F* frame_top = new TH2F("frame_top", ";W^{2} (GeV^{2});Counts",
+    TH2F* frame_top = new TH2F("frame_top", ";W^{2} ((GeV/c)^{2});Counts",
                                100, xMin, xMax, 100, yminW2, 1.05*ymaxW2);
     frame_top->GetXaxis()->SetLabelSize(0); // hide x labels on top pad
     frame_top->GetYaxis()->SetTitleSize(0.045);
@@ -3732,7 +4841,7 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double yhi =  15.0;
 
     TH2F* frame_extrap = new TH2F("frame_extrap",
-        "Asymmetry Extrapolation with W^{2} Distribution;W^{2} (GeV^{2});Asymmetry (%)",
+        "Asymmetry Extrapolation with W^{2} Distribution;W^{2} ((GeV/c)^{2});Asymmetry (%)",
         100, xMin, xMax, 100, ylo, yhi);
     frame_extrap->GetXaxis()->SetLabelSize(0.035);
     frame_extrap->GetXaxis()->SetTitleSize(0.040);

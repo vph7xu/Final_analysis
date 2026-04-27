@@ -84,6 +84,7 @@ private:
     std::string rootF_, txtF_;
 
     std::unordered_map<int, Counts> counts_; // run → N±
+    std::unordered_map<int, Counts> counts_p_;
     //std::unordered_map<int, PolAcc> pols_;   // run → pol sums //old implementation we don't use this anymore
     std::unordered_map<int, PolAccSys> pols_;
 };

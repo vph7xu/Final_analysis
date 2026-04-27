@@ -92,9 +92,10 @@ static TGraphErrors* CalculateAsymmetry(std::vector<TH1D*>& helicityH,
     auto* g = new TGraphErrors(nBins, xc.data(), y.data(), nullptr, ey.data());
     g->SetTitle("Helicity Asymmetry vs Cointime; Coincidence time (ns); Asymmetry (%)");
     g->SetMarkerStyle(21);
+    g->SetMarkerSize(3);   // bigger markers
     g->SetMarkerColor(kBlue+1);
     g->SetLineColor(kBlue+1);
-    g->SetLineWidth(3);
+    g->SetLineWidth(4);
     return g;
 }
 
@@ -251,7 +252,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     auto drawVLine_dashed = [](double x, double y1, double y2, int color=kGray+2) {
         TLine *L = new TLine(x, y1, x, y2);
         L->SetLineStyle(2);   // dashed
-        L->SetLineWidth(3);
+        L->SetLineWidth(4);
         L->SetLineColor(color);
         L->Draw("same");
     };
@@ -259,7 +260,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     auto drawVLine = [](double x, double y1, double y2, int color=kGray+2) {
         TLine *L = new TLine(x, y1, x, y2);
         L->SetLineStyle(1);   
-        L->SetLineWidth(3);
+        L->SetLineWidth(4);
         L->SetLineColor(color);
         L->Draw("same");
     };
@@ -271,7 +272,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
 
     c->Divide(2,2);
     h_cointime->SetLineColor(kBlack);
-    h_cointime->SetLineWidth(3);
+    h_cointime->SetLineWidth(4);
     h_cointime->Draw();
 
     // Setup bins for cointime
@@ -310,14 +311,14 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     // auto drawVLine_dashed = [](double x, double y1, double y2, int color=kGray+2) {
     //     TLine *L = new TLine(x, y1, x, y2);
     //     L->SetLineStyle(2);
-    //     L->SetLineWidth(2);
+    //     L->SetLineWidth(4);
     //     L->SetLineColor(color);
     //     L->Draw("same");
     // };
     // auto drawVLine = [](double x, double y1, double y2, int color=kGray+2) {
     //     TLine *L = new TLine(x, y1, x, y2);
     //     L->SetLineStyle(1);
-    //     L->SetLineWidth(3);
+    //     L->SetLineWidth(4);
     //     L->SetLineColor(color);
     //     L->Draw("same");
     // };
@@ -341,7 +342,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     TBox* box_dxdy = new TBox(c_.dy_L, c_.dx_L, c_.dy_H, c_.dx_H);
     box_dxdy->SetFillStyle(0);
     box_dxdy->SetLineColor(kRed+1);
-    box_dxdy->SetLineWidth(3);
+    box_dxdy->SetLineWidth(4);
 
     // canvas
     TCanvas *ccoin = new TCanvas("ccoin","ccoin", 3600, 3000);
@@ -351,7 +352,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     // pad 1
     ccoin->cd(1);
     h_cointime->SetLineColor(kBlack);
-    h_cointime->SetLineWidth(3);
+    h_cointime->SetLineWidth(4);
     h_cointime->GetXaxis()->SetTitle("coincidence time (ns)");
     h_cointime->Draw("hist");
     box_offset->Draw("same");
@@ -370,6 +371,7 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     p2_top->cd();
 
     h_cointime->GetXaxis()->SetTitle("");
+    h_cointime->SetLineWidth(4);
     h_cointime->Draw("hist");
     box_anti1->Draw("same");
     box_anti2->Draw("same");
@@ -393,8 +395,8 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
                                                 binMin, binWidth, kin_, /*flag_eHCAL_cut=*/true);
     gAsymPct->Draw("AP");
     gAsymPct->GetXaxis()->SetRangeUser(binMin, binMax);
-    gAsymPct->SetMinimum(-25);
-    gAsymPct->SetMaximum( 25);
+    gAsymPct->SetMinimum(-50);
+    gAsymPct->SetMaximum( 50);
     gAsymPct->GetXaxis()->SetTitleSize(0.07);
     gAsymPct->GetXaxis()->SetLabelSize(0.06);
     gAsymPct->GetXaxis()->SetTitleOffset(0.95);
@@ -402,6 +404,16 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     gAsymPct->GetYaxis()->SetLabelSize(0.06);
     gAsymPct->GetYaxis()->SetTitleOffset(0.8);
     gAsymPct->GetXaxis()->SetTitle("coincidence time (ns)");
+
+    // horizontal dashed zero line
+    TLine *zeroLine = new TLine(binMin, 0.0, binMax, 0.0);
+    zeroLine->SetLineStyle(2);   // dashed
+    zeroLine->SetLineWidth(4);
+    zeroLine->SetLineColor(kBlack);
+    zeroLine->Draw("same");
+
+    p2_bottom->Update();
+
     p2_bottom->Update();
 
     // pad 3
@@ -414,7 +426,9 @@ void AccidentalCorrection::process(TChain& ch, BranchVars& v)
     gSystem->mkdir("plots", true);
     //ccoin->SaveAs(Form("plots/%s_cointime_plots_for_accidentals_eHCAL_cut_%d.pdf", kin_, 1));
     ccoin->SaveAs(Form("images/%s/asymmetry_vs_cointime_%s_1.png", kin_, kin_));
+    ccoin->SaveAs(Form("images/%s/asymmetry_vs_cointime_%s_1.pdf", kin_, kin_));
     ccoin_1->SaveAs(Form("images/%s/asymmetry_vs_cointime_%s.png", kin_, kin_));
+    ccoin_1->SaveAs(Form("images/%s/asymmetry_vs_cointime_%s.pdf", kin_, kin_));
     //ccoin->SaveAs(Form("plots/%s_cointime_plots_for_accidentals_eHCAL_cut_%d.jpg", kin_, 1));
 
 }

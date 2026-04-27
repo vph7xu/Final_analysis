@@ -10,7 +10,8 @@ ROOTCFLAGS := $(shell root-config --cflags)
 ROOTLIBS   := $(shell root-config --libs)
 
 # ---- Compiler & flags ----
-CXXFLAGS  := -std=c++17 -O2 -Iinclude $(ROOTCFLAGS)
+ROOTCFLAGS_CLEAN := $(filter-out -std=%, $(shell root-config --cflags))
+CXXFLAGS         := -O2 -Iinclude $(ROOTCFLAGS_CLEAN) -std=c++17
 LDFLAGS   := $(ROOTLIBS)
 CXX       := g++
 

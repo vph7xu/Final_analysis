@@ -1,6 +1,6 @@
-Q2_avg = 2.98763
-tau_avg = 0.848909
-epsilon_avg = 0.793936
-Px_avg = 0.990287
-Pz_avg = -0.0477793
-total_good_events = 148605
+Q2_avg = 3.00305
+tau_avg = 0.853291
+epsilon_avg = 0.79233
+Px_avg = 0.990667
+Pz_avg = -0.0470586
+total_good_events = 127281
