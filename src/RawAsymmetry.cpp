@@ -113,6 +113,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     TH1D h_hel     ("h_hel",      "helicity after basic cuts; helicity; events",        5, -2.5,2.5);
     TH1D h_W2      ("h_W2",       "W^{2} after basic cuts; W^{2} ((GeV/c)^{2}); events",   100, 0.0,10.0);
     TH1D h_coin    ("h_coin",     "coin time after basic cuts; coin time (ns); events",100,100.0,200.0);
+    TH1D h_trP      ("h_trP",      "trP after basic cuts; trP (GeV/c); events",           100, 0.0, 5.0);
 
     TH1D h_dx_n    ("h_dx_n",     "dx (neutron window); dx (m); events",               100,-5.0,5.0);
     TH1D h_dy_n    ("h_dy_n",     "dy (neutron window); dy (m); events",               100,-5.0,5.0);
@@ -144,7 +145,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
             h_eHCAL.Fill(v.eHCAL);
             h_EoverP.Fill(EoverP);
             h_hel.Fill(-1*v.helicity*v.IHWP*c_.Pkin_L);
-
+            //h_trP.Fill(v.trP);
 
 
             if((c_.W2_L<v.W2 && v.W2<c_.W2_H) && (c_.coin_L<v.coin_time && v.coin_time<c_.coin_H) 
@@ -186,6 +187,7 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
                 // dx,dy in neutron window
                 h_dx_n.Fill(v.dx);
                 h_dy_n.Fill(v.dy);
+                h_trP.Fill(v.trP);
 
                 // --- Treat polarization errors as SYSTEMATIC (no 1/sigma^2 event weights) ---
                 auto& pa = pols_[v.runnum];
@@ -500,6 +502,11 @@ void RawAsymmetry::process(TChain& ch, BranchVars& v)
     c.cd(3); h_dy_p.Draw();   // proton dy
     c.cd(4); h_.Draw();       // your original h_ (dx filled in neutron window)
 
+    c.Print(pdfName.c_str());
+
+    c.Clear();
+    c.Divide(2,2);
+    c.cd(1); h_trP.Draw();   // trP distribution
     // Last page: close the PDF with ")"
     c.Print((pdfName + ")").c_str());
 

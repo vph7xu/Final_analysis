@@ -1,0 +1,87 @@
+par0 = 0.498622
+par1 = 0.1524
+par2 = 0.839868
+data events = 5882
+background events = 3029.56
+proton events = 100.509
+background_fraction = 0.515056
+err_background_fraction = 0.0115181
+proton_fraction = 0.0170875
+err_proton_fraction = 0.00171892
+f_in_dx = 0.490387
+err_f_in_dx = 0.0110271
+f_p_dx = 0.0170875
+err_f_p_dx = 0.00171892
+inelastic_events_pos = 6980.51
+inelastic_events_neg = 7150.48
+A_in_dx_method = -0.0120276
+err_A_in_dx_method = 0.00841167
+A_p = -0.0001
+err_A_p = 0.0002
+2D fit results:
+A2 = 0.486042
+rNP2 = 0.176977
+rI2 = 0.739991
+dxp = 0.0199229
+dyp = 0.00999997
+dxn = 0.0178771
+dyn = -0.00962574
+dxi = 0.0168303
+f_p_dxdy = 0.0143305
+err_f_p_dxdy = 0.0018608
+W2_data_events = 4204
+W2_fit_events = 4157.9
+W2_neutron_events = 2592.3
+W2_bkg_events = 1577.61
+W2_proton_events = 57.1007
+background_fraction_W2_fit = 0.375263
+err_background_fraction_W2_fit = 0.0110797
+inelastic_fraction_W2_fit = 0.35729
+err_inelastic_fraction_W2_fit = 0.0105826
+SSR_W2_single_param = 4359.56
+SSR_W2_two_param    = 475657
+single paramater method (neutrons)
+alpha_Neutrons : 35
+denom_Neutrons : 81.1312
+N_Neutrons : 4863
+double paramater method (neutrons)
+par0_2_Neutrons : 0.706447
+par1_2_Neutrons : 0.273645
+delta shifts for W^{2} (neutrons)
+delta_1_Neutrons : 0.0411486
+delta_1_Neutrons_qe : -0.0999999
+delta_2_Neutrons : 0
+#####dxdy_refit_with_W2_shifts = 1######
+Ndata_ell_2 = 4198
+Nprot_ell_2 = 54.0803
+Nneut_ell_2 = 2838.38
+Ninel_ell_2 = 1670.36
+Ndata2_2 = 38121
+W2_shift_used_QE   = -0.0999999
+W2_shift_used_Inel = 0.0411486
+dxdy_fit_A_2   = 0.483955
+dxdy_fit_rNP_2 = 0.184678
+dxdy_fit_rI_2  = 0.739963
+f_in_dxdy_2 = 0.397895
+f_p_dxdy_2  = 0.0128824
+f_n_dxdy_2  = 0.676127
+dxdy_fit_shifts_2 = p(0.0199994,0.00999797) n(0.0199727,-0.00999902) inel(0.0170417,0.00999976)
+refit_inelastic_frac = 0.378838
+refit_err_inelastic_frac = 0.0109956
+refit_f_p = 0.0124722
+refit_err_f_p = 0.00170694
+f_in = 0.378838
+err_f_in = 0.0109956
+f_p = 0.0124722
+err_f_p = 0.00170694
+asym_linear_fit_chi2 = 43.9536
+asym_linear_fit_ndf = 38
+asym_linear_fit_reduced_chi2 = 1.15667
+asym_QE_extrap_chi2 = 30.0611
+asym_QE_extrap_ndf = 25
+asym_QE_extrap_reduced_chi2 = 1.20244
+avg_extrap_A_percent = 0.506833
+err_avg_extrap_A_percent = 0.557461
+A_in = 0.00506833
+err_A_in = 0.00557461
+num_elastic_points_used = 25

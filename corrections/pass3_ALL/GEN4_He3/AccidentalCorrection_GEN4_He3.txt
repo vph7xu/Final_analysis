@@ -1,0 +1,8 @@
+N_plus_all      = 29
+N_minus_all     = 31
+A_acc           = -0.0333333
+err_A_acc       = 0.129028
+accidental_events = 14
+QE_events       = 4183
+f_acc           = 0.00334688
+err_f_acc       = 0.000895987

@@ -1,0 +1,87 @@
+par0 = 0.826778
+par1 = 0.203482
+par2 = 8.7758e-14
+data events = 142777
+background events = 2.25293e-08
+proton events = 11279
+background_fraction = 1.57794e-13
+err_background_fraction = 1.05127e-09
+proton_fraction = 0.0789976
+err_proton_fraction = 0.000772659
+f_in_dx = 1.46718e-13
+err_f_in_dx = 9.77484e-10
+f_p_dx = 0.0789976
+err_f_p_dx = 0.000772659
+inelastic_events_pos = 1.20126e-07
+inelastic_events_neg = 1.78354e-06
+A_in_dx_method = -0.873795
+err_A_in_dx_method = 352.455
+A_p = 0.0009
+err_A_p = 0.0001
+2D fit results:
+A2 = 0.821281
+rNP2 = 0.200796
+rI2 = 0.00357379
+dxp = 0.0161071
+dyp = 0.00999998
+dxn = -0.0193273
+dyn = -0.01
+dxi = 0.0183469
+f_p_dxdy = 0.063438
+err_f_p_dxdy = 0.000727912
+W2_data_events = 129627
+W2_fit_events = 127748
+W2_neutron_events = 110832
+W2_bkg_events = 12946.3
+W2_proton_events = 7492.83
+background_fraction_W2_fit = 0.0998737
+err_background_fraction_W2_fit = 0.000920554
+inelastic_fraction_W2_fit = 0.0928635
+err_inelastic_fraction_W2_fit = 0.000860703
+SSR_W2_single_param = 939399
+SSR_W2_two_param    = 9.79573e+08
+single paramater method (neutrons)
+alpha_Neutrons : 2.43894
+denom_Neutrons : 18.2709
+N_Neutrons : 151072
+double paramater method (neutrons)
+par0_2_Neutrons : 0.734236
+par1_2_Neutrons : 0.252718
+delta shifts for W^{2} (neutrons)
+delta_1_Neutrons : 0.0250846
+delta_1_Neutrons_qe : 0.0623982
+delta_2_Neutrons : 0
+#####dxdy_refit_with_W2_shifts = 1######
+Ndata_ell_2 = 127322
+Nprot_ell_2 = 6348.86
+Nneut_ell_2 = 119868
+Ninel_ell_2 = 1040.96
+Ndata2_2 = 857615
+W2_shift_used_QE   = 0.0623982
+W2_shift_used_Inel = 0.0250846
+dxdy_fit_A_2   = 0.82354
+dxdy_fit_rNP_2 = 0.198252
+dxdy_fit_rI_2  = 0.00467277
+f_in_dxdy_2 = 0.00817581
+f_p_dxdy_2  = 0.0498646
+f_n_dxdy_2  = 0.941458
+dxdy_fit_shifts_2 = p(-0.0129926,0.00999997) n(-0.0199904,-0.00999997) inel(-0.015823,-0.00998454)
+refit_inelastic_frac = 0.00760194
+refit_err_inelastic_frac = 0.000236695
+refit_f_p = 0.0475411
+refit_err_f_p = 0.000612645
+f_in = 0.00760194
+err_f_in = 0.000236695
+f_p = 0.0475411
+err_f_p = 0.000612645
+asym_linear_fit_chi2 = 29.6825
+asym_linear_fit_ndf = 38
+asym_linear_fit_reduced_chi2 = 0.781118
+asym_QE_extrap_chi2 = 17.1872
+asym_QE_extrap_ndf = 23
+asym_QE_extrap_reduced_chi2 = 0.747269
+avg_extrap_A_percent = 1.205833
+err_avg_extrap_A_percent = 0.287025
+A_in = 0.01205833
+err_A_in = 0.00287025
+num_elastic_points_used = 23

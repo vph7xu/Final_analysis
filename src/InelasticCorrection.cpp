@@ -535,7 +535,7 @@ TH2D* InelasticCorrection::performFitDxDy(
     // Match Python setup
     minimizer->SetLimitedVariable(0, "A",    1.0,  1e-3, 0.0, 1.0);
     minimizer->SetLimitedVariable(1, "rNP",  0.3,  1e-3, 0.0,  1.0);
-    minimizer->SetLimitedVariable(2, "rI",   0.1,  1e-3, 0.0,  0.74); // GEN3 0.37 atmost GEN4 0.74 GEN4b 0.74
+    minimizer->SetLimitedVariable(2, "rI",   0.1,  1e-3, 0.0,  1.0); // GEN3 0.37 atmost GEN4 0.74 GEN4b 0.74
     minimizer->SetLimitedVariable(3, "dx_p", 0.0,  1e-3, -0.02, 0.02);
     minimizer->SetLimitedVariable(4, "dy_p", 0.0,  1e-3, -0.01, 0.01);
     minimizer->SetLimitedVariable(5, "dx_n", 0.0,  1e-3, -0.02, 0.02);
@@ -1020,8 +1020,8 @@ TH1D* InelasticCorrection::performFitW2_1(
     minimizer->SetTolerance(1e-6);
     minimizer->SetPrintLevel(0);
 
-    minimizer->SetLimitedVariable(0, "alpha", 0.5, 1e-3, 20.0, 25.0);//GEN3 at most 16 GEN4 40 GEN4b 25
-                                                                    //GEN4 at least 35 GEN4b at least 20
+    minimizer->SetLimitedVariable(0, "alpha", 0.5, 1e-3, 20.0, 50.0);//GEN3 at most 16 GEN4 40 GEN4b 25
+                                                                     //GEN3 at least 10 GEN4 35 GEN4b 20
 
     if (fit_shifts) {
         minimizer->SetLimitedVariable(1, "delta_inel", 0.0, 1e-3, -0.05, 0.05);
@@ -4770,6 +4770,134 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     // fPL->SetLineColor(kGreen+4);
     // fPL->SetLineWidth(3);
 
+
+    // ============================================================================
+    // Reduced chi-square calculations for the asymmetry fit/extrapolation
+    // ============================================================================
+
+    // ---------------------------------------------------------------------------
+    // 1. Reduced chi2 of the linear fit in the inelastic fitting region
+    // ---------------------------------------------------------------------------
+    double chi2_inelastic_fit = std::numeric_limits<double>::quiet_NaN();
+    int    ndf_inelastic_fit  = 0;
+    double redchi2_inelastic_fit = std::numeric_limits<double>::quiet_NaN();
+
+    if (fitres.Get()) {
+        chi2_inelastic_fit = fitres->Chi2();
+        ndf_inelastic_fit  = fitres->Ndf();
+
+        if (ndf_inelastic_fit > 0) {
+            redchi2_inelastic_fit =
+                chi2_inelastic_fit / static_cast<double>(ndf_inelastic_fit);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // 2. Chi2 between the measured QE-region asymmetries and the extrapolated fit
+    //
+    // The denominator includes:
+    //   - measured asymmetry uncertainty
+    //   - uncertainty of the extrapolated linear fit
+    //
+    // Since the line was fitted only to the inelastic points and is treated as an
+    // external prediction in the QE region, use N_QE as the number of degrees of
+    // freedom. Do not subtract the two linear-fit parameters again.
+    // ---------------------------------------------------------------------------
+    double chi2_elastic_extrap = 0.0;
+    int nElasticUsed = 0;
+
+    double v00 = ea0 * ea0;
+    double v01 = 0.0;
+    double v11 = ea1 * ea1;
+
+    if (fitres.Get()) {
+        const TMatrixDSym cov = fitres->GetCovarianceMatrix();
+
+        if (cov.GetNrows() >= 2) {
+            v00 = cov(0,0);
+            v01 = cov(0,1);
+            v11 = cov(1,1);
+        }
+    }
+
+    for (int i = 0; i < gA_elastic->GetN(); ++i) {
+        double W2 = 0.0;
+        double A_measured = 0.0;
+
+        gA_elastic->GetPoint(i, W2, A_measured);
+
+        const double sigma_measured = gA_elastic->GetErrorY(i);
+        const double A_predicted = a0 + a1 * W2;
+
+        // Variance of a0 + a1*W2, including covariance
+        double var_prediction =
+            v00 +
+            2.0 * W2 * v01 +
+            W2 * W2 * v11;
+
+        var_prediction = std::max(0.0, var_prediction);
+
+        // Simple point-by-point comparison.
+        // Measurement and fitted prediction are assumed independent.
+        const double variance_total =
+            sigma_measured * sigma_measured + var_prediction;
+
+        if (variance_total <= 0.0) continue;
+
+        const double residual = A_measured - A_predicted;
+
+        chi2_elastic_extrap +=
+            residual * residual / variance_total;
+
+        ++nElasticUsed;
+    }
+
+    const int ndf_elastic_extrap = nElasticUsed;
+
+    double redchi2_elastic_extrap =
+        std::numeric_limits<double>::quiet_NaN();
+
+    if (ndf_elastic_extrap > 0) {
+        redchi2_elastic_extrap =
+            chi2_elastic_extrap /
+            static_cast<double>(ndf_elastic_extrap);
+    }
+
+    // ---------------------------------------------------------------------------
+    // Print results
+    // ---------------------------------------------------------------------------
+    std::cout << std::fixed << std::setprecision(6)
+            << "\n[Asymmetry chi2 results]\n"
+            << "Inelastic linear fit:\n"
+            << "  chi2       = " << chi2_inelastic_fit << "\n"
+            << "  NDF        = " << ndf_inelastic_fit << "\n"
+            << "  chi2/NDF   = " << redchi2_inelastic_fit << "\n"
+            << "QE-region extrapolation test:\n"
+            << "  chi2       = " << chi2_elastic_extrap << "\n"
+            << "  NDF        = " << ndf_elastic_extrap << "\n"
+            << "  chi2/NDF   = " << redchi2_elastic_extrap << "\n";
+
+    // Optionally write the values to your correction file
+    if (txt.good()) {
+        txt << "asym_linear_fit_chi2 = "
+            << chi2_inelastic_fit << "\n";
+
+        txt << "asym_linear_fit_ndf = "
+            << ndf_inelastic_fit << "\n";
+
+        txt << "asym_linear_fit_reduced_chi2 = "
+            << redchi2_inelastic_fit << "\n";
+
+        txt << "asym_QE_extrap_chi2 = "
+            << chi2_elastic_extrap << "\n";
+
+        txt << "asym_QE_extrap_ndf = "
+            << ndf_elastic_extrap << "\n";
+
+        txt << "asym_QE_extrap_reduced_chi2 = "
+            << redchi2_elastic_extrap << "\n";
+    }
+
     // ======================================================================
     // Canvas split: top = W^2 distribution (counts), bottom = asymmetry vs W^2
     // Both pads share the same X range (xMin..xMax)
@@ -4821,6 +4949,66 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     padBot_asym->SetTicks(1,1);
     padBot_asym->Draw();
     padBot_asym->cd();
+
+    // ============================================================================
+    // Display reduced chi-square values on the asymmetry canvas
+    // ============================================================================
+
+    padBot_asym->cd();
+
+    // Draw this after the graphs, fit line, uncertainty band, and shaded boxes
+    // so that the text remains visible.
+    TPaveText* chi2Box = new TPaveText(
+        0.14, 0.68,   // lower-left corner in NDC
+        0.49, 0.91,   // upper-right corner in NDC
+        "NDC"
+    );
+
+    chi2Box->SetFillColorAlpha(kWhite, 0.85);
+    chi2Box->SetFillStyle(1001);
+    chi2Box->SetBorderSize(1);
+    chi2Box->SetLineColor(kGray+1);
+    chi2Box->SetTextColor(kBlack);
+    chi2Box->SetTextAlign(12);
+    chi2Box->SetTextFont(42);
+    chi2Box->SetTextSize(0.030);
+
+    chi2Box->AddText("#chi^{2} summary");
+
+    // Inelastic-region fit quality
+    if (std::isfinite(redchi2_inelastic_fit)) {
+        chi2Box->AddText(
+            Form(
+                "Inelastic fit: #chi^{2}/NDF = %.2f/%d = %.2f",
+                chi2_inelastic_fit,
+                ndf_inelastic_fit,
+                redchi2_inelastic_fit
+            )
+        );
+    } else {
+        chi2Box->AddText("Inelastic fit: #chi^{2}/NDF unavailable");
+    }
+
+    // QE-region extrapolation agreement
+    if (std::isfinite(redchi2_elastic_extrap)) {
+        chi2Box->AddText(
+            Form(
+                "QE extrapolation: #chi^{2}/NDF = %.2f/%d = %.2f",
+                chi2_elastic_extrap,
+                ndf_elastic_extrap,
+                redchi2_elastic_extrap
+            )
+        );
+    } else {
+        chi2Box->AddText("QE extrapolation: #chi^{2}/NDF unavailable");
+    }
+
+    chi2Box->Draw("SAME");
+
+    padBot_asym->Modified();
+    padBot_asym->Update();
+    CW2_extrap->Modified();
+    CW2_extrap->Update();
 
     // bottom pad will be drawn by the existing asymmetry frame and plots below
     // if(gA_inelastic->GetN()+gA_elastic->GetN()+gA_extrapolated->GetN() > 0){
