@@ -1,0 +1,20 @@
+Fit: F(x) = A * (P(x) + B*N(x) + C*I(x))
+A is the fitted proton yield (counts); B=Nn/Np; C=NI/Np.
+Polynomial I is a normalized Bernstein shape with degree independent log weights.
+Data ROOT: /media/vimukthi/Sata/Research_JLab/outfiles/pass3/intimehighest/QE_data_GEN3_sbs100p_nucleon_np_model2_sbstrackingon_intimehighest.root
+QE ROOT: /media/vimukthi/Sata/Research_JLab/outfiles/SIMC/noNRad_correct_raster/QE_sim_simc_He3eN_GEN3_sbs100p_nucleon_np_model2_elastic_simc.root
+Inelastic ROOT: /media/vimukthi/Sata/Research_JLab/outfiles/inelastic_simulation_2025/QE_sim_GEN3_sbs100p_nucleon_np_model2_inelastic.root
+Cuts: ../../cuts/GEN3.json
+Run quality: ../../DB/run_quality.json
+Run quality enabled: 1
+Matched dy selection: 1
+Shifts fixed: 0
+Shift limit (m): 0.1
+Fit x minimum: -2.2
+Fit x maximum: 0.8
+Fit bins: 200
+Template support x minimum: -2.665
+Template support x maximum: 1.265
+Template guard requested (m): 0.45
+Polynomial degrees: 2,3,4,5,6
+Neutron dx window: [-0.5, 0.5]

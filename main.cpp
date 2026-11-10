@@ -21,17 +21,30 @@
 
 int main(int argc, char** argv)
 {
-    if (argc < 4) {
+    if (argc != 9 && argc != 10) {
         std::cerr << "Usage: " << argv[0]
-                  << " <data-rootfile> <simQE-rootfile> <simpim-rootfile> <siminelastic-rootfile> <simN2-rootfile> <cuts.json> [run_quality.json|csv] Kinematic_point\n";
+                << " <data-rootfile>"
+                << " <simQE-rootfile>"
+                << " <simpim-rootfile>"
+                << " <siminelastic-rootfile>"
+                << " <simN2-rootfile>"
+                << " <simHe3G4-rootfile>"
+                << " <cuts.json>"
+                << " [run_quality.json|csv]"
+                << " <Kinematic_point>\n";
+
         return 1;
     }
 
-    const bool haveRQ = (argc >= 9);
-    const int  cutsIdx = argc - (haveRQ ? 3 : 2);   // position of cuts.json
-    const char* cutsFile = argv[cutsIdx];
-    const char* kin = argv[argc - (haveRQ ? 1 : 0)];
-    const char* rqFile   = haveRQ ? argv[argc - 2] : nullptr;
+    // Optional run-quality file
+    const bool haveRQ = (argc == 10);
+
+    // Fixed argument positions
+    const char* cutsFile = argv[7];
+    const char* rqFile   = haveRQ ? argv[8] : nullptr;
+
+    // Kinematic point is always the final argument
+    const char* kin = argv[argc - 1];
 
     /* ---------- 1. Build the chain ---------- */
     TChain ch("Tout");               // adjust tree name if needed
@@ -49,6 +62,9 @@ int main(int argc, char** argv)
 
     TChain chsimN2("Tout");
     chsimN2.Add(argv[5]);
+
+    TChain chsimHe3G4("Tout"); // G4SBS He3 simulation
+    chsimHe3G4.Add(argv[6]); // Used exclusively for nitrogen correction
 
     /*TChain ch_sim_QE("Tout");
     ch_sim_QE.Add(argv[2]);
@@ -75,6 +91,10 @@ int main(int argc, char** argv)
 
     BranchVarsSim vsimN2;
     vsimN2.attach(&chsimN2);
+
+
+    BranchVarsSim vsimHe3G4; // G4SBS He3 branches for nitrogen correction
+    vsimHe3G4.attach(&chsimHe3G4);
 
     /* ---------- 3. Numeric cuts ---------- */
     CutConfig cfg;
@@ -104,20 +124,20 @@ int main(int argc, char** argv)
     AnalysisCuts icuts(cutsFile);   // load once
 
     /* ---------- 5. Run RawAsymmetry module ---------- */
-    // RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
-    // mod.process(ch, v);
+    //RawAsymmetry mod(cuts, icuts, rqPtr, kin);   // default histogram settings inside class
+    //mod.process(ch, v);
 
-    // PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
-    // dxdy.process(ch, v);
+    //PlotDXDY dxdy(icuts, rqPtr, kin);                  // uses dx/dy/helicity from cuts
+    //dxdy.process(ch, v);
 
-    // AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
-    // AccidentalCorrection.process(ch,v);
+    //AccidentalCorrection AccidentalCorrection(icuts, rqPtr, kin);
+    //AccidentalCorrection.process(ch,v);
 
-    // PionCorrection PionCorrection(icuts, rqPtr,kin);
-    // PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
+    //NitrogenCorrection NitrogenCorrection(icuts,kin);
+    //NitrogenCorrection.process(chsimHe3G4,chsimN2,vsimHe3G4,vsimN2);
 
-    // NitrogenCorrection NitrogenCorrection(icuts,kin);
-    // NitrogenCorrection.process(chsimQE,chsimN2,vsimQE,vsimN2);
+    //PionCorrection PionCorrection(icuts, rqPtr,kin);
+    //PionCorrection.process(ch, chsimQE, chsimPim, v, vsimQE, vsimPim);
 
     InelasticCorrection InelasticCorrection(icuts,rqPtr, kin);
     InelasticCorrection.process(ch, chsimQE, chsiminelastic,v,vsimQE,vsiminelastic);

@@ -1,0 +1,12 @@
+Model: A * (P + B*N + C*I)
+I polynomial: 2D tensor product Bernstein degree n in each axis.
+P,N,I have unit sum over 2D fit grid.
+Poisson deviance minimization, all cells, including empty.
+ROOT X=dx; Y=dy.
+Ellipse: (dx/0.5)^2 + (dy/0.6)^2 <= 1
+dx window: [-0.5,0.5] (full dy fit range)
+preShiftP=0 preShiftN=0 preShiftI=0
+floatShifts=1 dxShiftLimit=0.05 dyShiftLimit=0.03
+data=/media/vimukthi/Sata/Research_JLab/outfiles/pass3/intimehighest/QE_data_GEN3_sbs100p_nucleon_np_model2_sbstrackingon_intimehighest.root
+qe=/media/vimukthi/Sata/Research_JLab/outfiles/SIMC/noNRad_correct_raster/QE_sim_simc_He3eN_GEN3_sbs100p_nucleon_np_model2_elastic_simc.root
+inel=/media/vimukthi/Sata/Research_JLab/outfiles/inelastic_simulation_2025/QE_sim_GEN3_sbs100p_nucleon_np_model2_inelastic.root

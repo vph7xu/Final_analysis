@@ -26,6 +26,9 @@
 #include <Math/Functor.h>
 #include <Math/Minimizer.h>
 #include <memory>
+#include <algorithm>
+#include <vector>
+#include <utility>
 
 using std::string; using std::vector; using std::unordered_map;
 
@@ -328,6 +331,101 @@ TH1D* InelasticCorrection::performFit(TH1D* hD, TH1D* hInel, TH1D* hQE_proton, T
 //     return comb;
 // }
 
+
+// Map a (possibly enlarged) MC template into the ORIGINAL data grid, allowing
+// independent shifts along ROOT X and ROOT Y.  ROOT X=dy and ROOT Y=dx here.
+// Each source bin is treated as a uniform-density rectangle; the contribution
+// to a shifted destination bin is the exact area overlap.  Source events beyond
+// the plotted fit boundaries therefore contribute to shifted edge bins.
+// Output is a unit-normalized histogram ON THE DATA GRID, so A, A*B, A*C are
+// the predicted component yields in the fit region.
+namespace {
+using OverlapEntry2D = std::pair<int, double>;
+using AxisOverlaps2D = std::vector<std::vector<OverlapEntry2D>>;
+
+AxisOverlaps2D buildAxisOverlaps2D(const TAxis* dataAxis,
+                                   const TAxis* mcAxis, double shift) {
+    const int nDataBins = dataAxis->GetNbins();
+    const int nMcBins = mcAxis->GetNbins();
+    AxisOverlaps2D overlaps(static_cast<size_t>(nDataBins));
+    const double mcLow = mcAxis->GetXmin();
+    const double mcHigh = mcAxis->GetXmax();
+    for (int b = 1; b <= nDataBins; ++b) {
+        const double lo = dataAxis->GetBinLowEdge(b) - shift;
+        const double hi = dataAxis->GetBinUpEdge(b) - shift;
+        if (hi <= mcLow || lo >= mcHigh) continue;
+        const int first = std::max(1, mcAxis->FindFixBin(lo));
+        const int last  = std::min(nMcBins, mcAxis->FindFixBin(hi));
+        for (int j = first; j <= last; ++j) {
+            const double srcLo = mcAxis->GetBinLowEdge(j);
+            const double srcHi = mcAxis->GetBinUpEdge(j);
+            const double overlap = std::max(0.0,
+                std::min(hi, srcHi) - std::max(lo, srcLo));
+            if (overlap > 0.0)
+                overlaps[static_cast<size_t>(b-1)].emplace_back(
+                    j, overlap / (srcHi-srcLo));
+        }
+    }
+    return overlaps;
+}
+
+bool buildShiftedUnit2D(const TH2D* mc, const TH2D* dataGrid,
+                        double rootXShift, double rootYShift,
+                        std::vector<double>& out) {
+    const int nx = dataGrid->GetNbinsX();
+    const int ny = dataGrid->GetNbinsY();
+    out.assign(static_cast<size_t>(nx)*ny, 0.0);
+    // A possible empty source is detected by the zero-integral test below.
+    // Do not re-integrate the full (large) MC source for every Minuit call.
+    if (!mc) return false;
+
+    const auto xOver = buildAxisOverlaps2D(dataGrid->GetXaxis(),
+                                          mc->GetXaxis(), rootXShift);
+    const auto yOver = buildAxisOverlaps2D(dataGrid->GetYaxis(),
+                                          mc->GetYaxis(), rootYShift);
+    double integral = 0.0;
+    for (int ix=0; ix<nx; ++ix) {
+        if (xOver[ix].empty()) continue;
+        for (int iy=0; iy<ny; ++iy) {
+            if (yOver[iy].empty()) continue;
+            double value = 0.0;
+            for (const auto& bx : xOver[ix]) {
+                for (const auto& by : yOver[iy]) {
+                    value += mc->GetBinContent(bx.first,by.first)*
+                             bx.second*by.second;
+                }
+            }
+            // The model is a nonnegative expected-count density.
+            value = std::max(0.0,value);
+            out[static_cast<size_t>(ix)*ny+iy] = value;
+            integral += value;
+        }
+    }
+    if (!(integral > 0.0) || !std::isfinite(integral)) return false;
+    for (double& v : out) v /= integral;
+    return true;
+}
+
+TH2D* makeShiftedUnitHist2D(const TH2D* source, const TH2D* dataGrid,
+                            const char* name, double rootXShift,
+                            double rootYShift) {
+    auto* output = static_cast<TH2D*>(dataGrid->Clone(name));
+    output->SetDirectory(nullptr);
+    output->Reset("ICES");
+    std::vector<double> values;
+    if (!buildShiftedUnit2D(source,dataGrid,rootXShift,rootYShift,values)) {
+        std::cerr << "[DxDyFit] WARNING: empty shifted template: " << name << "\n";
+        return output;
+    }
+    const int ny = dataGrid->GetNbinsY();
+    for (int ix=1; ix<=dataGrid->GetNbinsX(); ++ix)
+        for (int iy=1; iy<=ny; ++iy)
+            output->SetBinContent(ix,iy,
+                values[static_cast<size_t>(ix-1)*ny+(iy-1)]);
+    return output;
+}
+} // anonymous namespace for shifted dx-dy MC templates
+
 // --- 2D template shape fit on (dx,dy) ---------------------------------------
 // Model:  A * [  P(x-Δx_p, y-Δy_p) + rNP * N(x-Δx_n, y-Δy_n) + rI * I(x-Δx_i, y-Δy_i)  ]
 // Histos should be unit-normalized PDFs (method does that defensively).
@@ -437,152 +535,164 @@ TH2D* InelasticCorrection::performFitDxDy(
     double& dx_n, double& dy_n,
     double& dx_i, double& dy_i
 ){
-    auto clone_norm2D = [](TH2D* src, const char* name){
-        TH2D* h = (TH2D*)src->Clone(name);
-        h->SetDirectory(nullptr);
-        double S = h->Integral();
-        if (S > 0) h->Scale(1.0/S);
-        return h;
+    // Simulation-only fit, with the same 9 parameters and caller interface.
+    // F = A * [ P + rNP * N + rI * I ], where P/N/I each sum to ONE
+    // over the current 2D fit region after applying their respective shifts.
+    // A, A*rNP and A*rI are the fitted proton, neutron and inelastic yields.
+    // The simulation source histograms have extended support, while the
+    // data/output histograms retain their original, unchanged boundaries.
+    // Unlike the old squared-PDF-residual fit, this uses raw DATA counts
+    // and minimizes the binned Poisson deviance across ALL 2D bins.
+    //
+    // IMPORTANT: The existing TH2D inputs have ROOT X = dy and ROOT Y = dx.
+    // For compatibility with the existing framework's legacy shift variables,
+    // the first shift of each pair acts on ROOT X (dy) and the second on
+    // ROOT Y (dx), despite their names.
+
+    const int nx = hD2->GetNbinsX();
+    const int ny = hD2->GetNbinsY();
+    const int nBins = nx * ny;
+    const double nData = hD2->Integral(1, nx, 1, ny);
+
+    // Data and MC are intentionally allowed to have DIFFERENT axis ranges:
+    // the MC must have extended support, while the data retains the original
+    // 200x200 grid. The remapping code handles the different bin counts.
+    auto hasSupport = [&](const TH2D* h) {
+        return h && h->GetNbinsX()>0 && h->GetNbinsY()>0
+            && h->GetXaxis()->GetXmin() < hD2->GetXaxis()->GetXmin()
+            && h->GetXaxis()->GetXmax() > hD2->GetXaxis()->GetXmax()
+            && h->GetYaxis()->GetXmin() < hD2->GetYaxis()->GetXmin()
+            && h->GetYaxis()->GetXmax() > hD2->GetYaxis()->GetXmax()
+            && h->Integral(1,h->GetNbinsX(),1,h->GetNbinsY()) > 0.0;
     };
 
-    // normalized PDFs, like Python
-    TH2D* d    = clone_norm2D(hD2,    Form("hD2_%p",    hD2));
-    TH2D* inel = clone_norm2D(hInel2, Form("hInel2_%p", hInel2));
-    TH2D* qep  = clone_norm2D(hQEp2,  Form("hQEp2_%p",  hQEp2));
-    TH2D* qen  = clone_norm2D(hQEn2,  Form("hQEn2_%p",  hQEn2));
-
-    const double xmin = d->GetXaxis()->GetXmin();
-    const double xmax = d->GetXaxis()->GetXmax();
-    const double ymin = d->GetYaxis()->GetXmin();
-    const double ymax = d->GetYaxis()->GetXmax();
-
-    auto interp2D = [&](TH2D* h, double x, double y){
-        if (x <= xmin) x = xmin + 1e-9;
-        if (x >= xmax) x = xmax - 1e-9;
-        if (y <= ymin) y = ymin + 1e-9;
-        if (y >= ymax) y = ymax - 1e-9;
-        return h->Interpolate(x, y);
-    };
-
-    // Build the Python-style mask using the ORIGINAL counts, not normalized PDFs
-    std::vector<std::pair<int,int>> activeBins;
-    activeBins.reserve(hD2->GetNbinsX() * hD2->GetNbinsY());
-
-    for (int ix = 1; ix <= hD2->GetNbinsX(); ++ix) {
-        for (int iy = 1; iy <= hD2->GetNbinsY(); ++iy) {
-            const bool keep =
-                (hD2    ->GetBinContent(ix,iy) > 0.0) ||
-                (hQEp2  ->GetBinContent(ix,iy) > 0.0) ||
-                (hQEn2  ->GetBinContent(ix,iy) > 0.0) ||
-                (hInel2 ->GetBinContent(ix,iy) > 0.0);
-            if (keep) activeBins.emplace_back(ix, iy);
-        }
+    if (!(nData>0.0) || !hasSupport(hQEp2) || !hasSupport(hQEn2) ||
+        !hasSupport(hInel2)) {
+        std::cerr << "[DxDyFit Poisson] Bad data or missing extended MC support.\n";
+        A = rNP = rI = dx_p = dy_p = dx_n = dy_n = dx_i = dy_i =
+            std::numeric_limits<double>::quiet_NaN();
+        auto* bad=static_cast<TH2D*>(hD2->Clone(Form("hComb2D_empty_%p",hD2)));
+        bad->SetDirectory(nullptr); bad->Reset("ICES");
+        return bad;
     }
 
-    if (activeBins.empty()) {
-        TH2D* z = (TH2D*)hD2->Clone(Form("hComb2D_empty_%p", hD2));
-        z->Reset();
-        A = rNP = rI = dx_p = dy_p = dx_n = dy_n = dx_i = dy_i = std::numeric_limits<double>::quiet_NaN();
-        return z;
-    }
+    const size_t nCells = static_cast<size_t>(nBins);
+    std::vector<double> observed(nCells);
+    for (int ix=1; ix<=nx; ++ix)
+        for (int iy=1; iy<=ny; ++iy)
+            observed[static_cast<size_t>(ix-1)*ny+(iy-1)] =
+                hD2->GetBinContent(ix,iy);
 
-    // Python objective: sum over masked bins of (model - d_pdf)^2
-    auto objective = [&](const double *p) {
-        const double A_   = p[0];
-        const double rNP_ = p[1];
-        const double rI_  = p[2];
-        const double dxp  = p[3];
-        const double dyp  = p[4];
-        const double dxn  = p[5];
-        const double dyn  = p[6];
-        const double dxi  = p[7];
-        const double dyi  = p[8];
-
-        double ssr = 0.0;
-
-        for (const auto& bin : activeBins) {
-            const int ix = bin.first;
-            const int iy = bin.second;
-
-            const double x = d->GetXaxis()->GetBinCenter(ix);
-            const double y = d->GetYaxis()->GetBinCenter(iy);
-
-            const double P = interp2D(qep,  x - dxp, y - dyp);
-            const double N = interp2D(qen,  x - dxn, y - dyn);
-            const double I = interp2D(inel, x - dxi, y - dyi);
-
-            const double model = A_ * (P + rNP_*N + rI_*I);
-            const double data  = d->GetBinContent(ix, iy);
-
-            const double r = model - data;
-            ssr += r * r;
-        }
-
-        return ssr;
+    // Integrate shifted SOURCE bins into the original DATA bins, then unit
+    // normalize over the original fit grid. No clamping, no artificial step.
+    auto shiftedUnit = [&](const TH2D* source,double rootXShift,
+                           double rootYShift,std::vector<double>& out) {
+        return buildShiftedUnit2D(source,hD2,rootXShift,rootYShift,out);
     };
 
-    ROOT::Math::Functor fcn(objective, 9);
+    auto objective = [&](const double* p) -> double {
+        const double a = p[0], b = p[1], c = p[2];
+        if (!(a > 0.0) || b < 0.0 || c < 0.0) return 1e100;
+        std::vector<double> proton, neutron, inelastic;
+        if (!shiftedUnit(hQEp2,  p[3], p[4], proton) ||
+            !shiftedUnit(hQEn2,  p[5], p[6], neutron) ||
+            !shiftedUnit(hInel2, p[7], p[8], inelastic)) return 1e100;
+
+        double deviance = 0.0;
+        for (size_t k=0; k<nCells; ++k) {
+            const double n = observed[k];
+            const double m = std::max(1e-12,
+                a*(proton[k] + b*neutron[k] + c*inelastic[k]));
+            deviance += 2.0*(m-n+(n>0.0 ? n*std::log(n/m) : 0.0));
+        }
+        return deviance;
+    };
+
+    ROOT::Math::Functor fcn(objective,9);
     std::unique_ptr<ROOT::Math::Minimizer> minimizer(
-        ROOT::Math::Factory::CreateMinimizer("Minuit2", "Migrad")
-    );
+        ROOT::Math::Factory::CreateMinimizer("Minuit2","Migrad"));
+    if (!minimizer) {
+        std::cerr << "[DxDyFit Poisson] Unable to create Minuit2.\n";
+        A = rNP = rI = dx_p = dy_p = dx_n = dy_n = dx_i = dy_i =
+            std::numeric_limits<double>::quiet_NaN();
+        TH2D* bad = (TH2D*)hD2->Clone(Form("hComb2D_empty_%p", hD2));
+        bad->SetDirectory(nullptr);
+        bad->Reset("ICES");
+        return bad;
+    }
 
     minimizer->SetFunction(fcn);
     minimizer->SetMaxFunctionCalls(100000);
     minimizer->SetMaxIterations(10000);
-    minimizer->SetTolerance(1e-6);
+    minimizer->SetTolerance(1e-5);
     minimizer->SetPrintLevel(0);
 
-    // Match Python setup
-    minimizer->SetLimitedVariable(0, "A",    1.0,  1e-3, 0.0, 1.0);
-    minimizer->SetLimitedVariable(1, "rNP",  0.3,  1e-3, 0.0,  1.0);
-    minimizer->SetLimitedVariable(2, "rI",   0.1,  1e-3, 0.0,  1.0); // GEN3 0.37 atmost GEN4 0.74 GEN4b 0.74
-    minimizer->SetLimitedVariable(3, "dx_p", 0.0,  1e-3, -0.02, 0.02);
-    minimizer->SetLimitedVariable(4, "dy_p", 0.0,  1e-3, -0.01, 0.01);
-    minimizer->SetLimitedVariable(5, "dx_n", 0.0,  1e-3, -0.02, 0.02);
-    minimizer->SetLimitedVariable(6, "dy_n", 0.0,  1e-3, -0.01, 0.01);
-    minimizer->SetLimitedVariable(7, "dx_i", 0.0,  1e-3, -0.02, 0.02);
-    minimizer->SetLimitedVariable(8, "dy_i", 0.0,  1e-3, -0.01, 0.01);
+    const double B0=0.20, C0=0.30;
+    const double A0=nData/(1.0+B0+C0);
+    minimizer->SetLimitedVariable(0,"A", A0,
+        std::max(1.0,0.002*A0), 0.0,3.0*nData);
+    minimizer->SetLimitedVariable(1,"rNP",B0,0.005,0.0,20.0);
+    minimizer->SetLimitedVariable(2,"rI", C0,0.005,0.3,20.0);
 
-    const bool ok = minimizer->Minimize();
-    const double* xs = minimizer->X();
+    // Keep original +/- 0.05 m shift limits and all nine floating parameters.
+    constexpr double maxShift=0.05;
+    minimizer->SetLimitedVariable(3,"dx_p",0.0,0.002,-maxShift,maxShift);
+    minimizer->SetLimitedVariable(4,"dy_p",0.0,0.002,-maxShift,maxShift);
+    minimizer->SetLimitedVariable(5,"dx_n",0.0,0.002,-maxShift,maxShift);
+    minimizer->SetLimitedVariable(6,"dy_n",0.0,0.002,-maxShift,maxShift);
+    minimizer->SetLimitedVariable(7,"dx_i",0.0,0.002,-maxShift,maxShift);
+    minimizer->SetLimitedVariable(8,"dy_i",0.0,0.002,-maxShift,maxShift);
 
-    A    = xs[0];
-    rNP  = xs[1];
-    rI   = xs[2];
-    dx_p = xs[3];
-    dy_p = xs[4];
-    dx_n = xs[5];
-    dy_n = xs[6];
-    dx_i = xs[7];
-    dy_i = xs[8];
-
-    std::cout << std::fixed << std::setprecision(4)
-              << "[DxDyFit custom] ok=" << ok
-              << " A="   << A
-              << " rNP=" << rNP
-              << " rI="  << rI
-              << " (dx,dy)_p=(" << dx_p << "," << dy_p << ")"
-              << " (dx,dy)_n=(" << dx_n << "," << dy_n << ")"
-              << " (dx,dy)_i=(" << dx_i << "," << dy_i << ")\n";
-
-    // Build best-fit combined TH2 in PDF space, same as Python model_pdf
-    TH2D* comb = (TH2D*)d->Clone(Form("hComb2D_%p", d));
-    comb->Reset();
-
-    for (int ix = 1; ix <= comb->GetNbinsX(); ++ix) {
-        for (int iy = 1; iy <= comb->GetNbinsY(); ++iy) {
-            const double x = comb->GetXaxis()->GetBinCenter(ix);
-            const double y = comb->GetYaxis()->GetBinCenter(iy);
-
-            const double P = interp2D(qep,  x - dx_p, y - dy_p);
-            const double N = interp2D(qen,  x - dx_n, y - dy_n);
-            const double I = interp2D(inel, x - dx_i, y - dy_i);
-
-            comb->SetBinContent(ix, iy, A * (P + rNP*N + rI*I));
-        }
+    const bool converged = minimizer->Minimize();
+    const double* p = minimizer->X();
+    if (!p) {
+        std::cerr << "[DxDyFit Poisson] Minuit returned no parameter vector.\n";
+        A = rNP = rI = dx_p = dy_p = dx_n = dy_n = dx_i = dy_i =
+            std::numeric_limits<double>::quiet_NaN();
+        TH2D* bad = (TH2D*)hD2->Clone(Form("hComb2D_empty_%p", hD2));
+        bad->SetDirectory(nullptr);
+        bad->Reset("ICES");
+        return bad;
     }
 
-    return comb;
+    A = p[0]; rNP=p[1]; rI=p[2];
+    dx_p=p[3]; dy_p=p[4];
+    dx_n=p[5]; dy_n=p[6];
+    dx_i=p[7]; dy_i=p[8];
+
+    std::vector<double> proton, neutron, inelastic;
+    shiftedUnit(hQEp2, dx_p,dy_p,proton);
+    shiftedUnit(hQEn2, dx_n,dy_n,neutron);
+    shiftedUnit(hInel2,dx_i,dy_i,inelastic);
+
+    TH2D* comb=(TH2D*)hD2->Clone(Form("hComb2D_%p",hD2));
+    comb->SetDirectory(nullptr);
+    comb->Reset("ICES");
+    double chi2=0.0;
+    for (int ix=1;ix<=nx;++ix) {
+        for (int iy=1;iy<=ny;++iy) {
+            const size_t k=static_cast<size_t>(ix-1)*ny+(iy-1);
+            const double m=A*(proton[k]+rNP*neutron[k]+rI*inelastic[k]);
+            const double n=observed[k];
+            comb->SetBinContent(ix,iy,m);
+            chi2 += (n-m)*(n-m)/std::max(m,1e-12);
+        }
+    }
+    const int ndf=nBins-9;
+    const double dev=objective(p);
+    std::cout << std::fixed << std::setprecision(5)
+              << "[DxDyFit Poisson] converged="<<converged
+              << " status="<<minimizer->Status()
+              << " A="<<A<<" B="<<rNP<<" C="<<rI
+              << " nParameters=9 nBins="<<nBins
+              << " PearsonChi2/ndf="<<(ndf>0 ? chi2/ndf : -1.0)
+              << " deviance/ndf="<<(ndf>0 ? dev/ndf : -1.0)
+              << " (ROOT X,ROOT Y shifts) P=("<<dx_p<<","<<dy_p<<")"
+              << " N=("<<dx_n<<","<<dy_n<<")"
+              << " I=("<<dx_i<<","<<dy_i<<")\n";
+    if (!converged)
+        std::cerr << "[DxDyFit Poisson] Warning: Minuit2 did not converge.\n";
+    return comb; // Predicted EVENT COUNTS, not a unit-normalized PDF.
 }
 
 // TH2D* InelasticCorrection::performFitDxDy(
@@ -1307,17 +1417,23 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double errfpi  = V(pionMap,"err_f_pi");
     double errfN2  = V(nitMap ,"err_f_N2");
 
-    const int NBins_dx = 80; // match your dx binning
+    const int NBins_dx = 200; // match your dx binning
+    
+    const double dx_lower_limit = -2.2;
+    const double dx_upper_limit = 0.8;
+
+    const double dy_lower_limit = -1;
+    const double dy_upper_limit = 1;
 
     // histograms for fit (tight selection)
-    TH1D hData ("hData",  "dx data; dx (m)", NBins_dx, -4.0, 3.0);
-    TH1D hData_pos ("hData_pos",  "dx data (positive helicity); dx (m)", NBins_dx, -4.0, 3.0);
-    TH1D hData_neg ("hData_neg",  "dx data (negative helicity); dx (m)", NBins_dx, -4.0, 3.0);
-    TH1D hQE_proton("hQE_proton", "dx QE sim protons",          NBins_dx, -4.0, 3.0);
-    TH1D hQE_neutron("hQE_neutron", "dx QE sim neutrons",          NBins_dx, -4.0, 3.0);
-    TH1D hInelastic ("hInelastic",  "dx inelastic sim",        NBins_dx, -4.0, 3.0);
-    TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        NBins_dx, -4.0, 3.0);
-    TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        NBins_dx, -4.0, 3.0);
+    TH1D hData ("hData",  "dx data; dx (m)", NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hData_pos ("hData_pos",  "dx data (positive helicity); dx (m)", NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hData_neg ("hData_neg",  "dx data (negative helicity); dx (m)", NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hQE_proton("hQE_proton", "dx QE sim protons",          NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hQE_neutron("hQE_neutron", "dx QE sim neutrons",          NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hInelastic ("hInelastic",  "dx inelastic sim",        NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hInelastic_proton ("hInelastic_proton",  "dx inelastic sim protons",        NBins_dx, dx_lower_limit, dx_upper_limit);
+    TH1D hInelastic_neutron ("hInelastic_neutron",  "dx inelastic sim neutrons",        NBins_dx, dx_lower_limit, dx_upper_limit);
 
     // For W2 histograms used in performFitW2_1: store a slightly larger
     // range (±0.3) around the config cuts so fits/shift operations have
@@ -1342,8 +1458,8 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     //     W2_hist_lower_limit = c_.W2_L; 
     // }
 
-    const int NBW2 = 80; // match your other W² binning
-    const int Nbins_dxdy = 80; // match your dx-dy binning
+    const int NBW2 = 200; // match your other W² binning
+    const int Nbins_dxdy = 100; // match your dx-dy binning
 
     TH1D hData_W2("hData_W2",  "W2 data; W^{2} ((GeV/c)^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hData_W2_Neutrons("hData_W2_Neutrons",  "W2 data; W^{2} ((GeV/c)^{2})", NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
@@ -1364,15 +1480,46 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     TH1D hInelastic_W2_2("hInelastic_W2_2",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
     TH1D hInelastic_W2_2_Neutrons("hInelastic_W2_2_Neutrons",  "W^{2} inelastic sim",        NBW2, W2_hist_lower_limit, W2_hist_upper_limit);
 
-    TH2D hDxdy("hDxdy", "dx-dy distribution; dy (m); dx (m)",Nbins_dxdy, c_.dy_L-0.05, c_.dy_H+0.05,Nbins_dxdy,-4,3);
-    TH2D hDxdy_cut("hDxdy_cut", "dx-dy distribution ; dy (m); dx (m)",Nbins_dxdy,-4,3,Nbins_dxdy,-4,3);
+    TH2D hDxdy("hDxdy", "dx-dy distribution; dy (m); dx (m)",Nbins_dxdy, c_.dy_L-0.05, c_.dy_H+0.05,Nbins_dxdy, dx_lower_limit, dx_upper_limit);
+    TH2D hDxdy_cut("hDxdy_cut", "dx-dy distribution ; dy (m); dx (m)",Nbins_dxdy,dx_lower_limit, dx_upper_limit,Nbins_dxdy,dx_lower_limit, dx_upper_limit);
 
-    TH2D hDxdy_inelastic("hDxdy_inelastic", "dxdy distribution ; dy(m); dx(m)",Nbins_dxdy,-4,3,Nbins_dxdy,-4,3);
+    TH2D hDxdy_inelastic("hDxdy_inelastic", "dxdy distribution ; dy(m); dx(m)",Nbins_dxdy,dx_lower_limit, dx_upper_limit,Nbins_dxdy,dx_lower_limit, dx_upper_limit);
 
     // 2D templates for QE p/n and inelastic (same binning as hDxdy)
-    TH2D hQE_dxdy_p ("hQE_dxdy_p",  "QE p: dy vs dx;dy (m);dx (m)", Nbins_dxdy, c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, -4, 3);
-    TH2D hQE_dxdy_n ("hQE_dxdy_n",  "QE n: dy vs dx;dy (m);dx (m)", Nbins_dxdy,  c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, -4, 3);
-    TH2D hInel_dxdy ("hInel_dxdy",  "Inelastic: dy vs dx;dy (m);dx (m)", Nbins_dxdy,  c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, -4, 3);
+    TH2D hQE_dxdy_p ("hQE_dxdy_p",  "QE p: dy vs dx;dy (m);dx (m)", Nbins_dxdy, c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, dx_lower_limit, dx_upper_limit);
+    TH2D hQE_dxdy_n ("hQE_dxdy_n",  "QE n: dy vs dx;dy (m);dx (m)", Nbins_dxdy,  c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, dx_lower_limit, dx_upper_limit);
+    TH2D hInel_dxdy ("hInel_dxdy",  "Inelastic: dy vs dx;dy (m);dx (m)", Nbins_dxdy,  c_.dy_L-0.05, c_.dy_H+0.05, Nbins_dxdy, dx_lower_limit, dx_upper_limit);
+
+    // MC-support-only histograms for the 2D Poisson fit. Their bin widths are
+    // EXACTLY the same as hDxdy's, but their ranges extend beyond the fit
+    // region to retain events needed after +/-0.05 m template translations.
+    // ROOT X = dy, ROOT Y = dx. The plotted data grid is NOT changed.
+    const double fitDyMin = hDxdy.GetXaxis()->GetXmin();
+    const double fitDyMax = hDxdy.GetXaxis()->GetXmax();
+    const double fitDxMin = hDxdy.GetYaxis()->GetXmin();
+    const double fitDxMax = hDxdy.GetYaxis()->GetXmax();
+    const double dyBinWidth = (fitDyMax-fitDyMin)/Nbins_dxdy;
+    const double dxBinWidth = (fitDxMax-fitDxMin)/Nbins_dxdy;
+    const int padDyBins = std::max(1,static_cast<int>(std::ceil(0.15/dyBinWidth)));
+    const int padDxBins = std::max(1,static_cast<int>(std::ceil(0.45/dxBinWidth)));
+    const int mcBinsDy = Nbins_dxdy + 2*padDyBins;
+    const int mcBinsDx = Nbins_dxdy + 2*padDxBins;
+    const double mcDyMin = fitDyMin-padDyBins*dyBinWidth;
+    const double mcDyMax = fitDyMax+padDyBins*dyBinWidth;
+    const double mcDxMin = fitDxMin-padDxBins*dxBinWidth;
+    const double mcDxMax = fitDxMax+padDxBins*dxBinWidth;
+
+    TH2D hQE_dxdy_p_support("hQE_dxdy_p_support", "QE proton MC extended;dy;dx",
+        mcBinsDy,mcDyMin,mcDyMax, mcBinsDx,mcDxMin,mcDxMax);
+    TH2D hQE_dxdy_n_support("hQE_dxdy_n_support", "QE neutron MC extended;dy;dx",
+        mcBinsDy,mcDyMin,mcDyMax, mcBinsDx,mcDxMin,mcDxMax);
+    TH2D hInel_dxdy_support("hInel_dxdy_support", "Inelastic MC extended;dy;dx",
+        mcBinsDy,mcDyMin,mcDyMax, mcBinsDx,mcDxMin,mcDxMax);
+
+    std::cout << "[DxDyFit] data dx range "<<fitDxMin<<" .. "<<fitDxMax
+              <<", full-support MC dx range "<<mcDxMin<<" .. "<<mcDxMax
+              <<"; data dy range "<<fitDyMin<<" .. "<<fitDyMax
+              <<", MC dy range "<<mcDyMin<<" .. "<<mcDyMax<<"\n";
 
     // Bin ranges: reuse your dx, dy, W2 windows
     const int NBX = 80, NBY = 80, NBZ = 80; // tune rebinning as needed
@@ -1393,12 +1540,12 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                                                    NBY, dxhist_low3, dxhist_high3,
                                                    NBZ, W2hist_low3, W2hist_high3);
 
-    TH1D hDx_inelastic("hDx_inelastic", "dx distribution ; dx(m)",100,-4,3);
-    TH1D hDy_inelastic("hDy_inelastic", "dy distribution ; dy(m)",100,-4,3);
-    TH1D hDx_elastic("hDx_elastic", "dx distribution ; dx(m)",100,-4,3);
-    TH1D hDy_elastic("hDy_elastic", "dy distribution ; dy(m)",100,-4,3);
-    TH1D hDx_both("hDx_both", "dx distribution ; dx(m)",100,-4,3);
-    TH1D hDy_both("hDy_both", "dy distribution ; dy(m)",100,-4,3);
+    TH1D hDx_inelastic("hDx_inelastic", "dx distribution ; dx(m)",Nbins_dxdy,dx_lower_limit, dx_upper_limit);
+    TH1D hDy_inelastic("hDy_inelastic", "dy distribution ; dy(m)",Nbins_dxdy,dy_lower_limit, dy_upper_limit);
+    TH1D hDx_elastic("hDx_elastic", "dx distribution ; dx(m)",Nbins_dxdy,dx_lower_limit, dx_upper_limit);
+    TH1D hDy_elastic("hDy_elastic", "dy distribution ; dy(m)",Nbins_dxdy,dy_lower_limit, dy_upper_limit);
+    TH1D hDx_both("hDx_both", "dx distribution ; dx(m)",Nbins_dxdy,dx_lower_limit, dx_upper_limit);
+    TH1D hDy_both("hDy_both", "dy distribution ; dy(m)",Nbins_dxdy,dy_lower_limit, dy_upper_limit);
 
     const int NBW2_low = 80;
 
@@ -1781,6 +1928,25 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
         double dxq = vQE.dx;//-0.02;//dx_shifted_QE(vQE);
 
+        // Fill EXTENDED MC support using the very same hard-coded GEN shifts
+        // as the existing narrow histograms. Do this BEFORE the dy fit-window
+        // cut: nearby MC events are needed when the templates are translated.
+        if (c_.W2_L <= vQE.W2 && vQE.W2 <= c_.W2_H) {
+            double dymc = vQE.dy;
+            double dxmc = dxq;
+            if (vQE.fnucl==1) {
+                if (std::strcmp(kin_,"GEN2_He3")==0) { dymc-=0.05; dxmc+=0.12; }
+                else if (std::strcmp(kin_,"GEN3_He3")==0) dxmc+=0.07;
+                hQE_dxdy_p_support.Fill(dymc,dxmc,vQE.weight);
+            } else if (vQE.fnucl==0) {
+                if (std::strcmp(kin_,"GEN2_He3")==0 ||
+                    std::strcmp(kin_,"GEN4_He3")==0) dxmc-=0.02;
+                else if (std::strcmp(kin_,"GEN3_He3")==0) dxmc+=0.02;
+                else if (std::strcmp(kin_,"GEN4b_He3")==0) dxmc-=0.01;
+                hQE_dxdy_n_support.Fill(dymc,dxmc,vQE.weight);
+            }
+        }
+
         if(/*vQE.ntrack<1 ||*/ abs(vQE.vz)>0.27 || vQE.eHCAL<c_.eHCAL_L || (vQE.ePS+vQE.eSH)/(vQE.trP)<c_.EoverP_L || (vQE.ePS+vQE.eSH)/(vQE.trP)>c_.EoverP_H || vQE.ePS<0.2 ||
             (c_.W2_L-0.05>vQE.W2 || vQE.W2>c_.W2_H+0.05) || (c_.dy_L-0.05>vQE.dy || vQE.dy>c_.dy_H+0.05))continue;
 
@@ -1887,6 +2053,17 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2) continue;
 
         double dxi = vInel.dx; /*-0.02*/ //dx_shifted_Inel(vInel);
+
+        // Extended inelastic MC: preserve the GEN-specific manual dx shifts.
+        if (c_.W2_L <= vInel.W2 && vInel.W2 <= c_.W2_H) {
+            double dxmc=dxi;
+            if (std::strcmp(kin_,"GEN3_He3")==0) dxmc-=0.1;
+            else if (std::strcmp(kin_,"GEN4_He3")==0 ||
+                     std::strcmp(kin_,"GEN4b_He3")==0) dxmc-=0.2;
+            if (std::strcmp(kin_,"GEN3_He3")!=0 ||
+                vInel.fnucl==0 || vInel.fnucl==1)
+                hInel_dxdy_support.Fill(vInel.dy,dxmc,vInel.weight);
+        }
 
         if(/*vInel.ntrack<1 ||*/ abs(vInel.vz)>0.27 || vInel.eHCAL<c_.eHCAL_L || (vInel.ePS+vInel.eSH)/(vInel.trP)<c_.EoverP_L || (vInel.ePS+vInel.eSH)/(vInel.trP)>c_.EoverP_H || vInel.ePS<0.2 ||
             (c_.W2_L-0.05>vInel.W2 || vInel.W2>c_.W2_H+0.05) || (c_.dy_L-0.05>vInel.dy || vInel.dy>c_.dy_H+0.05)) continue; 
@@ -2148,12 +2325,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     double dxp=0, dyp=0, dxn=0, dyn=0, dxi=0, dyi=0;
 
     TH2D* hComb2D = performFitDxDy(
-        &hDxdy, &hInel_dxdy, &hQE_dxdy_p, &hQE_dxdy_n,
+        &hDxdy, &hInel_dxdy_support, &hQE_dxdy_p_support, &hQE_dxdy_n_support,
         A2, rNP2, rI2, dxp, dyp, dxn, dyn, dxi, dyi);
 
+    // Poisson fit returns predicted EVENT COUNTS. Don't renormalize this
+    // histogram after fitting; otherwise the displayed model changes.
     const double Ndata2D  = hDxdy.Integral();
     const double Nmodel2D = hComb2D->Integral();
-    if (Nmodel2D > 0) hComb2D->Scale(Ndata2D / Nmodel2D);
+    std::cout << "[DxDyFit] data="<<Ndata2D<<" fitted="<<Nmodel2D<<"\n";
 
     //TH2D* hComb2D_scaled = (TH2D*)hDxdy.Clone("hComb2D_scaled");
 
@@ -2254,36 +2433,20 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     // =================== Projections & Overlays ===================
 
-    // Make unit PDFs with the fitted shifts
-    auto make_shifted_unit2D = [&](TH2D* src, const char* name, double dx, double dy){
-        TH2D* h = (TH2D*)src->Clone(name);
-        h->Reset();
-        for (int ix=1; ix<=h->GetNbinsX(); ++ix){
-            const double x = h->GetXaxis()->GetBinCenter(ix);
-            for (int iy=1; iy<=h->GetNbinsY(); ++iy){
-                const double y = h->GetYaxis()->GetBinCenter(iy);
-                h->SetBinContent(ix, iy, src->Interpolate(x - dx, y - dy));
-            }
-        }
-        double S = h->Integral();
-        if (S > 0) h->Scale(1.0/S);
-        return h;
-    };
+    // Rebuild unit-normalized plotting components using EXACTLY the same
+    // full-support source and shifted-bin integration as the likelihood.
+    // (Legacy first shift = ROOT X = dy, second = ROOT Y = dx.)
+    TH2D* hP2 = makeShiftedUnitHist2D(&hQE_dxdy_p_support,&hDxdy,"hP2",dxp,dyp);
+    TH2D* hN2 = makeShiftedUnitHist2D(&hQE_dxdy_n_support,&hDxdy,"hN2",dxn,dyn);
+    TH2D* hI2 = makeShiftedUnitHist2D(&hInel_dxdy_support,&hDxdy,"hI2",dxi,dyi);
 
-    TH2D* hP2 = make_shifted_unit2D(&hQE_dxdy_p, "hP2",  dxp, dyp);
-    TH2D* hN2 = make_shifted_unit2D(&hQE_dxdy_n, "hN2",  dxn, dyn);
-    TH2D* hI2 = make_shifted_unit2D(&hInel_dxdy, "hI2",  dxi, dyi);
+    // Scale using the FITTED yields, not a second, independently imposed
+    // normalization: F = A*(P + B*N + C*I).
+    hP2->Scale(A2);             // QE proton: A
+    hN2->Scale(A2*rNP2);        // QE neutron: A*B
+    hI2->Scale(A2*rI2);         // Inelastic: A*C
 
-    // Now scale so that P + rNP*N + rI*I has the same total as data
-    const double Ndata2 = hDxdy.Integral();
-    const double denom2  = 1.0 + rNP2 + rI2;
-
-    // Each component becomes the **absolute** contribution
-    hP2->Scale(Ndata2 * (1.0/denom2));      // QE p
-    hN2->Scale(Ndata2 * (rNP2/denom2));     // QE n
-    hI2->Scale(Ndata2 * (rI2/denom2));      // Inelastic
-
-    // Build a perfectly-normalized combined model from components
+    // Build the model from the exact fitted component yields
     TH2D* hComb2D_scaled = (TH2D*)hP2->Clone("hComb2D_scaled");
     hComb2D_scaled->Add(hN2);
     hComb2D_scaled->Add(hI2);
@@ -3163,6 +3326,15 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
                     hInel_dxdy.GetNbinsX(), hInel_dxdy.GetXaxis()->GetXmin(), hInel_dxdy.GetXaxis()->GetXmax(),
                     hInel_dxdy.GetNbinsY(), hInel_dxdy.GetYaxis()->GetXmin(), hInel_dxdy.GetYaxis()->GetXmax());
 
+    // Pass-2 MC support, on the same extended grid as pass 1. The narrow
+    // pass-2 histograms above are retained unchanged for compatibility.
+    TH2D hQE_dxdy_p_2_support("hQE_dxdy_p_2_support","W2 shifted QE proton full;dy;dx",
+        mcBinsDy,mcDyMin,mcDyMax,mcBinsDx,mcDxMin,mcDxMax);
+    TH2D hQE_dxdy_n_2_support("hQE_dxdy_n_2_support","W2 shifted QE neutron full;dy;dx",
+        mcBinsDy,mcDyMin,mcDyMax,mcBinsDx,mcDxMin,mcDxMax);
+    TH2D hInel_dxdy_2_support("hInel_dxdy_2_support","W2 shifted inelastic full;dy;dx",
+        mcBinsDy,mcDyMin,mcDyMax,mcBinsDx,mcDxMin,mcDxMax);
+
     // ------------------------------------------------------------
     // QE loop (2nd pass): apply W2 shift for selection
     // ------------------------------------------------------------
@@ -3232,10 +3404,13 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             }
         }
 
-        // Make the selection consistent with what you used for the data dxdy hist:
-        // (Here: W2 window + dy loose window, mirroring your earlier template filling style)
-        if ( (c_.W2_L>W2q_sel || W2q_sel>c_.W2_H) ||
-            (c_.dy_L-0.05>dyq  || dyq>c_.dy_H+0.05) ) continue;
+        // Keep the pass-2 W2 cut, but do NOT cut dy before filling the
+        // extended-source histograms; otherwise the edge support is lost.
+        if (c_.W2_L>W2q_sel || W2q_sel>c_.W2_H) continue;
+        if (vQE.fnucl==1) hQE_dxdy_p_2_support.Fill(dyq,dxq,vQE.weight);
+        if (vQE.fnucl==0) hQE_dxdy_n_2_support.Fill(dyq,dxq,vQE.weight);
+        // Legacy narrow histograms retain their original dy selection.
+        if (c_.dy_L-0.05>dyq || dyq>c_.dy_H+0.05) continue;
 
         // Optional: if you want to mirror the ellipse region used by hDxdy_cut:
         // const bool inEllipseN = ( (pow((dyq-c_.dy_c)/c_.dy_r,2)+pow((dxq-c_.dx_c)/c_.dx_r,2)) <= 1 );
@@ -3280,8 +3455,10 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
         // Apply the fitted inelastic W2 shift BEFORE deciding the W2 window
         const double W2i_sel = vInel.W2 + dW2_Inel_used;
 
-        if ( (c_.W2_L>W2i_sel || W2i_sel>c_.W2_H) ||
-            (c_.dy_L-0.05>dyi  || dyi>c_.dy_H+0.05) ) continue;
+        if (c_.W2_L>W2i_sel || W2i_sel>c_.W2_H) continue;
+        hInel_dxdy_2_support.Fill(dyi,dxi,vInel.weight);
+        // Legacy narrow histogram retains its original dy selection.
+        if (c_.dy_L-0.05>dyi || dyi>c_.dy_H+0.05) continue;
 
         // Optional ellipse gating (same as above) if desired:
         // const bool inEllipseN = ( (pow((dyi-c_.dy_c)/c_.dy_r,2)+pow((dxi-c_.dx_c)/c_.dx_r,2)) <= 1 );
@@ -3299,9 +3476,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
 
     TH2D* hComb_dxdy_2 = performFitDxDy(
     hData_dxdy_for_fit,
-    &hInel_dxdy_2,
-    &hQE_dxdy_p_2,
-    &hQE_dxdy_n_2,
+    &hInel_dxdy_2_support,
+    &hQE_dxdy_p_2_support,
+    &hQE_dxdy_n_2_support,
     A2_2, rNP2_2, rI2_2,
     dxp2, dyp2, dxn2, dyn2, dxi2, dyi2
     );
@@ -3311,37 +3488,14 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
     const double denom2_2 = (1.0 + rNP2_2 + rI2_2);
     const double Ndata2_2 = hData_dxdy_for_fit->Integral();
 
-    // ---- helper: shift a 2D template by (dY,dX) to match your axis convention (x=dy, y=dx)
-    auto Shift2D = [](const TH2D* h, double dY, double dX, const char* name)->TH2D* {
-    if(!h) return nullptr;
-    TH2D* out = (TH2D*)h->Clone(name);
-    out->Reset("ICES");
-    out->SetDirectory(nullptr);
-
-    const int nx = h->GetNbinsX(); // dy axis
-    const int ny = h->GetNbinsY(); // dx axis
-
-    for(int ix=1; ix<=nx; ++ix){
-        const double y = h->GetXaxis()->GetBinCenter(ix); // dy
-        for(int iy=1; iy<=ny; ++iy){
-        const double x = h->GetYaxis()->GetBinCenter(iy); // dx
-        const double v = h->GetBinContent(ix,iy);
-        if(v==0) continue;
-        // Interpolate at shifted coordinate
-        const double v2 = h->Interpolate(y - dY, x - dX);
-        out->SetBinContent(ix,iy,v2);
-        }
-    }
-    // preserve bin errors approximately (optional; you can skip)
-    out->Sumw2();
-    return out;
-    };
-
-    // ---- build shifted component shapes consistent with your fit parameters
-    // NOTE: your templates are in (dy,dx) fill order, so shifts are (dyShift, dxShift).
-    TH2D* hP2_shift = Shift2D(&hQE_dxdy_p_2, dxp2, dyp2, "hP2_shift"); // (dyShift, dxShift)
-    TH2D* hN2_shift = Shift2D(&hQE_dxdy_n_2, dxn2, dyn2, "hN2_shift");
-    TH2D* hI2_shift = Shift2D(&hInel_dxdy_2, dxi2, dyi2, "hI2_shift");
+    // The pass-2 plotting components use the SAME shift/remap as the fit,
+    // and are on the ORIGINAL hDxdy data grid (not the extended MC grid).
+    TH2D* hP2_shift = makeShiftedUnitHist2D(&hQE_dxdy_p_2_support,
+        hData_dxdy_for_fit,"hP2_shift",dxp2,dyp2);
+    TH2D* hN2_shift = makeShiftedUnitHist2D(&hQE_dxdy_n_2_support,
+        hData_dxdy_for_fit,"hN2_shift",dxn2,dyn2);
+    TH2D* hI2_shift = makeShiftedUnitHist2D(&hInel_dxdy_2_support,
+        hData_dxdy_for_fit,"hI2_shift",dxi2,dyi2);
 
     auto UnitNormalize2D = [](TH2D* h){
     if(!h) return;
@@ -3375,9 +3529,9 @@ void InelasticCorrection::process(TChain& ch, TChain& ch_QE, TChain& ch_inel,
             << " rNP=" << rNP2_2
             << " rI=" << rI2_2 << "\n";
 
-    hP2_model->Scale(Ndata2_2 * (1.0/denom2_2));      // QE p
-    hN2_model->Scale(Ndata2_2 * (rNP2_2/denom2_2));
-    hI2_model->Scale(Ndata2_2 * (rI2_2/denom2_2));
+    hP2_model->Scale(A2_2);          // QE p
+    hN2_model->Scale(A2_2*rNP2_2);  // QE n
+    hI2_model->Scale(A2_2*rI2_2);   // Inelastic
 
 
 

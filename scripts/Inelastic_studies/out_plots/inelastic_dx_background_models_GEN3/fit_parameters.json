@@ -1,0 +1,102 @@
+{
+  "Simulation": {
+    "converged": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "parameters": {
+      "yield_p_frac": 0.6473395612242094,
+      "yield_n_frac": 0.10177024861073618,
+      "yield_bg_frac": 0.25089019251079064,
+      "background_coefficients": [
+        0.25089019251079064
+      ],
+      "shift_p_m": 0.058380340740990994,
+      "shift_n_m": 0.02131154113286049,
+      "shift_inel_m": 0.002320648086650654
+    },
+    "chi2": 1196.6086437323183,
+    "ndf": 194,
+    "aic": 1098.7836929776613
+  },
+  "Pol2": {
+    "converged": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "parameters": {
+      "yield_p_frac": 0.641287487681503,
+      "yield_n_frac": 0.09666168576730254,
+      "yield_bg_frac": 0.26205082579906,
+      "background_coefficients": [
+        0.0757540384127904,
+        0.15214514652218905,
+        0.034151640864080554
+      ],
+      "shift_p_m": 0.0722529780367669,
+      "shift_n_m": 0.020903234770331857
+    },
+    "chi2": 456.945679924939,
+    "ndf": 193,
+    "aic": 468.44943296546575
+  },
+  "Pol3": {
+    "converged": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "parameters": {
+      "yield_p_frac": 0.6423005504997141,
+      "yield_n_frac": 0.09582930047981136,
+      "yield_bg_frac": 0.2618701494747032,
+      "background_coefficients": [
+        0.057092549629272994,
+        0.09174882499120707,
+        0.08775746577717307,
+        0.025271309077050098
+      ],
+      "shift_p_m": 0.07224937671014,
+      "shift_n_m": 0.0206559229916155
+    },
+    "chi2": 456.78468256147664,
+    "ndf": 192,
+    "aic": 470.27760233670483
+  },
+  "Pol4": {
+    "converged": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "parameters": {
+      "yield_p_frac": 0.6626027029294457,
+      "yield_n_frac": 0.09709315693468624,
+      "yield_bg_frac": 0.2403041404714924,
+      "background_coefficients": [
+        0.05219045079241466,
+        5.8999178055636666e-18,
+        0.13855103124226,
+        0.02571579473613917,
+        0.023846863700678577
+      ],
+      "shift_p_m": 0.07089224451072838,
+      "shift_n_m": 0.03835975741999023
+    },
+    "chi2": 401.2176121454495,
+    "ndf": 191,
+    "aic": 418.052961612368
+  },
+  "Pol5": {
+    "converged": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "parameters": {
+      "yield_p_frac": 0.6414269163551986,
+      "yield_n_frac": 0.10958405389916656,
+      "yield_bg_frac": 0.24898902938010203,
+      "background_coefficients": [
+        0.039591110232202215,
+        6.682402747185131e-18,
+        0.15620390253734762,
+        7.31138163513223e-14,
+        0.03515229435305467,
+        0.01804172225742441
+      ],
+      "shift_p_m": 0.05917248901720464,
+      "shift_n_m": 0.036145123006492606
+    },
+    "chi2": 560.8510477274649,
+    "ndf": 190,
+    "aic": 577.581142159459
+  }
+}
